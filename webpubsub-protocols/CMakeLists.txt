@@ -21,6 +21,6 @@ add_executable(test-webpubsub-protocols ${SOURCES})
 target_link_libraries(test-webpubsub-protocols GTest::gtest_main)
 target_include_directories(test-webpubsub-protocols PUBLIC
     include
-    ../Deps/json-3.11.3/include
-    ../Deps/cppcodec/include
+    ../deps/json/include
+    ../deps/cppcodec
 )

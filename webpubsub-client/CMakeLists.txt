@@ -22,12 +22,12 @@ target_link_libraries(test-webpubsub-client GTest::gtest_main)
 target_include_directories(test-webpubsub-client PUBLIC
     include
 
-    ../WebPubSubProtocols/include
-    ../Deps/json-3.11.3/include
-    ../Deps/cppcodec/include
+    ../webpubsub-protocols/include
+    ../deps/json/include
+    ../deps/cppcodec
 
-    ../Deps/asio/asio/include
+    ../deps/asio/asio/include
 
     # FOR TEST ONLY
-    ../Deps/vcpkg/installed/x64-windows/include
+    ../deps/vcpkg/installed/x64-windows/include
 )
