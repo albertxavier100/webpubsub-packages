@@ -1,0 +1,14 @@
+[submodule "deps/vcpkg"]
+	path = deps/vcpkg
+	url = https://github.com/microsoft/vcpkg
+[submodule "deps/asio"]
+	path = deps/asio
+	url = https://github.com/chriskohlhoff/asio
+[submodule "deps/json"]
+	path = deps/json
+	url = https://github.com/nlohmann/json
+	tag = v3.11.3
+[submodule "deps/cppcodec"]
+	path = deps/cppcodec
+	url = https://github.com/tplgy/cppcodec/
+	tag = v0.2
