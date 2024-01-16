@@ -1,1 +1,1 @@
-# WebPubSubPackages
+# webpubsub-sdks
