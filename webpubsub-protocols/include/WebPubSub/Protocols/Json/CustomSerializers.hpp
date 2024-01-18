@@ -26,7 +26,7 @@ template <typename T> struct adl_serializer<std::optional<T>> {
 #pragma endregion
 
 #pragma region Enum Serializers
-namespace WebPubSub {
+namespace webpubsub {
 NLOHMANN_JSON_SERIALIZE_ENUM(RequestType, {
                                               {JoinGroup, "joinGroup"},
                                               {LeaveGroup, "leaveGroup"},
@@ -56,5 +56,5 @@ NLOHMANN_JSON_SERIALIZE_ENUM(MessageSourceType,
                                  {Server, "server"},
                                  {Group, "group"},
                              })
-} // namespace WebPubSub
+} // namespace webpubsub
 #pragma endregion

@@ -3,9 +3,9 @@
 #include <gtest/gtest.h>
 
 std::string writeJoinGroupRequest(const std::optional<uint64_t> &ackId) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   std::string group = "mygroup";
-  WebPubSub::JoinGroupRequest req(group, ackId);
+  webpubsub::JoinGroupRequest req(group, ackId);
   return p.write(req);
 }
 

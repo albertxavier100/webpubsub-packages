@@ -4,7 +4,7 @@
 #include <WebPubSub/Protocols/Requests/Request.hpp>
 #include <cppcodec/base64_rfc4648.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 template <typename TData> class SendToGroupRequest : public GroupRequest {
 public:
   SendToGroupRequest(
@@ -19,7 +19,7 @@ private:
   template <typename UData = TData>
   friend void to_json(nlohmann::json &json,
                       const SendToGroupRequest<TData> &request) {
-    namespace k = WebPubSub::Constants::Keys;
+    namespace k = webpubsub::Constants::Keys;
     groupRequestToJson(json, request);
     if (request.noEcho.has_value()) {
       json[k::noEcho] = request.noEcho;
@@ -32,4 +32,4 @@ private:
   const std::optional<DataType> &dataType;
   const TData inputData;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

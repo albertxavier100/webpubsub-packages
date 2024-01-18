@@ -2,7 +2,7 @@
 #include <WebPubSub/Protocols/Json/CustomSerializers.hpp>
 #include <WebPubSub/Protocols/Responses/Response.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 class ConnectedResponse : public Response {
 public:
 #pragma region Getter
@@ -25,4 +25,4 @@ private:
   std::string connectionId = EMPTY_STRING;
   std::optional<std::string> reconnectionToken = std::nullopt;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

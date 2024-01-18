@@ -4,10 +4,10 @@
 #include <gtest/gtest.h>
 
 std::string writeSendEventRequest(const std::optional<uint64_t> &ackId) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   std::string event = "myevent";
   std::string data(R"({"a": 1, "b": 2})");
-  WebPubSub::SendEventRequest<std::string> req(event, data, ackId);
+  webpubsub::SendEventRequest<std::string> req(event, data, ackId);
   return p.write(req);
 }
 

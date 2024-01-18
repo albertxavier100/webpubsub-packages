@@ -3,9 +3,9 @@
 #include <gtest/gtest.h>
 
 std::string writeLeaveGroupRequest(const std::optional<uint64_t> &ackId) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   std::string group = "mygroup";
-  WebPubSub::LeaveGroupRequest req(group, ackId);
+  webpubsub::LeaveGroupRequest req(group, ackId);
   return p.write(req);
 }
 

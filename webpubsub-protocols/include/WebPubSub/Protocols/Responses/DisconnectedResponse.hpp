@@ -2,7 +2,7 @@
 #include <WebPubSub/Protocols/Json/CustomSerializers.hpp>
 #include <WebPubSub/Protocols/Responses/Response.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 class DisconnectedResponse : public Response {
 public:
 #pragma region Getter
@@ -18,4 +18,4 @@ private:
   SystemEventType event = UnknownSystemEventType;
   std::optional<std::string> message = std::nullopt;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

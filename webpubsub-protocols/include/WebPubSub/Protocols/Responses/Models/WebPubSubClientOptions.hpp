@@ -1,7 +1,7 @@
 #pragma once
 #include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 template <typename TWebPubSubProtocol> struct WebPubSubClientOptions {
   static_assert(std::is_base_of<IWebPubSubProtocol<TWebPubSubProtocol>,
                                 TWebPubSubProtocol>::value,
@@ -16,4 +16,4 @@ public:
   int messageRetryOptions;
   int reconnectRetryOptions;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

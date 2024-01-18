@@ -11,20 +11,20 @@
 #include <variant>
 #include <vector>
 struct AckValidator {
-  void operator()(const WebPubSub::AckResponse &response) const {
-    EXPECT_EQ(WebPubSub::Ack, response.getType());
+  void operator()(const webpubsub::AckResponse &response) const {
+    EXPECT_EQ(webpubsub::Ack, response.getType());
     EXPECT_EQ(789UL, response.getAckId());
     EXPECT_EQ("Forbidden", response.getError().value().getName());
     EXPECT_EQ("The reason", response.getError().value().getMessage());
     EXPECT_EQ(true, response.getSuccess());
   }
   template <typename T, typename = std::enable_if_t<
-                            !std::is_same<T, WebPubSub::AckResponse>::value>>
+                            !std::is_same<T, webpubsub::AckResponse>::value>>
   void operator()(const T &response) const {}
 };
 
 TEST(ReadAckResponse, Basic) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   auto frame =
       R"({"type":"ack","ackId":789,"success":true,"error":{"name":"Forbidden","message":"The reason"}})";
   auto res = p.read(frame);

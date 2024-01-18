@@ -2,7 +2,7 @@
 #include <WebPubSub/Protocols/Common/Common.hpp>
 #include <WebPubSub/Protocols/Requests/Request.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 template <typename TData> class SendEventRequest : public Request {
 public:
   SendEventRequest() = default;
@@ -16,7 +16,7 @@ private:
   template <typename UData = TData>
   friend void to_json(nlohmann::json &json,
                       const SendEventRequest<TData> &request) {
-    namespace k = WebPubSub::Constants::Keys;
+    namespace k = webpubsub::Constants::Keys;
     requestToJson(json, request);
     json[k::event] = request.event;
     DataRequestHelper::dataToJson(json, request.inputData, request.dataType);
@@ -27,4 +27,4 @@ private:
   const std::optional<DataType> &dataType;
   const TData inputData;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

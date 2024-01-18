@@ -1,5 +1,5 @@
 #pragma once
-namespace WebPubSub {
+namespace webpubsub {
 enum DataType {
   Json = 0,
   Text,
@@ -43,4 +43,4 @@ enum WebPubSubProtocolMessageType {
   WebPubSubProtocolMessageText,
   WebPubSubProtocolMessageBinary,
 };
-} // namespace WebPubSub
+} // namespace webpubsub

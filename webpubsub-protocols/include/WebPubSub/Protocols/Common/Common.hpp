@@ -12,6 +12,6 @@
 //     NLOHMANN_JSON_EXPAND(NLOHMANN_JSON_PASTE(NLOHMANN_JSON_TO, __VA_ARGS__))   \
 //   }
 
-namespace WebPubSub {
+namespace webpubsub {
 static std::string EMPTY_STRING = std::string("");
-} // namespace WebPubSub
+} // namespace webpubsub

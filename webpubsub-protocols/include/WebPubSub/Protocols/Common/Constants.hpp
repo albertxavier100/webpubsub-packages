@@ -1,5 +1,5 @@
 #pragma once
-namespace WebPubSub {
+namespace webpubsub {
 namespace Constants {
 namespace Keys {
 // common
@@ -38,4 +38,4 @@ namespace Defaults {
 static const std::string emptyString = "";
 }
 } // namespace Constants
-} // namespace WebPubSub
+} // namespace webpubsub

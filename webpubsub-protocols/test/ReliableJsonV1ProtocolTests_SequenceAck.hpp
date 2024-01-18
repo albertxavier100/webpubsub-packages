@@ -11,9 +11,9 @@
 
 // TODO: add other tests
 TEST(WriteSequenceAck, Basic) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   uint64_t sequenceId = 456;
-  WebPubSub::SequenceAckSignal ack(sequenceId);
+  webpubsub::SequenceAckSignal ack(sequenceId);
   EXPECT_EQ(std::string("{\"sequenceId\":456,\"type\":\"sequenceAck\"}"),
             p.write(ack));
 }

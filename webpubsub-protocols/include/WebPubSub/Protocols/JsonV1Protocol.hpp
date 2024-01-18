@@ -2,7 +2,7 @@
 #include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
 #include <WebPubSub/Protocols/JsonProtocolBase.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 class JsonV1Protocol : public IWebPubSubProtocol<JsonV1Protocol> {
 public:
   JsonV1Protocol() = default;
@@ -25,4 +25,4 @@ public:
 private:
   JsonProtocolBase baseProtocol;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

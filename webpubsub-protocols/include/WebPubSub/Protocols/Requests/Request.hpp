@@ -6,7 +6,7 @@
 #include <cppcodec/base64_rfc4648.hpp>
 #include <optional>
 
-namespace WebPubSub {
+namespace webpubsub {
 template <typename TLatentAction, typename TWebSocket, typename TProtocol>
 class RequestSender;
 
@@ -21,7 +21,7 @@ public:
 protected:
   template <typename TRequest>
   static void requestToJson(nlohmann::json &json, const TRequest &request) {
-    namespace k = WebPubSub::Constants::Keys;
+    namespace k = webpubsub::Constants::Keys;
     json[k::type] = request.type;
     if (request.ackId.has_value()) {
       json[k::ackId] = request.ackId;
@@ -45,7 +45,7 @@ protected:
   template <typename TRequest>
   static void groupRequestToJson(nlohmann::json &json,
                                  const TRequest &request) {
-    namespace k = WebPubSub::Constants::Keys;
+    namespace k = webpubsub::Constants::Keys;
     requestToJson(json, request);
     json[k::group] = request.group;
   }
@@ -59,7 +59,7 @@ public:
   template <typename TData>
   static void dataToJson(nlohmann::json &json, const TData &inputData,
                          const std::optional<DataType> &dataType) {
-    namespace k = WebPubSub::Constants::Keys;
+    namespace k = webpubsub::Constants::Keys;
     using base64 = cppcodec::base64_rfc4648;
 
     switch (dataType.value_or(Json)) {
@@ -119,4 +119,4 @@ private:
            std::is_same<T, std::vector<char>>::value;
   }
 };
-} // namespace WebPubSub
+} // namespace webpubsub

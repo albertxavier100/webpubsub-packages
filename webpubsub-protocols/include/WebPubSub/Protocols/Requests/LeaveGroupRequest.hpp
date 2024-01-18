@@ -3,7 +3,7 @@
 #include <WebPubSub/Protocols/Common/Types.hpp>
 #include <WebPubSub/Protocols/Requests/Request.hpp>
 #include <string>
-namespace WebPubSub {
+namespace webpubsub {
 class LeaveGroupRequest : public GroupRequest {
 public:
   LeaveGroupRequest(const std::string &group,
@@ -15,4 +15,4 @@ private:
     groupRequestToJson<LeaveGroupRequest>(json, request);
   }
 };
-} // namespace WebPubSub
+} // namespace webpubsub

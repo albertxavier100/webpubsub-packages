@@ -17,7 +17,7 @@
 #include <nlohmann/json.hpp>
 #include <unordered_map>
 
-namespace WebPubSub {
+namespace webpubsub {
 // TODO: impl interface
 
 class JsonProtocolBase : public IWebPubSubProtocol<JsonProtocolBase> {
@@ -42,7 +42,7 @@ public:
 
   // TODO: only support webSocket text for now
   std::optional<ResponseVariant> read(const char *frame) {
-    namespace k = WebPubSub::Constants::Keys;
+    namespace k = webpubsub::Constants::Keys;
     auto json = nlohmann::json::parse(frame);
 
     ResponseType type = json[k::type];
@@ -80,4 +80,4 @@ public:
     };
   }
 };
-} // namespace WebPubSub
+} // namespace webpubsub

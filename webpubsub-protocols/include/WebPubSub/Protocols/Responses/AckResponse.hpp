@@ -3,7 +3,7 @@
 #include <WebPubSub/Protocols/Responses/Models/AckError.hpp>
 #include <WebPubSub/Protocols/Responses/Response.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 class AckResponse : public Response {
 public:
 #pragma region Getter
@@ -20,4 +20,4 @@ private:
   std::optional<AckError> error = std::nullopt;
   bool success = false;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

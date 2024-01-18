@@ -2,7 +2,7 @@
 #include <WebPubSub/Protocols/Json/CustomSerializers.hpp>
 #include <WebPubSub/Protocols/Responses/MessageResponse.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 class GroupMessageResponseV2 : public MessageResponseV2 {
 
 public:
@@ -22,4 +22,4 @@ private:
   std::string group = EMPTY_STRING;
   std::optional<std::string> fromUserId = std::nullopt;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

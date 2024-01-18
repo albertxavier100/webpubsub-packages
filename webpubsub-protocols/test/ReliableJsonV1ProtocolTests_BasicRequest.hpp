@@ -10,10 +10,10 @@
 
 // TODO: add other tests
 TEST(WriteGroupRequest, InvalidGroupName) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   auto createEmptyGroupReq = []() {
     nonstd::optional<uint64_t> ackId;
-    WebPubSub::GroupRequest req(WebPubSub::JoinGroup, "", ackId);
+    webpubsub::GroupRequest req(webpubsub::JoinGroup, "", ackId);
   };
   EXPECT_THROW(createEmptyGroupReq(), std::invalid_argument);
 }
@@ -22,11 +22,11 @@ TEST(Dev, Only) {
   // std::string group("dadas");
   // nonstd::optional<uint64_t> ackId(123);
   // nonstd::optional<bool> noEcho;
-  // nonstd::optional<WebPubSub::DataType> dataType;
+  // nonstd::optional<webpubsub::DataType> dataType;
   // std::string content(R"({"a": 1, "b": 2})");
   // std::vector<uint8_t> d(content.begin(), content.end());
-  // WebPubSub::Data data(d);
+  // webpubsub::Data data(d);
 
-  // WebPubSub::SendToGroupRequest req(group, nonstd::nullopt, nonstd::nullopt,
+  // webpubsub::SendToGroupRequest req(group, nonstd::nullopt, nonstd::nullopt,
   //                                   data, nonstd::nullopt);
 }

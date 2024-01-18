@@ -4,7 +4,7 @@
 #include <WebPubSub/Protocols/Requests/Request.hpp>
 #include <string>
 
-namespace WebPubSub {
+namespace webpubsub {
 class JoinGroupRequest : public GroupRequest {
 public:
   JoinGroupRequest(const std::string &group,
@@ -16,4 +16,4 @@ private:
     groupRequestToJson<JoinGroupRequest>(json, request);
   }
 };
-} // namespace WebPubSub
+} // namespace webpubsub

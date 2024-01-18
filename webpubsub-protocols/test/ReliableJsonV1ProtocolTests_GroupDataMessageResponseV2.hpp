@@ -19,24 +19,24 @@ public:
 };
 
 struct GroupMessageValidator {
-  void operator()(const WebPubSub::GroupMessageResponseV2 &response) const {
-    EXPECT_EQ(WebPubSub::Message, response.getType());
+  void operator()(const webpubsub::GroupMessageResponseV2 &response) const {
+    EXPECT_EQ(webpubsub::Message, response.getType());
     EXPECT_EQ(1UL, response.getSequenceId());
-    EXPECT_EQ(WebPubSub::Group, response.getFrom());
+    EXPECT_EQ(webpubsub::Group, response.getFrom());
     EXPECT_EQ("group_name", response.getGroup());
-    EXPECT_EQ(WebPubSub::Json, response.getDataType());
+    EXPECT_EQ(webpubsub::Json, response.getDataType());
     Data data;
     response.getData(data);
     EXPECT_EQ(123, data.getA());
     EXPECT_EQ("abc", response.getFromUserId());
   }
   template <typename T, typename = std::enable_if_t<!std::is_same<
-                            T, WebPubSub::GroupMessageResponseV2>::value>>
+                            T, webpubsub::GroupMessageResponseV2>::value>>
   void operator()(const T &response) const {}
 };
 
 TEST(ReadGroupDataMessageResponse, Basic) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   auto frame =
       R"({"sequenceId":1,"type":"message","from":"group","group":"group_name","dataType":"json","data":{"a":123},"fromUserId":"abc"})";
   auto res = p.read(frame);

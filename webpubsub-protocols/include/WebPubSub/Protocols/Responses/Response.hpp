@@ -1,7 +1,7 @@
 #pragma once
 #include <WebPubSub/Protocols/Common/Types.hpp>
 #include <nlohmann/json.hpp>
-namespace WebPubSub {
+namespace webpubsub {
 class Response {
 public:
   Response() = default;
@@ -15,4 +15,4 @@ protected:
 protected:
   ResponseType type = UnknownResponseType;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

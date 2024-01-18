@@ -15,9 +15,9 @@ public:
 template <typename T>
 std::string writeSendToGroupRequest(const T &data,
                                     const std::optional<uint64_t> &ackId) {
-  WebPubSub::ReliableJsonV1Protocol p;
+  webpubsub::ReliableJsonV1Protocol p;
   std::string group = "mygroup";
-  WebPubSub::SendToGroupRequest<T> req(group, data, ackId, std::nullopt,
+  webpubsub::SendToGroupRequest<T> req(group, data, ackId, std::nullopt,
                                        std::nullopt);
   return p.write(req);
 }

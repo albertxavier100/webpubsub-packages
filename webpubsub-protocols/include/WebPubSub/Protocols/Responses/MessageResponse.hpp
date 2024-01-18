@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-namespace WebPubSub {
+namespace webpubsub {
 class MessageResponseV2 : public Response {
 public:
   MessageResponseV2() = default;
@@ -65,4 +65,4 @@ protected:
   std::optional<DataType> dataType = std::nullopt;
   nlohmann::json data = "{}"_json;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

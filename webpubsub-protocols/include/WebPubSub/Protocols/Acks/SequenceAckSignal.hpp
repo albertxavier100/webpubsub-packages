@@ -3,7 +3,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 
-namespace WebPubSub {
+namespace webpubsub {
 class SequenceAckSignal {
 public:
   SequenceAckSignal() = default;
@@ -17,4 +17,4 @@ private:
   RequestType type = SequenceAck;
   uint64_t sequenceId = 0;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

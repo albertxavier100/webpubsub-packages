@@ -12,7 +12,7 @@
 #include <optional>
 #include <variant>
 
-namespace WebPubSub {
+namespace webpubsub {
 using ResponseVariant =
     std::variant<AckResponse, GroupMessageResponseV2, ServerMessageResponse,
                     ConnectedResponse, DisconnectedResponse>;
@@ -40,8 +40,8 @@ using ResponseVariant =
 // };
 //
 // #define WEBPUBSUB_P ROTOCOL_INTERFACE(T) \
-//  std::enable_if_t<WebPubSub::IWebPubSubProtocolWrite::value && \
-//                   WebPubSub::IWebPubSubProtocolRead::value>
+//  std::enable_if_t<webpubsub::IWebPubSubProtocolWrite::value && \
+//                   webpubsub::IWebPubSubProtocolRead::value>
 
 template <typename Impl> struct IWebPubSubProtocol {
   std::optional<ResponseVariant> read(const char *frame) {
@@ -64,4 +64,4 @@ template <typename Impl> struct IWebPubSubProtocol {
 
   bool isReliable() { return static_cast<Impl *>(this)->isReliable(); }
 };
-} // namespace WebPubSub
+} // namespace webpubsub
