@@ -1,7 +1,7 @@
 #pragma once
 #include <WebPubSub/Client/Interfaces/IWebSocket.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 template <class Impl> class IWebSocketFactory {
 public:
   template <typename TWebSocket>
@@ -12,4 +12,4 @@ public:
     return static_cast<Impl *>(this)->create(url, subProtocol);
   }
 };
-} // namespace WebPubSub
+} // namespace webpubsub

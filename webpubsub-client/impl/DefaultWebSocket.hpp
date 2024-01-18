@@ -5,7 +5,7 @@
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
 
-namespace WebPubSub {
+namespace webpubsub {
 class DefaultWebSocket {
 public:
   DefaultWebSocket(asio::io_context &ioc) : ioc(ioc) {}
@@ -26,4 +26,4 @@ private:
 };
 
 static_assert(IWebSocket<DefaultWebSocket>);
-} // namespace WebPubSub
+} // namespace webpubsub

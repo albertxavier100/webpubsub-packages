@@ -9,7 +9,7 @@
 
 TEST(WebPubSubClient, Basic) {
   asio::io_context ioc;
-  WebPubSub::DefaultWebSocket ws(ioc);
+  webpubsub::DefaultWebSocket ws(ioc);
   asio::co_spawn(ioc, ws.connectAsync(), [](std::exception_ptr e) {
     if (e)
       try {

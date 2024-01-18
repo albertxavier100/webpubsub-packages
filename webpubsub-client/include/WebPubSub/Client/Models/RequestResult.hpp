@@ -1,6 +1,6 @@
 #pragma once 
 
 // TODO: put to a new file
-namespace WebPubSub {
+namespace webpubsub {
 class RequestResult {};
-} // namespace WebPubSub
+} // namespace webpubsub

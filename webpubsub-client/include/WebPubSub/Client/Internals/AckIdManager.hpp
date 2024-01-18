@@ -2,7 +2,7 @@
 #include <iostream>
 #include <unordered_map>
 
-namespace WebPubSub {
+namespace webpubsub {
 class AckEntity {
 public:
   AckEntity(uint64_t ackId) : ackId(ackId) {}
@@ -13,9 +13,9 @@ private:
 private:
   uint64_t ackId;
 };
-} // namespace WebPubSub
+} // namespace webpubsub
 
-namespace WebPubSub {
+namespace webpubsub {
 class AckIdManager {
 public:
   AckIdManager() : nextAckId(0) {}
@@ -25,4 +25,4 @@ private:
   uint64_t nextAckId;
   std::unordered_map<uint64_t, AckEntity> store;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

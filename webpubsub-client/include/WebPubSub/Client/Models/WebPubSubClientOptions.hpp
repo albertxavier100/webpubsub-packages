@@ -1,8 +1,8 @@
 #pragma once
 #include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
 
-namespace WebPubSub {
-template <typename TWebPubSubProtocol> struct WebPubSubClientOptions {
+namespace webpubsub {
+template <typename TWebPubSubProtocol> struct client_options {
   static_assert(std::is_base_of<IWebPubSubProtocol<TWebPubSubProtocol>,
                                 TWebPubSubProtocol>::value,
                 "TWebPubSubProtocol does not implement the interface "
@@ -16,4 +16,4 @@ public:
   int messageRetryOptions;
   int reconnectRetryOptions;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

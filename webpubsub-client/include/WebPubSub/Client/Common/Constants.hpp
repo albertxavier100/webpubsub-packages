@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-namespace WebPubSub {
+namespace webpubsub {
 namespace Constants {
 namespace Retry {
 uint64_t MAX_RETRIES = 10;
@@ -10,4 +10,4 @@ float MAX_DELAY = 50.;
 float DEFAULT_DELAY = 5.;
 } // namespace Retry
 } // namespace Constants
-} // namespace WebPubSub
+} // namespace webpubsub
