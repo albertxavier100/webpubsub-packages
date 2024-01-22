@@ -1,5 +1,5 @@
 #pragma once
-#include <WebPubSub/Client/detail/client/group_context.hpp>
+#include <WebPubSub/client/detail/client/group_context.hpp>
 #include <unordered_map>
 
 namespace webpubsub {

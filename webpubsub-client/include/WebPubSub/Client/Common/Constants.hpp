@@ -2,8 +2,8 @@
 #include <cstdint>
 
 namespace webpubsub {
-namespace Constants {
-namespace Retry {
+namespace constants {
+namespace retry {
 uint64_t MAX_RETRIES = 10;
 uint64_t MAX_RETRIES_TO_GET_MAX_DELAY = 3;
 float MAX_DELAY = 50.;

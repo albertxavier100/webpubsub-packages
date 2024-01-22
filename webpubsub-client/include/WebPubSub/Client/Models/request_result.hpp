@@ -1,5 +1,5 @@
 #pragma once
 
 namespace webpubsub {
-class result {};
+class request_result {};
 } // namespace webpubsub

@@ -1,20 +1,19 @@
 #pragma once
-#include <WebPubSub/Client/Common/Macros.hpp>
-#include <WebPubSub/Client/Credentials/WebPubSubCredential.hpp>
-#include <WebPubSub/Client/async/task_cancellation/cancellation_token.hpp>
-#include <WebPubSub/Client/async/task_cancellation/cancellation_token_source.hpp>
-#include <WebPubSub/Client/concepts/web_socket_factory_t.hpp>
-#include <WebPubSub/Client/detail/client/group_context.hpp>
-#include <WebPubSub/Client/detail/client/group_context_store.hpp>
-#include <WebPubSub/Client/detail/client/sequence_id.hpp>
-#include <WebPubSub/Client/models/client_options.hpp>
-#include <WebPubSub/Client/models/client_state.hpp>
-#include <WebPubSub/Client/models/io_service.hpp>
-#include <WebPubSub/Client/models/result.hpp>
-#include <WebPubSub/Client/policies/RetryPolicy.hpp>
 #include <WebPubSub/Protocols/Common/Types.hpp>
 #include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
+#include <WebPubSub/client/async/task_cancellation/cancellation_token.hpp>
+#include <WebPubSub/client/async/task_cancellation/cancellation_token_source.hpp>
+#include <WebPubSub/client/concepts/web_socket_factory_t.hpp>
+#include <WebPubSub/client/credentials/client_credential.hpp>
+#include <WebPubSub/client/detail/client/group_context.hpp>
+#include <WebPubSub/client/detail/client/group_context_store.hpp>
+#include <WebPubSub/client/detail/client/sequence_id.hpp>
+#include <WebPubSub/client/models/client_options.hpp>
+#include <WebPubSub/client/models/client_state.hpp>
+#include <WebPubSub/client/models/io_service.hpp>
+#include <WebPubSub/client/models/request_result.hpp>
+#include <WebPubSub/client/policies/retry_policy.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/cancellation_signal.hpp>
 #include <asio/use_awaitable.hpp>
@@ -53,7 +52,7 @@ public:
     }
   }
 
-  asio::awaitable<result>
+  asio::awaitable<request_result>
   async_join_group(const std::string &group,
                    const std::optional<uint64_t> &ack_id,
                    const std::optional<cancellation_token> &cancellation_token =
