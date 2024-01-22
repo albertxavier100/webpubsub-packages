@@ -1,7 +1,7 @@
 #pragma once
 #include <WebPubSub/Protocols/Acks/SequenceAckSignal.hpp>
 #include <WebPubSub/Protocols/Common/Types.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/Requests/JoinGroupRequest.hpp>
 #include <WebPubSub/Protocols/Responses/DisconnectedResponse.hpp>
 #include <functional>
@@ -22,7 +22,7 @@ struct DisconnectedValidator {
 };
 
 TEST(ReadDisconnectedResponse, Basic) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   auto frame = R"({"type":"system","event":"disconnected","message":"reason"})";
   auto res = p.read(frame);
   std::visit(DisconnectedValidator(), res.value());

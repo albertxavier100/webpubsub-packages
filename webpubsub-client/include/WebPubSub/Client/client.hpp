@@ -12,8 +12,8 @@
 #include <WebPubSub/Client/detail/client/group_context_store.hpp>
 #include <WebPubSub/Client/detail/client/sequence_id.hpp>
 #include <WebPubSub/Protocols/Common/Types.hpp>
-#include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
+#include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/cancellation_signal.hpp>
 #include <asio/use_awaitable.hpp>
@@ -36,7 +36,7 @@ enum {
 namespace webpubsub {
 // TODO: simplify web_socket_factory_t WebSocketFactory, web_socket_t WebSocket
 template <web_socket_factory_t WebSocketFactory, web_socket_t WebSocket,
-          typename WebPubSubProtocol = ReliableJsonV1Protocol>
+          typename WebPubSubProtocol = reliable_json_v1_protocol>
 class client {
 public:
   client(client_options<WebPubSubProtocol> &options,

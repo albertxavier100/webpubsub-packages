@@ -1,9 +1,9 @@
 #pragma once
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <gtest/gtest.h>
 
 std::string writeLeaveGroupRequest(const std::optional<uint64_t> &ackId) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   std::string group = "mygroup";
   webpubsub::LeaveGroupRequest req(group, ackId);
   return p.write(req);

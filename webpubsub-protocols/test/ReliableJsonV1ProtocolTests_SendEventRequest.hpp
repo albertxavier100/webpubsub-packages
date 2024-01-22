@@ -1,10 +1,10 @@
 #pragma once
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/Requests/SendEventRequest.hpp>
 #include <gtest/gtest.h>
 
 std::string writeSendEventRequest(const std::optional<uint64_t> &ackId) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   std::string event = "myevent";
   std::string data(R"({"a": 1, "b": 2})");
   webpubsub::SendEventRequest<std::string> req(event, data, ackId);

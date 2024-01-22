@@ -1,5 +1,4 @@
-// request
-// #include "ReliableJsonV1ProtocolTests_BasicRequest.hpp"
+// // request
 #include "ReliableJsonV1ProtocolTests_JoinGroupRequest.hpp"
 #include "ReliableJsonV1ProtocolTests_LeaveGroupRequest.hpp"
 #include "ReliableJsonV1ProtocolTests_SendEventRequest.hpp"

@@ -1,6 +1,6 @@
 #pragma once
 #include <WebPubSub/Protocols/Common/Types.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <functional>
 #include <gtest/gtest.h>
 #include <stdexcept>
@@ -23,7 +23,7 @@ struct ServerMessageValidator {
 };
 
 TEST(ReadServerDataMessageResponse, Basic) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   auto frame =
       R"({"sequenceId":678,"type":"message","from":"server","dataType":"text","data":"hello, world"})";
   auto res = p.read(frame);

@@ -1,6 +1,6 @@
 #pragma once
 #include <WebPubSub/Protocols/Common/Types.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/Requests/JoinGroupRequest.hpp>
 #include <WebPubSub/Protocols/Responses/ConnectedResponse.hpp>
 #include <gtest/gtest.h>
@@ -10,7 +10,7 @@
 
 // TODO: add other tests
 TEST(WriteGroupRequest, InvalidGroupName) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   auto createEmptyGroupReq = []() {
     nonstd::optional<uint64_t> ackId;
     webpubsub::GroupRequest req(webpubsub::JoinGroup, "", ackId);

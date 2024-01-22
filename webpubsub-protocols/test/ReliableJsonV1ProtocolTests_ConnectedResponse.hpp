@@ -1,7 +1,7 @@
 #pragma once
 #include <WebPubSub/Protocols/Acks/SequenceAckSignal.hpp>
 #include <WebPubSub/Protocols/Common/Types.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/Requests/JoinGroupRequest.hpp>
 #include <WebPubSub/Protocols/Responses/ConnectedResponse.hpp>
 #include <functional>
@@ -23,7 +23,7 @@ struct ConnectedValidator {
 };
 
 TEST(ReadConnectedResponse, Basic) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   auto frame =
       R"({"type":"system","event":"connected","userId":"user1","connectionId":"abcdefghijklmnop","reconnectionToken":"<token>"})";
   auto res = p.read(frame);

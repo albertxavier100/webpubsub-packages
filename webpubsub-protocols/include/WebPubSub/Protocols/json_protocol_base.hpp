@@ -3,7 +3,6 @@
 #include <WebPubSub/Protocols/Common/Constants.hpp>
 #include <WebPubSub/Protocols/Common/Types.hpp>
 #include <WebPubSub/Protocols/Exceptions/WebPubSubException.hpp>
-#include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
 #include <WebPubSub/Protocols/Requests/JoinGroupRequest.hpp>
 #include <WebPubSub/Protocols/Requests/LeaveGroupRequest.hpp>
 #include <WebPubSub/Protocols/Requests/SendToGroupRequest.hpp>
@@ -13,6 +12,7 @@
 #include <WebPubSub/Protocols/Responses/GroupMessageResponse.hpp>
 #include <WebPubSub/Protocols/Responses/Response.hpp>
 #include <WebPubSub/Protocols/Responses/ServerMessageResponse.hpp>
+#include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
@@ -20,22 +20,17 @@
 namespace webpubsub {
 // TODO: impl interface
 
-class JsonProtocolBase : public IWebPubSubProtocol<JsonProtocolBase> {
+class json_protocol_base {
 public:
-  std::string getName() { return "json.webpubsub.azure.v1"; }
+  std::string get_name() { return "json.webpubsub.azure.v1"; }
 
-  WebPubSubProtocolMessageType getWebPubSubProtocolMessageType() {
+  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() {
     return WebPubSubProtocolMessageText;
   }
 
-  bool isReliable() { true; }
+  bool is_reliable() { true; }
 
-  template <typename T, typename = std::enable_if_t<
-                            std::is_base_of<Request, T>::value &&
-                                !std::is_same<Request, T>::value &&
-                                !std::is_same<GroupRequest, T>::value ||
-                            std::is_same<SequenceAckSignal, T>::value>>
-  std::string write(const T &request) {
+  template <request_t T> std::string write(const T &request) {
     nlohmann::json json = request;
     return json.dump();
   }
@@ -80,4 +75,7 @@ public:
     };
   }
 };
+
+static_assert(webpubsub_protocol_t<json_protocol_base>,
+              "json_protocol_base doesn't implement webpubsub_protocol_t");
 } // namespace webpubsub

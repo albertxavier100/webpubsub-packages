@@ -1,15 +1,10 @@
 #pragma once
-#include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
+#include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 
 namespace webpubsub {
-template <typename TWebPubSubProtocol> struct client_options {
-  static_assert(std::is_base_of<IWebPubSubProtocol<TWebPubSubProtocol>,
-                                TWebPubSubProtocol>::value,
-                "TWebPubSubProtocol does not implement the interface "
-                "IWebPubSubProtocol.");
-
-  TWebPubSubProtocol protocol;
+template <webpubsub_protocol_t WebPubSubProtocol> struct client_options {
+  WebPubSubProtocol protocol;
   bool enable_multi_thread = false;
   bool auto_reconnect = true;
   bool auto_rejoin_groups = true;

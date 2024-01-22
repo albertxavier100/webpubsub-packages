@@ -1,14 +1,14 @@
 #pragma once
 #include <WebPubSub/Protocols/Acks/SequenceAckSignal.hpp>
 #include <WebPubSub/Protocols/Common/Types.hpp>
-#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
 #include <WebPubSub/Protocols/Requests/JoinGroupRequest.hpp>
 #include <WebPubSub/Protocols/Responses/DisconnectedResponse.hpp>
+#include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <functional>
 #include <gtest/gtest.h>
-#include <variant>
 #include <stdexcept>
 #include <string>
+#include <variant>
 #include <vector>
 
 class Data {
@@ -36,7 +36,7 @@ struct GroupMessageValidator {
 };
 
 TEST(ReadGroupDataMessageResponse, Basic) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   auto frame =
       R"({"sequenceId":1,"type":"message","from":"group","group":"group_name","dataType":"json","data":{"a":123},"fromUserId":"abc"})";
   auto res = p.read(frame);
