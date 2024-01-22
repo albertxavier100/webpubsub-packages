@@ -61,13 +61,15 @@ TEST(Utils, Cancel) {
 }
 
 TEST(Basic, Asio) {
-  webpubsub::ReliableJsonV1Protocol p;
+  using web_socket_factory = webpubsub::default_web_socket_factory<>;
+  using webpubsub_client =
+      webpubsub::client<web_socket_factory, webpubsub::default_web_socket>;
+
+  webpubsub::reliable_json_v1_protocol p;
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
-  webpubsub::default_web_socket_factory<> fac;
-  webpubsub::client<webpubsub::default_web_socket_factory<>,
-                    webpubsub::default_web_socket>
-      client(opts, cre, fac);
+  web_socket_factory fac;
+  webpubsub_client client(opts, cre, fac);
   std::string group("group_name");
   auto &io_context = client.get_io_service().get_io_context();
   webpubsub::cancellation_token_source cts(io_context);
@@ -78,7 +80,7 @@ TEST(Basic, Asio) {
 }
 
 TEST(Basic, Raw) {
-  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::reliable_json_v1_protocol p;
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
   // webpubsub::client client(opts, cre);
