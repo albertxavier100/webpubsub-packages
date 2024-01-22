@@ -2,8 +2,8 @@
 namespace webpubsub {
 class cancellation_token_source {
 public:
-  cancellation_token_source(asio::any_io_executor &exe)
-      : timer_(exe, std::chrono::steady_clock::time_point::max()) {}
+  cancellation_token_source(asio::io_context &io_context)
+      : timer_(io_context, std::chrono::steady_clock::time_point::max()) {}
   cancellation_token get_token() { return cancellation_token(timer_); }
   void cancel() {
     timer_.cancel();

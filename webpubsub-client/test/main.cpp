@@ -2,7 +2,7 @@
 
 //  #include "BasicTests.hpp"
 #include "DefaultWebSocketTests.hpp"
-#include "WebPubSubClientTests.hpp"
+#include "client_tests.hpp"
 
 int main(int argc, char **argv) {
   // Initialize Google Test

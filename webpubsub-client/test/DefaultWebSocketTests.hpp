@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../impl/DefaultWebSocket.hpp"
+#include <../impl/default_web_socket.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/co_spawn.hpp>
 #include <asio/steady_timer.hpp>
@@ -9,8 +9,8 @@
 
 TEST(WebPubSubClient, Basic) {
   asio::io_context ioc;
-  webpubsub::DefaultWebSocket ws(ioc);
-  asio::co_spawn(ioc, ws.connectAsync(), [](std::exception_ptr e) {
+  webpubsub::default_web_socket ws(ioc);
+  asio::co_spawn(ioc, ws.async_connect(), [](std::exception_ptr e) {
     if (e)
       try {
         std::rethrow_exception(e);

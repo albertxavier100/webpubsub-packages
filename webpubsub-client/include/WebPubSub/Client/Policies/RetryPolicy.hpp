@@ -4,33 +4,33 @@
 #include <optional>
 
 // TODO: move to new file
-namespace WebPubSub {
-struct RetryContext {
-  uint64_t retryAttempt;
+namespace webpubsub {
+struct retry_context {
+  uint64_t retry_attempt;
 };
-} // namespace WebPubSub
+} // namespace webpubsub
 
 // TODO: move to new file
-namespace WebPubSub {
+namespace webpubsub {
 enum RetryMode {
   Expotential,
   Fixed,
 };
-} // namespace WebPubSub
+} // namespace webpubsub
 
-namespace WebPubSub {
-class RetryPolicy {
+namespace webpubsub {
+class retry_policy {
 public:
-  RetryPolicy()
-      : maxRetries(Constants::Retry::MAX_RETRIES),
+  retry_policy()
+      : max_retries(Constants::Retry::MAX_RETRIES),
         maxDelay(Constants::Retry::MAX_DELAY),
         maxRetriesToGetMaxDelay(Constants::Retry::MAX_RETRIES_TO_GET_MAX_DELAY),
         retryMode(Expotential), delay(Constants::Retry::DEFAULT_DELAY){};
-  std::optional<float> nextRetryDelay(RetryContext retryContext) const {
-    if (retryContext.retryAttempt > maxRetries) {
+  std::optional<float> next_retry_delay(retry_context retryContext) const {
+    if (retryContext.retry_attempt > max_retries) {
       return std::nullopt;
     }
-    return getDelay(retryContext.retryAttempt);
+    return getDelay(retryContext.retry_attempt);
   }
 
 private:
@@ -46,10 +46,10 @@ private:
   }
 
 private:
-  const uint64_t maxRetries;
+  const uint64_t max_retries;
   const float maxDelay;
   const uint64_t maxRetriesToGetMaxDelay;
   const RetryMode retryMode;
   const float delay;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

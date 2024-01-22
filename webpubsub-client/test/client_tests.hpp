@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../impl/DefaultWebSocket.hpp"
-#include <WebPubSub/Client/Utils/Utils.hpp>
-#include <WebPubSub/Client/WebPubSubClient.hpp>
+#include "../impl/default_web_socket_factory.hpp"
+#include <WebPubSub/Client/Models/io_service.hpp>
+#include <WebPubSub/Client/async/async_utils.hpp>
+#include <WebPubSub/Client/client.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/bind_cancellation_slot.hpp>
 #include <asio/cancellation_signal.hpp>
@@ -36,14 +37,15 @@ asio::awaitable<void> stopAfter4500Milliseconds(asio::steady_timer &timer) {
 // TODO: move to a new file
 TEST(Utils, Cancel) {
   using namespace asio::experimental::awaitable_operators;
+  using namespace std::chrono_literals;
 
   asio::io_context ioc;
-  WebPubSub::DefaultWebSocket ws(ioc);
+  webpubsub::default_web_socket ws(ioc);
   asio::cancellation_signal cancelSignal;
   asio::steady_timer cancelTimer(ioc,
                                  std::chrono::steady_clock::time_point::max());
 
-  asio::co_spawn(ioc, op() || WebPubSub::cancel(cancelTimer),
+  asio::co_spawn(ioc, op() || webpubsub::async_delay(3s),
                  [](std::exception_ptr e, auto a) {
                    if (e)
                      try {
@@ -56,4 +58,28 @@ TEST(Utils, Cancel) {
   asio::co_spawn(ioc, stopAfter4500Milliseconds(cancelTimer), asio::detached);
 
   ioc.run();
+}
+
+TEST(Basic, Asio) {
+  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::client_credential cre("");
+  webpubsub::client_options opts{p};
+  webpubsub::default_web_socket_factory<> fac;
+  webpubsub::client<webpubsub::default_web_socket_factory<>,
+                    webpubsub::default_web_socket>
+      client(opts, cre, fac);
+  std::string group("group_name");
+  auto &io_context = client.get_io_service().get_io_context();
+  webpubsub::cancellation_token_source cts(io_context);
+  asio::co_spawn(
+      io_context,
+      [&client]() -> asio::awaitable<void> { co_await client.async_start(); },
+      asio::detached);
+}
+
+TEST(Basic, Raw) {
+  webpubsub::ReliableJsonV1Protocol p;
+  webpubsub::client_credential cre("");
+  webpubsub::client_options opts{p};
+  // webpubsub::client client(opts, cre);
 }

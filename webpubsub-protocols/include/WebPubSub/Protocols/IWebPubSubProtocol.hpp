@@ -9,13 +9,14 @@
 #include <WebPubSub/Protocols/Responses/GroupMessageResponse.hpp>
 #include <WebPubSub/Protocols/Responses/Response.hpp>
 #include <WebPubSub/Protocols/Responses/ServerMessageResponse.hpp>
+#include <concepts>
 #include <optional>
 #include <variant>
 
 namespace webpubsub {
 using ResponseVariant =
     std::variant<AckResponse, GroupMessageResponseV2, ServerMessageResponse,
-                    ConnectedResponse, DisconnectedResponse>;
+                 ConnectedResponse, DisconnectedResponse>;
 
 // template <typename TProtocol> struct IWebPubSubProtocolWrite {
 //   template <typename UProtocol, typename TRequest,
@@ -64,4 +65,20 @@ template <typename Impl> struct IWebPubSubProtocol {
 
   bool isReliable() { return static_cast<Impl *>(this)->isReliable(); }
 };
+
+// TODO: not finish
+template <typename T>
+concept webpubsub_protocol_t = requires(T t) {
+  //{ t.write() } -> std::same_as<void>;
+  t;
+};
+
+class DummyWebPubSubProtocol {
+public:
+  DummyWebPubSubProtocol() {}
+  void write() {}
+};
+
+static_assert(webpubsub_protocol_t<DummyWebPubSubProtocol>,
+              "Check DummyWebPubSubProtocol");
 } // namespace webpubsub

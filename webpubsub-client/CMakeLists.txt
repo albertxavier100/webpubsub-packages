@@ -25,7 +25,7 @@ target_include_directories(test-webpubsub-client PUBLIC
     ../webpubsub-protocols/include
     ../deps/json/include
     ../deps/cppcodec
-
+    ../deps/spdlog/include
     ../deps/asio/asio/include
 
     # FOR TEST ONLY

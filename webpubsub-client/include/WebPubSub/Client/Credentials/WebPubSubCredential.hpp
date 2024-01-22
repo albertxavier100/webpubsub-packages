@@ -3,15 +3,13 @@
 #include <functional>
 #include <string>
 
-namespace WebPubSub {
-class WebPubSubCredential {
-
+namespace webpubsub {
+class client_credential {
 public:
-  WebPubSubCredential(const std::string &uri)
+  client_credential(const std::string &uri)
       : clientAccessUriProvider([&uri]() -> std::string { return uri; }) {}
 
-  WebPubSubCredential(
-      const std::function<std::string()> &clientAccessUriProvider)
+  client_credential(const std::function<std::string()> &clientAccessUriProvider)
       : clientAccessUriProvider(clientAccessUriProvider) {}
 
   std::string getClientAccessUri() { return clientAccessUriProvider(); }
@@ -19,4 +17,4 @@ public:
 private:
   const std::function<std::string()> clientAccessUriProvider;
 };
-} // namespace WebPubSub
+} // namespace webpubsub

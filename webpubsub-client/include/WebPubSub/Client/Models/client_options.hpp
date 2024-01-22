@@ -1,5 +1,6 @@
 #pragma once
 #include <WebPubSub/Protocols/IWebPubSubProtocol.hpp>
+#include <WebPubSub/Protocols/ReliableJsonV1Protocol.hpp>
 
 namespace webpubsub {
 template <typename TWebPubSubProtocol> struct client_options {
@@ -8,12 +9,12 @@ template <typename TWebPubSubProtocol> struct client_options {
                 "TWebPubSubProtocol does not implement the interface "
                 "IWebPubSubProtocol.");
 
-public:
   TWebPubSubProtocol protocol;
-  bool autoReconnect;
-  bool autoRejoinGroups;
+  bool enable_multi_thread = false;
+  bool auto_reconnect = true;
+  bool auto_rejoin_groups = true;
   // TODO: change types
-  int messageRetryOptions;
-  int reconnectRetryOptions;
+  int message_retry_options;
+  int reconnect_retry_options;
 };
 } // namespace webpubsub
