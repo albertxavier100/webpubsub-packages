@@ -1,6 +1,5 @@
 # webpubsub-packages
 
-
 > For now, the coding style is inconsistent, since I try to make one as Unreal Engine,
 >
 > but I have to use asio for coroutine framework, it's bad to provide interface mix with them.
@@ -23,7 +22,6 @@ This package provides //TODO
 ## Usage
 
 //TODO
-
 
 ## Dependencies
 

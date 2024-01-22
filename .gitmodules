@@ -12,3 +12,7 @@
 	path = deps/cppcodec
 	url = https://github.com/tplgy/cppcodec/
 	tag = v0.2
+[submodule "deps/spdlog"]
+	path = deps/spdlog
+	url = https://github.com/gabime/spdlog/
+	tag = v1.13.0
