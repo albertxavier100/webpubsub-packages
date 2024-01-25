@@ -12,7 +12,9 @@ public:
       const std::function<std::string()> &client_access_uri_provider)
       : client_access_uri_provider_(client_access_uri_provider) {}
 
-  std::string getClientAccessUri() { return client_access_uri_provider_(); }
+  std::string getClientAccessUri() const {
+    return client_access_uri_provider_();
+  }
 
 private:
   const std::function<std::string()> client_access_uri_provider_;

@@ -40,12 +40,14 @@ TEST(Utils, Cancel) {
   using namespace std::chrono_literals;
 
   asio::io_context ioc;
-  webpubsub::default_web_socket ws(ioc);
+  std::string uri;
+  std::string protocol_name;
+  webpubsub::default_web_socket ws(uri, protocol_name, ioc);
   asio::cancellation_signal cancelSignal;
   asio::steady_timer cancelTimer(ioc,
                                  std::chrono::steady_clock::time_point::max());
 
-  asio::co_spawn(ioc, op() || webpubsub::async_delay(3s),
+  asio::co_spawn(ioc, op() || webpubsub::async_delay(ioc, 3s),
                  [](std::exception_ptr e, auto a) {
                    if (e)
                      try {
@@ -61,15 +63,17 @@ TEST(Utils, Cancel) {
 }
 
 TEST(Basic, Asio) {
-  using web_socket_factory = webpubsub::default_web_socket_factory<>;
+  using web_socket_factory = webpubsub::default_web_socket_factory;
   using webpubsub_client =
-      webpubsub::client<web_socket_factory, webpubsub::default_web_socket>;
+      webpubsub::client<web_socket_factory, webpubsub::default_web_socket,
+                        webpubsub::reliable_json_v1_protocol>;
 
   webpubsub::reliable_json_v1_protocol p;
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
-  web_socket_factory fac;
-  webpubsub_client client(opts, cre, fac);
+  webpubsub::io_service io_service;
+  web_socket_factory fac(io_service.get_io_context());
+  webpubsub_client client(opts, cre, fac, io_service);
   std::string group("group_name");
   auto &io_context = client.get_io_service().get_io_context();
   webpubsub::cancellation_token_source cts(io_context);
