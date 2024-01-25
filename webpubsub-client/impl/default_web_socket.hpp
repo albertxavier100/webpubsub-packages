@@ -1,9 +1,9 @@
 #pragma once
-#include <WebPubSub/Client/concepts/web_socket_t.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/co_spawn.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
+#include <webpubsub/client/concepts/web_socket_t.hpp>
 
 namespace webpubsub {
 class default_web_socket {

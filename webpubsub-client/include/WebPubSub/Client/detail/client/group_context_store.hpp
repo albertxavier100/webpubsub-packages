@@ -9,7 +9,7 @@ public:
   group_context &get_or_set(const std::string &group) {
     auto it = groups_.find(group);
     if (it == groups_.end()) {
-      it = groups_.insert({group, std::move(group_context(group))}).first;
+      it = groups_.insert({group, group_context(group)}).first;
     }
     return it->second;
   }

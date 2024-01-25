@@ -1,7 +1,7 @@
 #pragma once
+#include <asio/awaitable.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
-#include <asio/awaitable.hpp>
 
 namespace webpubsub {
 class cancellation_token {

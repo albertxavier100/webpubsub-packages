@@ -1,9 +1,6 @@
 #pragma once
 
 #include "../impl/default_web_socket_factory.hpp"
-#include <WebPubSub/Client/Models/io_service.hpp>
-#include <WebPubSub/Client/async/async_utils.hpp>
-#include <WebPubSub/Client/client.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/bind_cancellation_slot.hpp>
 #include <asio/cancellation_signal.hpp>
@@ -15,6 +12,9 @@
 #include <asio/use_awaitable.hpp>
 #include <chrono>
 #include <gtest/gtest.h>
+#include <webpubsub/client/async/async_utils.hpp>
+#include <webpubsub/client/client.hpp>
+#include <webpubsub/client/models/io_service.hpp>
 
 auto op() -> asio::awaitable<void> {
   using namespace std::chrono_literals;
