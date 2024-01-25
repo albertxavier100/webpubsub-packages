@@ -25,3 +25,9 @@ webpubsub-client/.vscode/
 webpubsub-protocols/.vscode/
 
 webpubsub-protocols/build/
+
+webpubsub-client/.vs/
+
+webpubsub-client/CMakeSettings.json
+
+webpubsub-client/out/
