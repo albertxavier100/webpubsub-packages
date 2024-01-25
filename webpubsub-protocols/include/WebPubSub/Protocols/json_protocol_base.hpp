@@ -22,21 +22,21 @@ namespace webpubsub {
 
 class json_protocol_base {
 public:
-  std::string get_name() { return "json.webpubsub.azure.v1"; }
+  std::string get_name() const { return "json.webpubsub.azure.v1"; }
 
-  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() {
+  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() const {
     return WebPubSubProtocolMessageText;
   }
 
-  bool is_reliable() { true; }
+  bool is_reliable() const { true; }
 
-  template <request_t T> std::string write(const T &request) {
+  template <request_t T> std::string write(const T &request) const {
     nlohmann::json json = request;
     return json.dump();
   }
 
   // TODO: only support webSocket text for now
-  std::optional<ResponseVariant> read(const char *frame) {
+  std::optional<ResponseVariant> read(const char *frame) const {
     namespace k = webpubsub::Constants::Keys;
     auto json = nlohmann::json::parse(frame);
 

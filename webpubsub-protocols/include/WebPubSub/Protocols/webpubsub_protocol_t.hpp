@@ -38,15 +38,17 @@ concept webpubsub_protocol_t = requires(T t) {
 class DummyWebPubSubProtocol {
 public:
   DummyWebPubSubProtocol() {}
-  std::optional<ResponseVariant> read(const char *frame) {
+  std::optional<ResponseVariant> read(const char *frame) const {
     return std::nullopt;
   }
 
-  template <request_t T> std::string write(const T &request) { return ""; }
+  template <request_t T> std::string write(const T &request) const {
+    return "";
+  }
 
   std::string get_name() { return ""; }
 
-  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() {
+  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() const {
     return WebPubSubProtocolMessageText;
   }
 };

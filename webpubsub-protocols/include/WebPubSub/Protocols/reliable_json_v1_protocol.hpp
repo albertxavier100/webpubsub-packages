@@ -7,21 +7,21 @@ class reliable_json_v1_protocol {
 public:
   reliable_json_v1_protocol() = default;
 
-  std::optional<ResponseVariant> read(const char *frame) {
+  std::optional<ResponseVariant> read(const char *frame) const {
     return base_protocol_.read(frame);
   }
 
-  template <request_t T> std::string write(const T &request) {
+  template <request_t T> std::string write(const T &request) const {
     return base_protocol_.write(request);
   }
 
-  std::string get_name() { return "json.reliable.webpubsub.azure.v1"; }
+  std::string get_name() const { return "json.reliable.webpubsub.azure.v1"; }
 
-  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() {
+  WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() const {
     return base_protocol_.get_webpubsub_protocol_message_type();
   }
 
-  bool is_reliable() { return true; }
+  bool is_reliable() const { return true; }
 
 private:
   json_protocol_base base_protocol_;
