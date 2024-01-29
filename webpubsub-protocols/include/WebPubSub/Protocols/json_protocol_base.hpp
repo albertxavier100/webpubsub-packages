@@ -28,7 +28,7 @@ public:
     return WebPubSubProtocolMessageText;
   }
 
-  bool is_reliable() const { true; }
+  bool is_reliable() const { return true; }
 
   template <request_t T> std::string write(const T &request) const {
     nlohmann::json json = request;

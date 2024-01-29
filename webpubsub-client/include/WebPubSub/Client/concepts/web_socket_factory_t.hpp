@@ -1,7 +1,7 @@
 #pragma once
 #include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
-#include <WebPubSub/client/concepts/web_socket_t.hpp>
 #include <optional>
+#include <webpubsub/client/concepts/web_socket_t.hpp>
 
 namespace webpubsub {
 template <typename T, typename WS>

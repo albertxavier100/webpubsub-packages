@@ -1,7 +1,7 @@
 #pragma once
-#include <WebPubSub/client/common/constants.hpp>
 #include <chrono>
 #include <optional>
+#include <webpubsub/client/common/constants.hpp>
 
 // TODO: move to new file
 namespace webpubsub {

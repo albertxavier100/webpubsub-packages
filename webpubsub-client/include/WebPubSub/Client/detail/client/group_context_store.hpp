@@ -1,6 +1,6 @@
 #pragma once
-#include <WebPubSub/client/detail/client/group_context.hpp>
 #include <unordered_map>
+#include <webpubsub/client/detail/client/group_context.hpp>
 
 namespace webpubsub {
 namespace detail {

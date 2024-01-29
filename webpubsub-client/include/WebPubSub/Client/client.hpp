@@ -103,14 +103,13 @@ private:
     auto client = web_socket_factory_.create(uri, options_.protocol.get_name());
     co_await client->async_connect(cancellation_token);
     // TODO: delete original one and reset this new ws
-    //client_.reset(client);
+    // client_.reset(client);
     client_state_.change_state(client_state::connected);
-    async_start_listen_loop(stop_cts_.get_token()),
-        asio::co_spawn(io_service_.get_io_context(),
-                       async_start_listen_loop(cancellation_token.value()) ||
-                           cancellation_token.value()
-                               .async_cancel(), // TODO: consider std::nullopt
-                       asio::detached);
+    asio::co_spawn(io_service_.get_io_context(),
+                   async_start_listen_loop(cancellation_token.value()) ||
+                       cancellation_token.value()
+                           .async_cancel(), // TODO: consider std::nullopt
+                   asio::detached);
   }
 
   asio::awaitable<void>
