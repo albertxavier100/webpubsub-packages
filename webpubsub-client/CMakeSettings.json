@@ -8,7 +8,9 @@
       "buildRoot": "${projectDir}\\out\\build\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "buildCommandArgs": "",
-      "ctestCommandArgs": ""
+      "ctestCommandArgs": "",
+      "intelliSenseMode": "windows-clang-x64",
+      "cmakeCommandArgs": "-D_WIN32_WINNT=0x0601"
     }
   ]
 }

@@ -31,8 +31,9 @@
 #include <webpubsub/client/policies/retry_policy.hpp>
 
 namespace webpubsub {
-template <web_socket_factory_t WebSocketFactory, web_socket_t WebSocket,
+template <typename WebSocketFactory, typename WebSocket,
           typename WebPubSubProtocol = reliable_json_v1_protocol>
+  requires web_socket_factory_t<WebSocketFactory, WebSocket>
 class client {
   using request_result_or_exception =
       std::variant<request_result, std::invalid_argument, std::exception>;
@@ -42,8 +43,7 @@ public:
          const client_credential &credential,
          const WebSocketFactory &web_socket_factory, io_service &io_service)
       : options_(options), credential_(credential), io_service_(io_service),
-        stop_cts_(io_service_.get_io_context()),
-        client_("", "", io_service_.get_io_context()),
+        stop_cts_(io_service_.get_io_context()), client_(nullptr),
         web_socket_factory_(web_socket_factory) {}
 
 #pragma region webpubsub api for awaitable
@@ -99,23 +99,40 @@ private:
   asio::awaitable<void> async_connect(const std::string &uri,
                                       const std::optional<cancellation_token>
                                           &cancellation_token = std::nullopt) {
+    using namespace asio::experimental::awaitable_operators;
     auto client = web_socket_factory_.create(uri, options_.protocol.get_name());
-    co_await client.async_connect(cancellation_token);
-    client_ = client;
+    co_await client->async_connect(cancellation_token);
+    // TODO: delete original one and reset this new ws
+    //client_.reset(client);
     client_state_.change_state(client_state::connected);
-    asio::co_spawn(io_service_.get_io_context(),
-                   async_start_listen_loop(stop_cts_.get_token()),
-                   asio::detached);
+    async_start_listen_loop(stop_cts_.get_token()),
+        asio::co_spawn(io_service_.get_io_context(),
+                       async_start_listen_loop(cancellation_token.value()) ||
+                           cancellation_token.value()
+                               .async_cancel(), // TODO: consider std::nullopt
+                       asio::detached);
   }
 
   asio::awaitable<void>
   handle_connection_close(const web_socket_close_status &web_socket_status,
                           const cancellation_token &cancellation_token) {
     for (auto &[ack_id, ack_completion_source] : ack_cache_) {
+      if (ack_cache_.find(ack_id) != ack_cache_.end()) {
+        auto message = std::format("Connection is disconnected before receive "
+                                   "ack from the service. Ack ID: {}",
+                                   ack_id);
+        // TODO use my own exception
+        if (!ack_completion_source->set_value_once(
+                std::invalid_argument(message))) {
+          std::cout << "log already set ack id tcs \n";
+        }
+      }
     }
 
     // if (web_socket_close_status == web_socket_close_status::policy_violation)
-    // {
+    //{
+    //  std::cout << "log The web socket close with status: policy_violation";
+    //   co_await handle_connection_close_and_no_recovery();
     // }
     co_return;
   }
@@ -124,7 +141,8 @@ private:
   async_start_listen_loop(const cancellation_token &cancellation_token) {
     using namespace asio::experimental::awaitable_operators;
 
-    web_socket_close_status web_socket_status = web_socket_close_status::empty;
+    web_socket_close_status web_socket_close_status =
+        web_socket_close_status::empty;
     cancellation_token_source sequence_ack_cts(io_service_.get_io_context());
 
     if (options_.protocol.is_reliable()) {
@@ -132,9 +150,14 @@ private:
           io_service_.get_io_context(),
           async_start_sequence_ack_loop(sequence_ack_cts.get_token()) ||
               sequence_ack_cts.get_token().async_cancel(),
-          [&web_socket_status, &cancellation_token, this](auto e1, auto e2) {
-            // TODO handle connection close -- spawn here
-            handle_connection_close(web_socket_status, cancellation_token);
+          [&web_socket_close_status, &cancellation_token, this](auto e1,
+                                                                auto e2) {
+            asio::co_spawn(io_service_.get_io_context(),
+                           handle_connection_close(web_socket_close_status,
+                                                   cancellation_token) ||
+                               cancellation_token.async_cancel(),
+                           asio::detached);
+            ;
           });
     }
 
@@ -149,11 +172,11 @@ private:
         while (!cancellation_token.is_cancelled()) {
           uint64_t *start;
           uint64_t size;
-          co_await (client_.async_read(start, size, web_socket_status) ||
+          co_await (client_->async_read(start, size, web_socket_close_status) ||
                     cancellation_token.async_cancel());
 
           // TODO change int to enum
-          if (web_socket_status != web_socket_close_status::empty) {
+          if (web_socket_close_status != web_socket_close_status::empty) {
             break;
           }
           if (size > 0) {
@@ -210,7 +233,7 @@ private:
         webpubsub_protocol_message_type == WebPubSubProtocolMessageText;
     auto size = payload.size() + (as_text ? 1 : 0);
     auto start = reinterpret_cast<const uint64_t *>(payload.c_str());
-    co_await (client_.async_write(start, size, as_text) ||
+    co_await (client_->async_write(start, size, as_text) ||
               cancellation_token.value().async_cancel());
   }
 
@@ -239,13 +262,12 @@ private:
 
   std::unordered_map<
       uint16_t,
-      // TODO: use unique_ptr?
-      std::shared_ptr<task_completion_source<request_result_or_exception>>>
+      std::unique_ptr<task_completion_source<request_result_or_exception>>>
       ack_cache_;
 #pragma endregion
 
 #pragma region fields per web socket
-  WebSocket client_;
+  std::unique_ptr<WebSocket> client_;
   WebSocketFactory web_socket_factory_;
 #pragma endregion
 };

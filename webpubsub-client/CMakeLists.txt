@@ -25,6 +25,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_executable(test-webpubsub-client ${SOURCES})
 
+# TODO: consider different platforms
 target_compile_definitions(test-webpubsub-client PRIVATE ASIO_HAS_CO_AWAIT=1)
 target_link_libraries(test-webpubsub-client PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
 target_include_directories(test-webpubsub-client PUBLIC

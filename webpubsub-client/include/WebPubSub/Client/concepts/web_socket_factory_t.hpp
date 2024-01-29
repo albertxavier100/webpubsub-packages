@@ -4,8 +4,10 @@
 #include <optional>
 
 namespace webpubsub {
-template <typename T>
+template <typename T, typename WS>
 concept web_socket_factory_t = requires(T t) {
-  { t.create("uri", "protocol_name") } -> web_socket_t;
+  { t.create("uri", "protocol_name") } -> std::same_as<std::unique_ptr<WS>>;
+} && requires(WS ws) {
+  { ws } -> web_socket_t;
 };
 } // namespace webpubsub
