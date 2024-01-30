@@ -7,5 +7,6 @@ enum class web_socket_close_status {
   empty = 1005,
   normal_close = 1000,
   policy_violation = 1008,
+
 };
 } // namespace webpubsub

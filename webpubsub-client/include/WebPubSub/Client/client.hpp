@@ -8,6 +8,7 @@
 #include <asio/co_spawn.hpp>
 #include <asio/detached.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
+#include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
 #include <optional>
 #include <stdexcept>
@@ -49,6 +50,9 @@ public:
 #pragma region webpubsub api for awaitable
   asio::awaitable<void> async_start(const std::optional<cancellation_token>
                                         &cancellation_token = std::nullopt) {
+    const auto token = cancellation_token.has_value()
+                           ? cancellation_token.value()
+                           : stop_cts_.get_token();
     if (stop_cts_.is_cancellation_requested()) {
       throw std::invalid_argument("Can not start a client during stopping");
     }
@@ -59,7 +63,7 @@ public:
     }
 
     try {
-      co_await async_start_core(cancellation_token);
+      co_await async_start_core(token);
     } catch (...) {
     }
   }
@@ -81,8 +85,7 @@ public:
 
 private:
   asio::awaitable<void>
-  async_start_core(const std::optional<cancellation_token> &cancellation_token =
-                       std::nullopt) {
+  async_start_core(const cancellation_token &cancellation_token) {
     client_state_.change_state(client_state::connecting);
     std::cout << "log conn start" << std::endl;
 
@@ -96,20 +99,19 @@ private:
     co_await async_connect(client_access_uri_, cancellation_token);
   }
 
-  asio::awaitable<void> async_connect(const std::string &uri,
-                                      const std::optional<cancellation_token>
-                                          &cancellation_token = std::nullopt) {
+  asio::awaitable<void>
+  async_connect(const std::string &uri,
+                const cancellation_token &cancellation_token) {
     using namespace asio::experimental::awaitable_operators;
     auto client = web_socket_factory_.create(uri, options_.protocol.get_name());
     co_await client->async_connect(cancellation_token);
-    // TODO: delete original one and reset this new ws
-    // client_.reset(client);
+    client_ = std::move(client);
     client_state_.change_state(client_state::connected);
-    asio::co_spawn(io_service_.get_io_context(),
-                   async_start_listen_loop(cancellation_token.value()) ||
-                       cancellation_token.value()
-                           .async_cancel(), // TODO: consider std::nullopt
-                   asio::detached);
+    asio::co_spawn(
+        io_service_.get_io_context(),
+        async_start_listen_loop(cancellation_token) ||
+            cancellation_token.async_cancel(), // TODO: consider std::nullopt
+        asio::detached);
   }
 
   asio::awaitable<void>
@@ -128,11 +130,78 @@ private:
       }
     }
 
-    // if (web_socket_close_status == web_socket_close_status::policy_violation)
-    //{
-    //  std::cout << "log The web socket close with status: policy_violation";
-    //   co_await handle_connection_close_and_no_recovery();
-    // }
+    // close connection without recover
+    std::string recovery_uri;
+    {
+      using namespace std::chrono_literals;
+
+      bool should_recover = true;
+      if (web_socket_status == web_socket_close_status::policy_violation) {
+        std::cout << "log The web socket close with status: policy_violation\n";
+        should_recover = false;
+      } else if (cancellation_token.is_cancelled()) {
+        std::cout << "log The client is stopped\n";
+        should_recover = false;
+      } else if (!options_.protocol.is_reliable()) {
+        std::cout
+            << "The protocol is not reliable, recovery is not applicable \n";
+        should_recover = false;
+      } else if (!try_build_recovery_uri(recovery_uri)) {
+        std::cout << "Connection id or reconnection token is not availble\n";
+        should_recover = false;
+      }
+      if (!should_recover) {
+        co_await handle_connection_close_and_no_recovery(cancellation_token);
+        co_return;
+      }
+    }
+
+    // recover
+    {
+      using namespace std::chrono_literals;
+
+      bool recovered = false;
+      client_state_.change_state(client_state::recovering);
+      cancellation_token_source cts(io_service_.get_io_context());
+      cts.cancel_after(30s);
+      try {
+        scope_guard guard(
+            io_service_.get_io_context(),
+            [&recovered, this, &cancellation_token]() -> asio::awaitable<void> {
+              if (!recovered) {
+                std::cout
+                    << "log recovery attempts failed more than 30s or the "
+                       "client is stopped. \n";
+                co_await handle_connection_close_and_no_recovery(
+                    cancellation_token /* TODO should be linked token */);
+              }
+            });
+        for (; !cts.is_cancellation_requested() ||
+               !cancellation_token.is_cancelled();) {
+          try {
+            cancellation_token_source cts(io_service_.get_io_context());
+            co_await async_connect(recovery_uri, cts.get_token());
+            recovered = true;
+            co_return;
+          } catch (const std::exception &e) {
+            std::cout << "log fail to recover connection \n";
+            std::cerr << e.what() << '\n';
+          }
+          co_await async_delay(
+              io_service_.get_io_context(),
+              recover_delay_); // TODO: add cancellation token here
+        }
+      } catch (const std::exception &e) {
+      }
+
+      co_return;
+    }
+  }
+
+  bool try_build_recovery_uri(std::string &uri) {}
+
+  asio::awaitable<void> handle_connection_close_and_no_recovery(
+      const cancellation_token &cancellation_token) {
     co_return;
   }
 
@@ -246,6 +315,7 @@ private:
   retry_policy message_retry_policy_;
   client_state client_state_;
   uint64_t next_ack_id_;
+  asio::steady_timer::duration recover_delay_ = std::chrono::seconds(1);
 
 #pragma region Fields per start stop
   cancellation_token_source stop_cts_;

@@ -7,6 +7,7 @@ public:
     stopped,
     connecting,
     connected,
+    recovering,
   };
 
 public:

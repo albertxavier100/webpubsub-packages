@@ -29,3 +29,7 @@ webpubsub-protocols/build/
 webpubsub-client/.vs/
 
 webpubsub-client/out/
+
+webpubsub-client/build-codeblock/
+
+webpubsub-client/build-sublime/

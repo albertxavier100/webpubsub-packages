@@ -13,6 +13,8 @@ public:
     try {
       co_await timer_.async_wait(asio::use_awaitable);
     } catch (asio::system_error &e) {
+      // TODO: should cancel
+      // cancelled_ = true;
       if (e.code() == asio::error::operation_aborted) {
         std::cout << "Canceled\n";
         //  swallow cancel
