@@ -16,7 +16,3 @@
 	path = deps/spdlog
 	url = https://github.com/gabime/spdlog/
 	tag = v1.13.0
-[submodule "deps/popl"]
-	path = deps/popl
-	url = https://github.com/badaix/popl.git
-	tag = v1.3.0
