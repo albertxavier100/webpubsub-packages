@@ -18,7 +18,9 @@
 #include <webpubsub/client/async/task_cancellation/cancellation_token.hpp>
 #include <webpubsub/client/async/task_cancellation/cancellation_token_source.hpp>
 #include <webpubsub/client/async/task_completion/task_completion_source.hpp>
+#include <webpubsub/client/common/constants.hpp>
 #include <webpubsub/client/common/scope/scope_guard.hpp>
+#include <webpubsub/client/common/uri/uri.hpp>
 #include <webpubsub/client/common/web_socket/web_socket_close_status.hpp>
 #include <webpubsub/client/concepts/web_socket_factory_t.hpp>
 #include <webpubsub/client/credentials/client_credential.hpp>
@@ -198,10 +200,44 @@ private:
     }
   }
 
-  bool try_build_recovery_uri(std::string &uri) {}
+  bool try_build_recovery_uri(std::string &recovery_uri) {
+    namespace q = webpubsub::constants::query;
+    if (!connection_id_.empty() && !reconnection_token_.empty()) {
+      uri uri(client_access_uri_);
+      uri.add_query_param(q::recover_connection_id_query_, connection_id_);
+      uri.add_query_param(q::recover_connection_token_query_,
+                          reconnection_token_);
+      recovery_uri = uri.to_string();
+      return true;
+    }
+    recovery_uri = "";
+    return false;
+  }
 
   asio::awaitable<void> handle_connection_close_and_no_recovery(
       const cancellation_token &cancellation_token) {
+    using namespace asio::experimental::awaitable_operators;
+
+    client_state_.change_state(client_state::disconnected);
+    co_spawn(io_service_.get_io_context(),
+             async_safe_invoke_disconnected_async(), asio::detached);
+    if (options_.auto_reconnect) {
+      co_await (async_auto_reconnect(cancellation_token) ||
+                cancellation_token.async_cancel());
+    }
+    handle_client_stopped();
+    co_return;
+  }
+
+  // TODO: impl
+  asio::awaitable<void> async_safe_invoke_disconnected_async() { co_return; }
+
+  // TODO: impl
+  void handle_client_stopped() {}
+
+  // TODO: impl
+  asio::awaitable<void>
+  async_auto_reconnect(const cancellation_token &cancellation_token) {
     co_return;
   }
 

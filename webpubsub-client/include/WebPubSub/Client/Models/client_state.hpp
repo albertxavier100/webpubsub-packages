@@ -8,6 +8,7 @@ public:
     connecting,
     connected,
     recovering,
+    disconnected,
   };
 
 public:
