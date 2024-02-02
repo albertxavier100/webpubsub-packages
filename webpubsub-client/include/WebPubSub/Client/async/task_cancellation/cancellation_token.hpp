@@ -24,7 +24,10 @@ public:
     }
   }
 
-  bool is_cancelled() const { return cancelled_; }
+  asio::awaitable<bool> is_cancelled() const {
+    co_await asio::post(asio::use_awaitable);
+    co_return cancelled_;
+  }
 
 private:
   asio::steady_timer &timer_;

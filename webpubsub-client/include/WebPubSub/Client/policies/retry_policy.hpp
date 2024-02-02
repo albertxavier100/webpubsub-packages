@@ -25,7 +25,8 @@ public:
         max_retries_to_get_max_delay_(
             constants::retry::MAX_RETRIES_TO_GET_MAX_DELAY),
         retry_mode_(expotential), delay_(constants::retry::DEFAULT_DELAY){};
-  std::optional<float> next_retry_delay(retry_context retry_context) const {
+  std::optional<asio::steady_timer::duration>
+  next_retry_delay(retry_context retry_context) const {
     if (retry_context.retry_attempt > max_retries_) {
       return std::nullopt;
     }
@@ -33,10 +34,9 @@ public:
   }
 
 private:
-  float get_delay(uint64_t attempted) const {
-    // TODO
-    return -1;
-    return calculate_exponetial_delay(attempted);
+  asio::steady_timer::duration get_delay(uint64_t attempted) const {
+    // TODO: impl
+    return std::chrono::seconds(1);
   }
 
   float calculate_exponetial_delay(uint64_t attempted) const {

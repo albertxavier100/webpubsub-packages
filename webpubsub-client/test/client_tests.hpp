@@ -100,7 +100,8 @@ public:
 static_assert(
     webpubsub::web_socket_factory_t<test_web_socket_factory, test_web_socket>);
 
-TEST(Basic, Asio) {
+// TODO: better interface
+TEST(RAW, Asio) {
   using webpubsub_client =
       webpubsub::client<test_web_socket_factory, test_web_socket,
                         webpubsub::reliable_json_v1_protocol>;
@@ -113,11 +114,18 @@ TEST(Basic, Asio) {
   webpubsub_client client(opts, cre, fac, io_service);
   std::string group("group_name");
   auto &io_context = client.get_io_service().get_io_context();
-  webpubsub::cancellation_token_source cts(io_context);
+
+  asio::cancellation_signal cs;
+
   asio::co_spawn(
       io_context,
-      [&client]() -> asio::awaitable<void> { co_await client.async_start(); },
-      asio::detached);
+      [&io_context, &client]() -> asio::awaitable<void> {
+        asio::cancellation_signal cs_start;
+        co_await asio::co_spawn(
+            io_context, client.async_start(),
+            asio::bind_cancellation_slot(cs_start.slot(), asio::use_awaitable));
+      },
+      asio::bind_cancellation_slot(cs.slot(), asio::detached));
 }
 
 TEST(Basic, Raw) {

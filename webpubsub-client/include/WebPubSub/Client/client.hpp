@@ -15,7 +15,6 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
-#include <webpubsub/client/async/task_cancellation/cancellation_token.hpp>
 #include <webpubsub/client/async/task_cancellation/cancellation_token_source.hpp>
 #include <webpubsub/client/async/task_completion/task_completion_source.hpp>
 #include <webpubsub/client/common/constants.hpp>
@@ -50,11 +49,8 @@ public:
         web_socket_factory_(web_socket_factory) {}
 
 #pragma region webpubsub api for awaitable
-  asio::awaitable<void> async_start(const std::optional<cancellation_token>
-                                        &cancellation_token = std::nullopt) {
-    const auto token = cancellation_token.has_value()
-                           ? cancellation_token.value()
-                           : stop_cts_.get_token();
+  asio::awaitable<void> async_start() {
+    // TODO: error: cannot check this way
     if (stop_cts_.is_cancellation_requested()) {
       throw std::invalid_argument("Can not start a client during stopping");
     }
@@ -65,16 +61,15 @@ public:
     }
 
     try {
-      co_await async_start_core(token);
+      using namespace asio::experimental::awaitable_operators;
+      co_await async_start_core();
     } catch (...) {
     }
   }
 
   asio::awaitable<request_result>
   async_join_group(const std::string &group,
-                   const std::optional<uint64_t> &ack_id,
-                   const std::optional<cancellation_token> &cancellation_token =
-                       std::nullopt) {}
+                   const std::optional<uint64_t> &ack_id) {}
 #pragma endregion
 
 #pragma region getters and setters
@@ -86,8 +81,7 @@ public:
 #pragma endregion
 
 private:
-  asio::awaitable<void>
-  async_start_core(const cancellation_token &cancellation_token) {
+  asio::awaitable<void> async_start_core() {
     client_state_.change_state(client_state::connecting);
     std::cout << "log conn start" << std::endl;
 
@@ -98,27 +92,21 @@ private:
     connection_id_.clear();
 
     client_access_uri_ = credential_.getClientAccessUri();
-    co_await async_connect(client_access_uri_, cancellation_token);
+    co_await async_connect(client_access_uri_);
   }
 
-  asio::awaitable<void>
-  async_connect(const std::string &uri,
-                const cancellation_token &cancellation_token) {
+  asio::awaitable<void> async_connect(const std::string &uri) {
     using namespace asio::experimental::awaitable_operators;
     auto client = web_socket_factory_.create(uri, options_.protocol.get_name());
-    co_await client->async_connect(cancellation_token);
+    co_await client->async_connect();
     client_ = std::move(client);
     client_state_.change_state(client_state::connected);
-    asio::co_spawn(
-        io_service_.get_io_context(),
-        async_start_listen_loop(cancellation_token) ||
-            cancellation_token.async_cancel(), // TODO: consider std::nullopt
-        asio::detached);
+    asio::co_spawn(io_service_.get_io_context(), async_start_listen_loop(),
+                   asio::detached);
   }
 
   asio::awaitable<void>
-  handle_connection_close(const web_socket_close_status &web_socket_status,
-                          const cancellation_token &cancellation_token) {
+  handle_connection_close(const web_socket_close_status &web_socket_status) {
     for (auto &[ack_id, ack_completion_source] : ack_cache_) {
       if (ack_cache_.find(ack_id) != ack_cache_.end()) {
         auto message = std::format("Connection is disconnected before receive "
@@ -141,7 +129,7 @@ private:
       if (web_socket_status == web_socket_close_status::policy_violation) {
         std::cout << "log The web socket close with status: policy_violation\n";
         should_recover = false;
-      } else if (cancellation_token.is_cancelled()) {
+      } else if (co_await async_is_coro_cancelled()) {
         std::cout << "log The client is stopped\n";
         should_recover = false;
       } else if (!options_.protocol.is_reliable()) {
@@ -153,7 +141,7 @@ private:
         should_recover = false;
       }
       if (!should_recover) {
-        co_await handle_connection_close_and_no_recovery(cancellation_token);
+        co_await handle_connection_close_and_no_recovery();
         co_return;
       }
     }
@@ -169,20 +157,20 @@ private:
       try {
         scope_guard guard(
             io_service_.get_io_context(),
-            [&recovered, this, &cancellation_token]() -> asio::awaitable<void> {
+            [&recovered, this]() -> asio::awaitable<void> {
               if (!recovered) {
                 std::cout
                     << "log recovery attempts failed more than 30s or the "
                        "client is stopped. \n";
-                co_await handle_connection_close_and_no_recovery(
-                    cancellation_token /* TODO should be linked token */);
+                /* TODO should be linked token */
+                co_await handle_connection_close_and_no_recovery();
               }
             });
-        for (; !cts.is_cancellation_requested() ||
-               !cancellation_token.is_cancelled();) {
+        // TODO: error: cannot link them in this way
+        for (; !cts.is_cancellation_requested() &&
+               !(co_await async_is_coro_cancelled());) {
           try {
-            cancellation_token_source cts(io_service_.get_io_context());
-            co_await async_connect(recovery_uri, cts.get_token());
+            co_await async_connect(recovery_uri);
             recovered = true;
             co_return;
           } catch (const std::exception &e) {
@@ -214,80 +202,146 @@ private:
     return false;
   }
 
-  asio::awaitable<void> handle_connection_close_and_no_recovery(
-      const cancellation_token &cancellation_token) {
+  asio::awaitable<void> handle_connection_close_and_no_recovery() {
     using namespace asio::experimental::awaitable_operators;
 
     client_state_.change_state(client_state::disconnected);
-    co_spawn(io_service_.get_io_context(),
-             async_safe_invoke_disconnected_async(), asio::detached);
+    co_spawn(io_service_.get_io_context(), async_safe_invoke_disconnected(),
+             asio::detached);
     if (options_.auto_reconnect) {
-      co_await (async_auto_reconnect(cancellation_token) ||
-                cancellation_token.async_cancel());
+      co_await async_auto_reconnect();
     }
     handle_client_stopped();
     co_return;
   }
 
   // TODO: impl
-  asio::awaitable<void> async_safe_invoke_disconnected_async() { co_return; }
+  asio::awaitable<void> async_safe_invoke_disconnected() { co_return; }
+
+  void handle_client_stopped() {
+    client_state_.change_state(client_state::stopped);
+    async_safe_invoke_stopped();
+  }
 
   // TODO: impl
-  void handle_client_stopped() {}
+  void async_safe_invoke_stopped() {}
 
-  // TODO: impl
-  asio::awaitable<void>
-  async_auto_reconnect(const cancellation_token &cancellation_token) {
+  asio::awaitable<void> async_auto_reconnect() {
+    bool is_success = false;
+    uint64_t retry_attempt = 0;
+    try {
+      scope_guard guard(io_service_.get_io_context(),
+                        [this, &is_success]() -> void {
+                          if (!is_success) {
+                            handle_client_stopped();
+                          }
+                        });
+
+      for (; !(co_await async_is_coro_cancelled());) {
+        bool catched = false;
+        try {
+          scope_guard guard(
+              io_service_.get_io_context(),
+              [&catched, &retry_attempt, this]() -> asio::awaitable<void> {
+                if (!catched) {
+                  co_return;
+                }
+                retry_context retry_context{retry_attempt};
+                auto delay = reconnect_retry_policy_.next_retry_delay(
+                    std::move(retry_context));
+                if (!delay.has_value()) {
+                  co_return;
+                }
+                if (delay.has_value()) {
+                  co_await async_delay(io_service_.get_io_context(),
+                                       delay.value());
+                }
+              });
+          using namespace asio::experimental::awaitable_operators;
+
+          using namespace asio::experimental::awaitable_operators;
+          co_await async_start_by_reconnection();
+          is_success = true;
+          co_return;
+        } catch (const std::exception &e) {
+          std::cout << "log failed to reconnect";
+          retry_attempt++;
+          catched = true;
+        }
+      }
+
+    } catch (...) {
+    }
+
     co_return;
   }
 
-  asio::awaitable<void>
-  async_start_listen_loop(const cancellation_token &cancellation_token) {
-    using namespace asio::experimental::awaitable_operators;
+  asio::awaitable<void> async_start_by_reconnection() {
+    // TODO: error: cannot check this way
+    if (stop_cts_.is_cancellation_requested()) {
+      throw std::invalid_argument("Can not start a client during stopping");
+    }
+
+    if (client_state_.get_state() != client_state::disconnected) {
+      throw std::invalid_argument(
+          "Client restart should happen only when the state is Disconnected");
+    }
+
+    try {
+      co_await async_start();
+    } catch (...) {
+      client_state_.change_state(client_state::disconnected);
+      throw;
+    }
+  }
+
+  // TODO: final check
+  asio::awaitable<void> async_start_listen_loop() {
 
     web_socket_close_status web_socket_close_status =
         web_socket_close_status::empty;
-    cancellation_token_source sequence_ack_cts(io_service_.get_io_context());
 
     if (options_.protocol.is_reliable()) {
       asio::co_spawn(
           io_service_.get_io_context(),
-          async_start_sequence_ack_loop(sequence_ack_cts.get_token()) ||
-              sequence_ack_cts.get_token().async_cancel(),
-          [&web_socket_close_status, &cancellation_token, this](auto e1,
-                                                                auto e2) {
+          async_start_sequence_ack_loop(/* TODO: add sid cancel slot here */),
+          // TODO: replace this with std::share...
+          [&web_socket_close_status, this](auto e) {
             asio::co_spawn(io_service_.get_io_context(),
-                           handle_connection_close(web_socket_close_status,
-                                                   cancellation_token) ||
-                               cancellation_token.async_cancel(),
+                           handle_connection_close(web_socket_close_status),
                            asio::detached);
-            ;
           });
     }
 
     {
-      scope_guard guard(io_service_.get_io_context(),
-                        [&sequence_ack_cts]() -> void {
-                          std::cout << "log web socket closed\n";
-                          sequence_ack_cts.cancel();
-                        });
+      scope_guard guard(io_service_.get_io_context(), []() -> void {
+        std::cout << "log web socket closed\n";
+        // TODO: cancel sequence ack
+        // sequence_ack_cts.cancel();
+      });
 
       try {
-        while (!cancellation_token.is_cancelled()) {
+        while (!(co_await async_is_coro_cancelled())) {
           uint64_t *start;
           uint64_t size;
-          co_await (client_->async_read(start, size, web_socket_close_status) ||
-                    cancellation_token.async_cancel());
+          co_await client_->async_read(start, size, web_socket_close_status);
 
-          // TODO change int to enum
           if (web_socket_close_status != web_socket_close_status::empty) {
             break;
           }
+
           if (size > 0) {
             try {
-              // TODO: .net receive multiple messages here, investigate later
-            } catch (...) {
-              // TODO: add raw exception in my own exception
+              // TODO: impl
+
+              // TODO: protocol only support text, not support binary here, due
+              // to avoid copy.
+              // The web socket client can return binary here.
+              // auto response = options_.protocol.read();
+              // co_await async_handle_response(std::move(response)) ;
+
+            } catch (const std::exception &e) {
+              std::cout << "log failed to process response";
               throw;
             }
           }
@@ -298,47 +352,99 @@ private:
     }
   }
 
+  // TODO: impl
   asio::awaitable<void>
-  async_start_sequence_ack_loop(const cancellation_token &cancellation_token) {
+  async_handle_response(std::optional<ResponseVariant> response) {
+
+    // TODO: use get_if
+    if (std::holds_alternative<ConnectedResponse>(response)) {
+      handle_connected_response(response.get<ConnectedResponse>());
+    } else if (std::holds_alternative<DisconnectedResponse>(response)) {
+      handle_disconnected_response(response.get<DisconnectedResponse>());
+    } else if (std::holds_alternative<AckResponse>(response)) {
+      handle_ack_response(.get<AckResponse>());
+    } else if (std::holds_alternative<GroupMessageResponseV2>(response)) {
+      handle_group_data_response(.get<GroupMessageResponseV2>());
+    } else if (std::holds_alternative<ServerMessageResponse>(response)) {
+      handle_server_data_response(.get<ServerMessageResponse>());
+    } else {
+      throw std::invalid_argument("Received unknown type of message");
+    }
+
+    co_return;
+  }
+
+  void handle_connected_response(ConnectedResponse response) {
+    connection_id_ = response.getConnectionId();
+    reconnection_token_ = response.getReconnectionToken();
+
+    if (!is_initial_connected_) {
+      is_initial_connected_ = true;
+      co_await async_handle_connection_connected(response);
+    }
+  }
+
+  asio::awaitable<void>
+  async_handle_connection_connected(ConnectedResponse response) {
+    if (options_.auto_rejoin_groups) {
+      for (auto group : groups_) {
+        // TODO
+      }
+    }
+    asio::co_spawn(io_service_.get_io_context(),
+                   async_safe_invoke_connected(response), asio::detached);
+  }
+
+  // TODO: impl
+  asio::awaitable<void>
+  async_safe_invoke_connected(ConnectedResponse response) {
+    co_return;
+  }
+
+  // TODO: impl
+  void handle_disconnected_response(DisconnectedResponse response) {}
+
+  // TODO: impl
+  void handle_ack_response(AckResponse response) {}
+
+  // TODO: impl
+  void handle_group_data_response(GroupMessageResponseV2 response) {}
+
+  // TODO: impl
+  void handle_server_data_response(ServerMessageResponse response) {}
+
+  asio::awaitable<void> async_start_sequence_ack_loop() {
     using namespace std::chrono_literals;
     using namespace asio::experimental::awaitable_operators;
 
-    while (!cancellation_token.is_cancelled()) {
-      scope_guard guard(io_service_.get_io_context(),
-                        [this, &cancellation_token]() -> asio::awaitable<void> {
-                          co_await (webpubsub::async_delay(
-                                        io_service_.get_io_context(), 1s) ||
-                                    cancellation_token.async_cancel());
-                        });
+    while (!(co_await async_is_coro_cancelled())) {
+      scope_guard guard(
+          io_service_.get_io_context(), [this]() -> asio::awaitable<void> {
+            co_await (webpubsub::async_delay(io_service_.get_io_context(), 1s));
+          });
       try {
         uint64_t id;
         if (sequence_id_.try_get_sequence_id(id)) {
           auto req = SequenceAckSignal(id);
           auto payload = options_.protocol.write(std::move(req));
-          co_await (async_send_core(
-                        std::move(payload),
-                        options_.protocol.get_webpubsub_protocol_message_type(),
-                        cancellation_token) ||
-                    cancellation_token.async_cancel());
+          co_await async_send_core(
+              std::move(payload),
+              options_.protocol.get_webpubsub_protocol_message_type());
         }
       } catch (...) {
       }
     }
   }
 
-  asio::awaitable<void>
-  async_send_core(std::string payload,
-                  WebPubSubProtocolMessageType webpubsub_protocol_message_type,
-                  const std::optional<cancellation_token> &cancellation_token =
-                      std::nullopt) {
-    using namespace asio::experimental::awaitable_operators;
+  asio::awaitable<void> async_send_core(
+      std::string payload,
+      WebPubSubProtocolMessageType webpubsub_protocol_message_type) {
 
     auto as_text =
         webpubsub_protocol_message_type == WebPubSubProtocolMessageText;
     auto size = payload.size() + (as_text ? 1 : 0);
     auto start = reinterpret_cast<const uint64_t *>(payload.c_str());
-    co_await (client_->async_write(start, size, as_text) ||
-              cancellation_token.value().async_cancel());
+    co_await client_->async_write(start, size, as_text);
   }
 
 private:
@@ -354,6 +460,8 @@ private:
   asio::steady_timer::duration recover_delay_ = std::chrono::seconds(1);
 
 #pragma region Fields per start stop
+  asio::cancellation_signal stop_cancel_;
+  // TODO: move
   cancellation_token_source stop_cts_;
 #pragma endregion
 
