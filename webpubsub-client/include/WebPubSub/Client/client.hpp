@@ -353,20 +353,18 @@ private:
   }
 
   // TODO: impl
-  asio::awaitable<void>
-  async_handle_response(std::optional<ResponseVariant> response) {
+  asio::awaitable<void> async_handle_response(ResponseVariant response) {
 
-    // TODO: use get_if
-    if (std::holds_alternative<ConnectedResponse>(response)) {
-      handle_connected_response(response.get<ConnectedResponse>());
-    } else if (std::holds_alternative<DisconnectedResponse>(response)) {
-      handle_disconnected_response(response.get<DisconnectedResponse>());
-    } else if (std::holds_alternative<AckResponse>(response)) {
-      handle_ack_response(.get<AckResponse>());
-    } else if (std::holds_alternative<GroupMessageResponseV2>(response)) {
-      handle_group_data_response(.get<GroupMessageResponseV2>());
-    } else if (std::holds_alternative<ServerMessageResponse>(response)) {
-      handle_server_data_response(.get<ServerMessageResponse>());
+    if (auto resp = std::get_if<ConnectedResponse>(&response)) {
+      handle_connected_response(*resp);
+    } else if (auto resp = std::get_if<DisconnectedResponse>(&response)) {
+      handle_disconnected_response(*resp);
+    } else if (auto resp = std::get_if<AckResponse>(&response)) {
+      handle_ack_response(*resp);
+    } else if (auto resp = std::get_if<GroupMessageResponseV2>(&response)) {
+      handle_group_data_response(*resp);
+    } else if (auto resp = std::get_if<ServerMessageResponse>(&response)) {
+      handle_server_data_response(*resp);
     } else {
       throw std::invalid_argument("Received unknown type of message");
     }
