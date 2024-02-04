@@ -10,6 +10,7 @@
 #include <asio/experimental/awaitable_operators.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
+#include <eventpp/callbacklist.h>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -27,6 +28,7 @@
 #include <webpubsub/client/detail/client/group_context.hpp>
 #include <webpubsub/client/detail/client/group_context_store.hpp>
 #include <webpubsub/client/detail/client/sequence_id.hpp>
+#include <webpubsub/client/models/callback_contexts.hpp>
 #include <webpubsub/client/models/client_options.hpp>
 #include <webpubsub/client/models/client_state.hpp>
 #include <webpubsub/client/models/io_service.hpp>
@@ -43,6 +45,17 @@ class client : std::enable_shared_from_this<
       std::variant<request_result, std::invalid_argument, std::exception>;
 
 public:
+#pragma region callbacks
+  eventpp::CallbackList<void(const connected_context)> on_connected;
+  eventpp::CallbackList<void(const disconnected_context)> on_disconnected;
+  eventpp::CallbackList<void(const group_data_context)> on_group_data;
+  eventpp::CallbackList<void(const server_data_context)> on_server_data;
+  eventpp::CallbackList<void(const rejoin_group_failed_context)>
+      on_rejoin_group_failed;
+  eventpp::CallbackList<void(const stopped_context)> on_stopped;
+#pragma endregion
+
+public:
   client(client_options<WebPubSubProtocol> &options,
          const client_credential &credential,
          const WebSocketFactory &web_socket_factory, io_service &io_service)
@@ -50,6 +63,7 @@ public:
         stop_cts_(io_service_.get_io_context()), client_(nullptr),
         web_socket_factory_(web_socket_factory) {}
 
+public:
 #pragma region webpubsub api for awaitable
   asio::awaitable<void> async_start() {
     // TODO: error: cannot check this way
@@ -181,7 +195,6 @@ private:
             std::cerr << e.what() << '\n';
           }
           co_await async_delay(
-              io_service_.get_io_context(),
               recover_delay_); // TODO: add cancellation token here
         }
       } catch (const std::exception &e) {
@@ -258,8 +271,7 @@ private:
                   co_return;
                 }
                 if (delay.has_value()) {
-                  co_await async_delay(self->io_service_.get_io_context(),
-                                       delay.value());
+                  co_await async_delay(delay.value());
                 }
               });
           using namespace asio::experimental::awaitable_operators;
@@ -359,9 +371,7 @@ private:
     }
   }
 
-  // TODO: impl
   asio::awaitable<void> async_handle_response(ResponseVariant response) {
-
     if (auto resp = std::get_if<ConnectedResponse>(&response)) {
       handle_connected_response(*resp);
     } else if (auto resp = std::get_if<DisconnectedResponse>(&response)) {
@@ -400,34 +410,44 @@ private:
                    async_safe_invoke_connected(response), asio::detached);
   }
 
-  // TODO: impl
   asio::awaitable<void>
   async_safe_invoke_connected(ConnectedResponse response) {
+    std::cout << "log connection connected\n";
+    try {
+      on_connected(response);
+    } catch (const std::exception &e) {
+      std::cout << "log failed to invoke event\n";
+    }
+
     co_return;
   }
 
   // TODO: impl
-  void handle_disconnected_response(DisconnectedResponse response) {}
+  void handle_disconnected_response(DisconnectedResponse response) {
+    co_return;
+  }
 
   // TODO: impl
-  void handle_ack_response(AckResponse response) {}
+  void handle_ack_response(AckResponse response) { co_return; }
 
   // TODO: impl
-  void handle_group_data_response(GroupMessageResponseV2 response) {}
+  void handle_group_data_response(GroupMessageResponseV2 response) {
+    co_return;
+  }
 
   // TODO: impl
-  void handle_server_data_response(ServerMessageResponse response) {}
+  void handle_server_data_response(ServerMessageResponse response) {
+    co_return;
+  }
 
   asio::awaitable<void> async_start_sequence_ack_loop() {
-    using namespace std::chrono_literals;
     using namespace asio::experimental::awaitable_operators;
 
     while (!(co_await async_is_coro_cancelled())) {
       auto self = shared_from_this();
       scope_guard _(
           io_service_.get_io_context(), [self]() -> asio::awaitable<void> {
-            co_await (
-                webpubsub::async_delay(self->io_service_.get_io_context(), 1s));
+            co_await (webpubsub::async_delay(asio::chrono::seconds(1)));
           });
       try {
         uint64_t id;

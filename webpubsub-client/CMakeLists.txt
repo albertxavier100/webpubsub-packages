@@ -17,6 +17,7 @@ include_directories(
     ../deps/cppcodec
     ../deps/spdlog/include
     ../deps/uri/include/fix8
+    ../deps/eventpp/include
 )
 
 find_package(GTest CONFIG REQUIRED)

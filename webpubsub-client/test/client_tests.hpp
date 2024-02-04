@@ -1,6 +1,5 @@
 #pragma once
 
-// #include "../impl/default_web_socket_factory.hpp"
 #include <asio/awaitable.hpp>
 #include <asio/bind_cancellation_slot.hpp>
 #include <asio/cancellation_signal.hpp>
@@ -11,6 +10,7 @@
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
 #include <chrono>
+#include <format>
 #include <gtest/gtest.h>
 #include <webpubsub/client/async/async_utils.hpp>
 #include <webpubsub/client/client.hpp>
@@ -64,6 +64,7 @@ asio::awaitable<void> stopAfter4500Milliseconds(asio::steady_timer &timer) {
 // }
 
 class test_web_socket {
+
 public:
   test_web_socket() = default;
 
@@ -85,6 +86,10 @@ public:
       webpubsub::web_socket_close_status &status,
       const std::optional<webpubsub::cancellation_token> &cancellation_token =
           std::nullopt) {
+    using namespace std::chrono_literals;
+
+    co_await webpubsub::async_delay(500ms);
+    // TODO: return connected message
     co_return;
   };
 };
@@ -112,25 +117,24 @@ TEST(RAW, Asio) {
   webpubsub::io_service io_service;
   test_web_socket_factory fac;
   webpubsub_client client(opts, cre, fac, io_service);
+
+  client.on_connected.append([](webpubsub::connected_context context) {
+    std::cout << std::format("connected:\n"
+                             "connection id: {}\n"
+                             "user id: {}\n"
+                             "\n",
+                             context.connection_id, context.user_id.value());
+  });
+
   std::string group("group_name");
   auto &io_context = client.get_io_service().get_io_context();
 
-  asio::cancellation_signal cs;
+  auto run = [&]() -> asio::awaitable<void> {
+    asio::cancellation_signal cs_start;
+    co_await asio::co_spawn(
+        io_context, client.async_start(),
+        asio::bind_cancellation_slot(cs_start.slot(), asio::use_awaitable));
+  };
 
-  asio::co_spawn(
-      io_context,
-      [&io_context, &client]() -> asio::awaitable<void> {
-        asio::cancellation_signal cs_start;
-        co_await asio::co_spawn(
-            io_context, client.async_start(),
-            asio::bind_cancellation_slot(cs_start.slot(), asio::use_awaitable));
-      },
-      asio::bind_cancellation_slot(cs.slot(), asio::detached));
-}
-
-TEST(Basic, Raw) {
-  webpubsub::reliable_json_v1_protocol p;
-  webpubsub::client_credential cre("");
-  webpubsub::client_options opts{p};
-  // webpubsub::client client(opts, cre);
+  asio::co_spawn(io_context, run(), asio::detached);
 }

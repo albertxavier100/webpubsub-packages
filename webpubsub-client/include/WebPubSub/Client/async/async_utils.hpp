@@ -17,15 +17,14 @@ asio::awaitable<bool> async_is_coro_cancelled() {
 
 // TODO: add cancel_signal
 asio::awaitable<void>
-async_delay(asio::io_context &io_context,
+async_delay(
             const asio::steady_timer::duration &duration) {
   if (co_await async_is_coro_cancelled()) {
     co_return;
   }
-  asio::steady_timer timer{io_context};
+  asio::steady_timer timer{co_await asio::this_coro::executor};
   timer.expires_after(duration);
   co_await timer.async_wait(asio::use_awaitable);
-  co_return;
 }
 
 // TODO: add cancel_signal
