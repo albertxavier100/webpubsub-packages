@@ -35,7 +35,6 @@ public:
     return json.dump();
   }
 
-  // TODO: only support webSocket text for now
   std::optional<ResponseVariant> read(const char *frame) const {
     namespace k = webpubsub::Constants::Keys;
     auto json = nlohmann::json::parse(frame);
