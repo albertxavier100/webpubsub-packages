@@ -22,8 +22,7 @@ public:
     return *this;
   }
 
-  asio::awaitable<void> async_connect(const std::optional<cancellation_token>
-                                          &cancellation_token = std::nullopt) {
+  asio::awaitable<void> async_connect() {
     co_await test();
   }
 
@@ -53,6 +52,5 @@ private:
   std::string protocol_name_;
 };
 
-static_assert(web_socket_t<default_web_socket>,
-              "default_web_socket doesn't implement web_socket_t");
+static_assert(web_socket_t<default_web_socket>);
 } // namespace webpubsub

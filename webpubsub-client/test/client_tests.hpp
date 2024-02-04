@@ -68,27 +68,18 @@ class test_web_socket {
 public:
   test_web_socket() = default;
 
-  asio::awaitable<void> async_connect(
-      const std::optional<webpubsub::cancellation_token> &cancellation_token =
-          std::nullopt) {
-    co_return;
-  };
+  asio::awaitable<void> async_connect() { co_return; };
 
-  asio::awaitable<void> async_write(
-      const uint64_t *write_ptr, const uint64_t write_size,
-      const bool write_as_text = true,
-      const std::optional<webpubsub::cancellation_token> &cancellation_token =
-          std::nullopt) {
+  asio::awaitable<void> async_write(const uint64_t *write_ptr,
+                                    const uint64_t write_size,
+                                    const bool write_as_text = true) {
     co_return;
   };
-  asio::awaitable<void> async_read(
-      uint64_t *&read_ptr, uint64_t &read_size,
-      webpubsub::web_socket_close_status &status,
-      const std::optional<webpubsub::cancellation_token> &cancellation_token =
-          std::nullopt) {
+  asio::awaitable<void> async_read(uint64_t *&read_ptr, uint64_t &read_size,
+                                   webpubsub::web_socket_close_status &status) {
     using namespace std::chrono_literals;
 
-    co_await webpubsub::async_delay(500ms);
+    co_await webpubsub::async_delay(100ms);
     // TODO: return connected message
     co_return;
   };
