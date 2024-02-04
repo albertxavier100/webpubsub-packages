@@ -16,3 +16,7 @@
 	path = deps/spdlog
 	url = https://github.com/gabime/spdlog/
 	tag = v1.13.0
+[submodule "deps/eventpp"]
+	path = deps/eventpp
+	url = https://github.com/wqking/eventpp
+	tag = v0.1.3
