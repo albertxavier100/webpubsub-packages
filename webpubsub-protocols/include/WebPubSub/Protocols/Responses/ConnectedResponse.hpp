@@ -9,6 +9,7 @@ public:
   const SystemEventType getEvent() const { return event; }
   const std::optional<std::string> &getUserId() const { return userId; }
   const std::string &getConnectionId() const { return connectionId; }
+  // TODO: check if it always has value
   const std::optional<std::string> &getReconnectionToken() const {
     return reconnectionToken;
   }

@@ -316,16 +316,18 @@ private:
         web_socket_close_status::empty;
 
     if (options_.protocol.is_reliable()) {
-      asio::co_spawn(
-          io_service_.get_io_context(),
-          async_start_sequence_ack_loop(/* TODO: add sid cancel slot here */),
-          // TODO: replace this with std::share...
-          [&web_socket_close_status, this](auto e) {
-            asio::co_spawn(
-                this->io_service_.get_io_context(),
-                this->handle_connection_close(web_socket_close_status),
-                asio::detached);
-          });
+      // TODO: !!!!! async_start_sequence_ack_loop should be detached, but should also has a finally block
+      
+      //asio::co_spawn(
+      //    io_service_.get_io_context(),
+      //    async_start_sequence_ack_loop(/* TODO: add sid cancel slot here */),
+      //    // TODO: replace this with std::share...
+      //    [&web_socket_close_status, this](auto e) {
+      //      asio::co_spawn(
+      //          this->io_service_.get_io_context(),
+      //          this->handle_connection_close(web_socket_close_status),
+      //          asio::detached);
+      //    });
     }
 
     try {
@@ -338,7 +340,7 @@ private:
            is_canceled = co_await async_is_coro_cancelled()) {
         std::string payload;
         co_await client_->async_read(payload, web_socket_close_status);
-
+        // TODO: handle the payload
         if (web_socket_close_status != web_socket_close_status::empty) {
           break;
         }
@@ -350,8 +352,12 @@ private:
             // TODO: protocol only support text, not support binary here, due
             // to avoid copy.
             // The web socket client can return binary here.
-            // auto response = options_.protocol.read();
-            // co_await async_handle_response(std::move(response)) ;
+             auto response = options_.protocol.read(std::move(payload));
+            if (response) {
+               co_await async_handle_response(std::move(*response));
+            } else {
+              std::cout << "log failed to parse message\n";
+            }
 
           } catch (const std::exception &e) {
             std::cout << "log failed to process response";
@@ -384,20 +390,22 @@ private:
 
   void handle_connected_response(ConnectedResponse response) {
     connection_id_ = response.getConnectionId();
-    reconnection_token_ = response.getReconnectionToken();
+    // TODO: check if reconnection token always has value or not
+    reconnection_token_ = response.getReconnectionToken().value();
 
     if (!is_initial_connected_) {
       is_initial_connected_ = true;
-      co_await async_handle_connection_connected(response);
+      async_handle_connection_connected(response);
     }
   }
 
-  asio::awaitable<void>
+  void
   async_handle_connection_connected(ConnectedResponse response) {
     if (options_.auto_rejoin_groups) {
-      for (auto group : groups_) {
-        // TODO
-      }
+      // TODO
+      //for (auto group : groups_) {
+      //  
+      //}
     }
     asio::co_spawn(io_service_.get_io_context(),
                    async_safe_invoke_connected(response), asio::detached);
@@ -418,20 +426,20 @@ private:
 
   // TODO: impl
   void handle_disconnected_response(DisconnectedResponse response) {
-    co_return;
+    return;
   }
 
   // TODO: impl
-  void handle_ack_response(AckResponse response) { co_return; }
+  void handle_ack_response(AckResponse response) { return; }
 
   // TODO: impl
   void handle_group_data_response(GroupMessageResponseV2 response) {
-    co_return;
+    return;
   }
 
   // TODO: impl
   void handle_server_data_response(ServerMessageResponse response) {
-    co_return;
+    return;
   }
 
   asio::awaitable<void> async_start_sequence_ack_loop() {

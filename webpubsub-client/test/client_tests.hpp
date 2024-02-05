@@ -72,9 +72,9 @@ TEST(RAW, Asio) {
   webpubsub_client client(opts, cre, fac, io_service);
 
   client.on_connected.append([](webpubsub::connected_context context) {
-    std::cout << std::format("@@@@@ test connected context: ");
+    std::cout << std::format("@@@@@ begin validate client.start: ");
     EXPECT_EQ("abcdefghijklmnop", context.connection_id);
-    EXPECT_EQ("user2", context.user_id);
+    EXPECT_EQ("user1", context.user_id);
     EXPECT_EQ("<token>", context.reconnection_token);
   });
 

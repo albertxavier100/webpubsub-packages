@@ -7,8 +7,8 @@ class reliable_json_v1_protocol {
 public:
   reliable_json_v1_protocol() = default;
 
-  std::optional<ResponseVariant> read(const char *frame) const {
-    return base_protocol_.read(frame);
+  std::optional<ResponseVariant> read(const std::string frame) const {
+    return base_protocol_.read(std::move(frame));
   }
 
   template <request_t T> std::string write(const T &request) const {

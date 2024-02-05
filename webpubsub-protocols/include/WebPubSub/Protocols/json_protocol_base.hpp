@@ -35,7 +35,7 @@ public:
     return json.dump();
   }
 
-  std::optional<ResponseVariant> read(const char *frame) const {
+  std::optional<ResponseVariant> read(const std::string &frame) const {
     namespace k = webpubsub::Constants::Keys;
     auto json = nlohmann::json::parse(frame);
 
