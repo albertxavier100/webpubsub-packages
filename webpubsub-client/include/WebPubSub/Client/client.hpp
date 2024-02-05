@@ -39,8 +39,7 @@ namespace webpubsub {
 template <typename WebSocketFactory, typename WebSocket,
           typename WebPubSubProtocol = reliable_json_v1_protocol>
   requires web_socket_factory_t<WebSocketFactory, WebSocket>
-class client : std::enable_shared_from_this<
-                   client<WebSocketFactory, WebSocket, WebPubSubProtocol>> {
+class client {
   using request_result_or_exception =
       std::variant<request_result, std::invalid_argument, std::exception>;
 
@@ -171,21 +170,20 @@ private:
       cancellation_token_source cts(io_service_.get_io_context());
       cts.cancel_after(30s);
       try {
-        auto self = shared_from_this();
         scope_guard _(
             io_service_.get_io_context(),
-            [&recovered, self]() -> asio::awaitable<void> {
+            [&recovered, this]() -> asio::awaitable<void> {
               if (!recovered) {
                 std::cout
                     << "log recovery attempts failed more than 30s or the "
                        "client is stopped. \n";
                 /* TODO should be linked token */
-                co_await self->handle_connection_close_and_no_recovery();
+                co_await this->handle_connection_close_and_no_recovery();
               }
             });
         // TODO: error: cannot link them in this way
-        for (; !cts.is_cancellation_requested() &&
-               !(co_await async_is_coro_cancelled());) {
+        for (auto is_canceled = co_await async_is_coro_cancelled();
+             !is_canceled; is_canceled = co_await async_is_coro_cancelled()) {
           try {
             co_await async_connect(recovery_uri);
             recovered = true;
@@ -246,26 +244,25 @@ private:
     bool is_success = false;
     uint64_t retry_attempt = 0;
     try {
-      auto self = shared_from_this();
       scope_guard _(io_service_.get_io_context(),
-                    [self, &is_success]() -> void {
+                    [this, &is_success]() -> void {
                       if (!is_success) {
-                        self->handle_client_stopped();
+                        this->handle_client_stopped();
                       }
                     });
 
-      for (; !(co_await async_is_coro_cancelled());) {
+      for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
+           is_canceled = co_await async_is_coro_cancelled()) {
         bool catched = false;
         try {
-          auto self = shared_from_this();
           scope_guard guard(
               io_service_.get_io_context(),
-              [&catched, &retry_attempt, self]() -> asio::awaitable<void> {
+              [&catched, &retry_attempt, this]() -> asio::awaitable<void> {
                 if (!catched) {
                   co_return;
                 }
                 retry_context retry_context{retry_attempt};
-                auto delay = self->reconnect_retry_policy_.next_retry_delay(
+                auto delay = this->reconnect_retry_policy_.next_retry_delay(
                     std::move(retry_context));
                 if (!delay.has_value()) {
                   co_return;
@@ -319,54 +316,51 @@ private:
         web_socket_close_status::empty;
 
     if (options_.protocol.is_reliable()) {
-      auto self = shared_from_this();
       asio::co_spawn(
           io_service_.get_io_context(),
           async_start_sequence_ack_loop(/* TODO: add sid cancel slot here */),
           // TODO: replace this with std::share...
-          [&web_socket_close_status, self](auto e) {
+          [&web_socket_close_status, this](auto e) {
             asio::co_spawn(
-                self->io_service_.get_io_context(),
-                self->handle_connection_close(web_socket_close_status),
+                this->io_service_.get_io_context(),
+                this->handle_connection_close(web_socket_close_status),
                 asio::detached);
           });
     }
 
-    {
+    try {
       scope_guard guard(io_service_.get_io_context(), []() -> void {
         std::cout << "log web socket closed\n";
         // TODO: cancel sequence ack
         // sequence_ack_cts.cancel();
       });
+      for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
+           is_canceled = co_await async_is_coro_cancelled()) {
+        std::string payload;
+        co_await client_->async_read(payload, web_socket_close_status);
 
-      try {
-        while (!(co_await async_is_coro_cancelled())) {
-          std::string payload;
-          co_await client_->async_read(payload, web_socket_close_status);
+        if (web_socket_close_status != web_socket_close_status::empty) {
+          break;
+        }
 
-          if (web_socket_close_status != web_socket_close_status::empty) {
-            break;
-          }
+        if (payload.size() > 0) {
+          try {
+            // TODO: impl
 
-          if (payload.size() > 0) {
-            try {
-              // TODO: impl
+            // TODO: protocol only support text, not support binary here, due
+            // to avoid copy.
+            // The web socket client can return binary here.
+            // auto response = options_.protocol.read();
+            // co_await async_handle_response(std::move(response)) ;
 
-              // TODO: protocol only support text, not support binary here, due
-              // to avoid copy.
-              // The web socket client can return binary here.
-              // auto response = options_.protocol.read();
-              // co_await async_handle_response(std::move(response)) ;
-
-            } catch (const std::exception &e) {
-              std::cout << "log failed to process response";
-              throw;
-            }
+          } catch (const std::exception &e) {
+            std::cout << "log failed to process response";
+            throw;
           }
         }
-      } catch (...) {
-        std::cout << "log failed to receive exception\n";
       }
+    } catch (...) {
+      std::cout << "log failed to receive exception\n";
     }
   }
 
@@ -413,7 +407,8 @@ private:
   async_safe_invoke_connected(ConnectedResponse response) {
     std::cout << "log connection connected\n";
     try {
-      on_connected(response);
+      on_connected({response.getConnectionId(), response.getUserId(),
+                    response.getReconnectionToken()});
     } catch (const std::exception &e) {
       std::cout << "log failed to invoke event\n";
     }
@@ -442,10 +437,10 @@ private:
   asio::awaitable<void> async_start_sequence_ack_loop() {
     using namespace asio::experimental::awaitable_operators;
 
-    while (!(co_await async_is_coro_cancelled())) {
-      auto self = shared_from_this();
+    for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
+         is_canceled = co_await async_is_coro_cancelled()) {
       scope_guard _(
-          io_service_.get_io_context(), [self]() -> asio::awaitable<void> {
+          io_service_.get_io_context(), []() -> asio::awaitable<void> {
             co_await (webpubsub::async_delay(asio::chrono::seconds(1)));
           });
       try {
