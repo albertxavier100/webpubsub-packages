@@ -341,15 +341,14 @@ private:
 
       try {
         while (!(co_await async_is_coro_cancelled())) {
-          uint64_t *start;
-          uint64_t size;
-          co_await client_->async_read(start, size, web_socket_close_status);
+          std::string payload;
+          co_await client_->async_read(payload, web_socket_close_status);
 
           if (web_socket_close_status != web_socket_close_status::empty) {
             break;
           }
 
-          if (size > 0) {
+          if (payload.size() > 0) {
             try {
               // TODO: impl
 
@@ -469,9 +468,7 @@ private:
 
     auto as_text =
         webpubsub_protocol_message_type == WebPubSubProtocolMessageText;
-    auto size = payload.size() + (as_text ? 1 : 0);
-    auto start = reinterpret_cast<const uint64_t *>(payload.c_str());
-    co_await client_->async_write(start, size, as_text);
+    co_await client_->async_write(std::move(payload));
   }
 
 private:

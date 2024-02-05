@@ -10,6 +10,7 @@ namespace webpubsub {
 struct connected_context {
   std::string connection_id;
   std::optional<std::string> user_id;
+  std::optional<std::string> reconnection_token;
 };
 
 struct disconnected_context {
