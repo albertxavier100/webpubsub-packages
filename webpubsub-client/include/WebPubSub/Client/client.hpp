@@ -4,10 +4,12 @@
 #include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 #include <asio/awaitable.hpp>
+#include <asio/bind_cancellation_slot.hpp>
 #include <asio/cancellation_signal.hpp>
 #include <asio/co_spawn.hpp>
 #include <asio/detached.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
+#include <asio/experimental/channel.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
 #include <eventpp/callbacklist.h>
@@ -34,6 +36,7 @@
 #include <webpubsub/client/models/io_service.hpp>
 #include <webpubsub/client/models/request_result.hpp>
 #include <webpubsub/client/policies/retry_policy.hpp>
+#include <asio/bind_cancellation_slot.hpp>
 
 namespace webpubsub {
 template <typename WebSocketFactory, typename WebSocket,
@@ -42,6 +45,9 @@ template <typename WebSocketFactory, typename WebSocket,
 class client {
   using request_result_or_exception =
       std::variant<request_result, std::invalid_argument, std::exception>;
+
+private:
+  enum class coro_result { cancelled, completed, running };
 
 public:
 #pragma region callbacks
@@ -121,7 +127,7 @@ private:
   }
 
   asio::awaitable<void>
-  handle_connection_close(const web_socket_close_status &web_socket_status) {
+  async_handle_connection_close(const web_socket_close_status &web_socket_status) {
     for (auto &[ack_id, ack_completion_source] : ack_cache_) {
       if (ack_cache_.find(ack_id) != ack_cache_.end()) {
         auto message = std::format("Connection is disconnected before receive "
@@ -271,7 +277,6 @@ private:
                   co_await async_delay(delay.value());
                 }
               });
-          using namespace asio::experimental::awaitable_operators;
 
           using namespace asio::experimental::awaitable_operators;
           co_await async_start_by_reconnection();
@@ -310,32 +315,32 @@ private:
   }
 
   // TODO: final check
+  // main loop -> sequence id loop -> close connection
   asio::awaitable<void> async_start_listen_loop() {
 
     web_socket_close_status web_socket_close_status =
         web_socket_close_status::empty;
 
+    asio::experimental::channel<void(asio::error_code, coro_result)>
+        sid_loop_result {io_service_.get_io_context(), 1};
+    asio::cancellation_signal sequence_id_cancel_signal;
     if (options_.protocol.is_reliable()) {
-      // TODO: !!!!! async_start_sequence_ack_loop should be detached, but should also has a finally block
-      
-      //asio::co_spawn(
-      //    io_service_.get_io_context(),
-      //    async_start_sequence_ack_loop(/* TODO: add sid cancel slot here */),
-      //    // TODO: replace this with std::share...
-      //    [&web_socket_close_status, this](auto e) {
-      //      asio::co_spawn(
-      //          this->io_service_.get_io_context(),
-      //          this->handle_connection_close(web_socket_close_status),
-      //          asio::detached);
-      //    });
+      asio::co_spawn(io_service_.get_io_context(),
+                     async_start_sequence_ack_loop(sid_loop_result),
+                     asio::bind_cancellation_slot(
+                         sequence_id_cancel_signal.slot(), asio::detached));
     }
 
     try {
-      scope_guard guard(io_service_.get_io_context(), []() -> void {
-        std::cout << "log web socket closed\n";
-        // TODO: cancel sequence ack
-        // sequence_ack_cts.cancel();
-      });
+      scope_guard _(io_service_.get_io_context(),
+                    [&sequence_id_cancel_signal, &sid_loop_result,
+                     &web_socket_close_status, this]() -> asio::awaitable<void> {
+                      std::cout << "log web socket closed\n";
+                      sequence_id_cancel_signal.emit(asio::cancellation_type::total);
+                      auto coro_result = co_await sid_loop_result.async_receive(asio::use_awaitable);
+                      co_await async_handle_connection_close(
+                          web_socket_close_status);
+                    });
       for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
            is_canceled = co_await async_is_coro_cancelled()) {
         std::string payload;
@@ -352,9 +357,9 @@ private:
             // TODO: protocol only support text, not support binary here, due
             // to avoid copy.
             // The web socket client can return binary here.
-             auto response = options_.protocol.read(std::move(payload));
+            auto response = options_.protocol.read(std::move(payload));
             if (response) {
-               co_await async_handle_response(std::move(*response));
+              co_await async_handle_response(std::move(*response));
             } else {
               std::cout << "log failed to parse message\n";
             }
@@ -399,12 +404,11 @@ private:
     }
   }
 
-  void
-  async_handle_connection_connected(ConnectedResponse response) {
+  void async_handle_connection_connected(ConnectedResponse response) {
     if (options_.auto_rejoin_groups) {
       // TODO
-      //for (auto group : groups_) {
-      //  
+      // for (auto group : groups_) {
+      //
       //}
     }
     asio::co_spawn(io_service_.get_io_context(),
@@ -425,25 +429,29 @@ private:
   }
 
   // TODO: impl
-  void handle_disconnected_response(DisconnectedResponse response) {
-    return;
-  }
+  void handle_disconnected_response(DisconnectedResponse response) { return; }
 
   // TODO: impl
   void handle_ack_response(AckResponse response) { return; }
 
   // TODO: impl
-  void handle_group_data_response(GroupMessageResponseV2 response) {
-    return;
-  }
+  void handle_group_data_response(GroupMessageResponseV2 response) { return; }
 
   // TODO: impl
-  void handle_server_data_response(ServerMessageResponse response) {
-    return;
-  }
+  void handle_server_data_response(ServerMessageResponse response) { return; }
 
-  asio::awaitable<void> async_start_sequence_ack_loop() {
+  asio::awaitable<void> async_start_sequence_ack_loop(
+      asio::experimental::channel<void(asio::error_code, coro_result)>
+          &sid_loop_result) {
     using namespace asio::experimental::awaitable_operators;
+    scope_guard _(io_service_.get_io_context(),
+                  [&sid_loop_result]() -> asio::awaitable<void> {
+                    auto is_canceled = co_await async_is_coro_cancelled();
+                    auto coro_result = is_canceled ? coro_result::cancelled
+                                                   : coro_result::completed;
+                    co_await sid_loop_result.async_send(
+                        asio::error_code{}, coro_result, asio::use_awaitable);
+                  });
 
     for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
          is_canceled = co_await async_is_coro_cancelled()) {
