@@ -36,7 +36,6 @@
 #include <webpubsub/client/models/io_service.hpp>
 #include <webpubsub/client/models/request_result.hpp>
 #include <webpubsub/client/policies/retry_policy.hpp>
-#include <asio/bind_cancellation_slot.hpp>
 
 namespace webpubsub {
 template <typename WebSocketFactory, typename WebSocket,
@@ -64,7 +63,8 @@ public:
   client(client_options<WebPubSubProtocol> &options,
          const client_credential &credential,
          const WebSocketFactory &web_socket_factory, io_service &io_service)
-      : options_(options), credential_(credential), io_service_(io_service),
+      : logger_(init_logger()), options_(options),
+        credential_(credential), io_service_(io_service),
         stop_cts_(io_service_.get_io_context()), client_(nullptr),
         web_socket_factory_(web_socket_factory) {}
 
@@ -102,6 +102,21 @@ public:
 #pragma endregion
 
 private:
+  // TODO: put constants to var
+  // TODO: allow add customize sink
+  std::shared_ptr<spdlog::logger> init_logger() {
+    std::string logger_name("__webpubsub_client_logger__");
+    spdlog::init_thread_pool(8192, 1);
+    auto rotating_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        "logs/webpubsub_client.log", 1024 * 1024 * 10, 3);
+    std::vector<spdlog::sink_ptr> sinks{rotating_sink};
+    auto logger = std::make_shared<spdlog::async_logger>(
+        logger_name, sinks.begin(), sinks.end(), spdlog::thread_pool(),
+        spdlog::async_overflow_policy::block);
+    spdlog::register_logger(logger);
+    return logger;
+  }
+
   asio::awaitable<void> async_start_core() {
     client_state_.change_state(client_state::connecting);
     std::cout << "log conn start" << std::endl;
@@ -126,8 +141,8 @@ private:
                    asio::detached);
   }
 
-  asio::awaitable<void>
-  async_handle_connection_close(const web_socket_close_status &web_socket_status) {
+  asio::awaitable<void> async_handle_connection_close(
+      const web_socket_close_status &web_socket_status) {
     for (auto &[ack_id, ack_completion_source] : ack_cache_) {
       if (ack_cache_.find(ack_id) != ack_cache_.end()) {
         auto message = std::format("Connection is disconnected before receive "
@@ -322,7 +337,7 @@ private:
         web_socket_close_status::empty;
 
     asio::experimental::channel<void(asio::error_code, coro_result)>
-        sid_loop_result {io_service_.get_io_context(), 1};
+        sid_loop_result{io_service_.get_io_context(), 1};
     asio::cancellation_signal sequence_id_cancel_signal;
     if (options_.protocol.is_reliable()) {
       asio::co_spawn(io_service_.get_io_context(),
@@ -332,15 +347,16 @@ private:
     }
 
     try {
-      scope_guard _(io_service_.get_io_context(),
-                    [&sequence_id_cancel_signal, &sid_loop_result,
-                     &web_socket_close_status, this]() -> asio::awaitable<void> {
-                      std::cout << "log web socket closed\n";
-                      sequence_id_cancel_signal.emit(asio::cancellation_type::total);
-                      auto coro_result = co_await sid_loop_result.async_receive(asio::use_awaitable);
-                      co_await async_handle_connection_close(
-                          web_socket_close_status);
-                    });
+      scope_guard _(
+          io_service_.get_io_context(),
+          [&sequence_id_cancel_signal, &sid_loop_result,
+           &web_socket_close_status, this]() -> asio::awaitable<void> {
+            std::cout << "log web socket closed\n";
+            sequence_id_cancel_signal.emit(asio::cancellation_type::total);
+            auto coro_result =
+                co_await sid_loop_result.async_receive(asio::use_awaitable);
+            co_await async_handle_connection_close(web_socket_close_status);
+          });
       for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
            is_canceled = co_await async_is_coro_cancelled()) {
         std::string payload;
@@ -483,6 +499,7 @@ private:
   }
 
 private:
+  std::shared_ptr<spdlog::logger> logger_;
   io_service &io_service_;
   const client_options<WebPubSubProtocol> &options_;
   const client_credential &credential_;

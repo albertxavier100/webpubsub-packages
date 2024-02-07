@@ -1,4 +1,7 @@
 #pragma once
+#include "spdlog/async.h"
+#include "spdlog/sinks/rotating_file_sink.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include <asio/awaitable.hpp>
 #include <asio/bind_cancellation_slot.hpp>
 #include <asio/cancellation_signal.hpp>
@@ -64,6 +67,7 @@ TEST(RAW, Asio) {
       webpubsub::client<test_web_socket_factory, test_web_socket,
                         webpubsub::reliable_json_v1_protocol>;
 
+  // client setup
   webpubsub::reliable_json_v1_protocol p;
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
