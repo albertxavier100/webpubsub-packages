@@ -4,6 +4,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include <asio/awaitable.hpp>
 #include <asio/bind_cancellation_slot.hpp>
+
 #include <asio/cancellation_signal.hpp>
 #include <asio/cancellation_state.hpp>
 #include <asio/co_spawn.hpp>
@@ -24,6 +25,7 @@ public:
   test_web_socket() = default;
 
   asio::awaitable<void> async_connect() { co_return; };
+  asio::awaitable<void> async_close() { co_return; };
 
   asio::awaitable<void> async_write(const std::string payload) { co_return; };
   asio::awaitable<void> async_read(std::string &payload,

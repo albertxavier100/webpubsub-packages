@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+#include <webpubsub/client/async/operation_waiter.hpp>
 #include <webpubsub/client/async/task_cancellation/cancellation_token_source.hpp>
 #include <webpubsub/client/async/task_completion/task_completion_source.hpp>
 #include <webpubsub/client/common/constants.hpp>
@@ -63,19 +64,28 @@ public:
   client(client_options<WebPubSubProtocol> &options,
          const client_credential &credential,
          const WebSocketFactory &web_socket_factory, io_service &io_service)
-      : logger_(init_logger()), options_(options),
-        credential_(credential), io_service_(io_service),
-        stop_cts_(io_service_.get_io_context()), client_(nullptr),
-        web_socket_factory_(web_socket_factory) {}
+      : logger_(init_logger()), options_(options), credential_(credential),
+        io_service_(io_service), stop_cts_(io_service_.get_io_context()),
+        client_(nullptr), web_socket_factory_(web_socket_factory),
+        stopping_waiter_(io_service_.get_io_context()),
+        listen_loop_waiter_(io_service_.get_io_context()) {}
 
 public:
 #pragma region webpubsub api for awaitable
+  // TODO: impl
+  asio::awaitable<void> async_stop() {
+    // TODO: need to store task
+
+    co_await async_stop_core();
+  }
+
   asio::awaitable<void> async_start() {
     // TODO: error: cannot check this way
     if (stop_cts_.is_cancellation_requested()) {
       throw std::invalid_argument("Can not start a client during stopping");
     }
 
+    stopping_waiter_.reset();
     if (client_state_.get_state() != client_state::stopped) {
       throw std::invalid_argument(
           "Client can be only started when the state is Stopped");
@@ -102,8 +112,26 @@ public:
 #pragma endregion
 
 private:
-  // TODO: put constants to var
-  // TODO: allow add customize sink
+  asio::awaitable<void> async_stop_core() {
+    scope_guard _([]() -> void {
+      // TODO: necessary?
+      // stopped_signal_ = asio::cancellation_signal();
+      co_await stopping_waiter_.async_complete();
+    });
+    co_await stopping_waiter_.async_start();
+
+    try {
+      co_await client_.async_close();
+    } catch (...) {
+    }
+
+    try {
+      stopped_signal_.emit(asio::cancellation_type::all);
+      co_await listen_loop_waiter_.aysnc_wait();
+    } catch (...) {
+    }
+  };
+  // TODO: allow add customize sink std::shared_ptr<spdlog::logger>
   std::shared_ptr<spdlog::logger> init_logger() {
     std::string logger_name("__webpubsub_client_logger__");
     spdlog::init_thread_pool(8192, 1);
@@ -113,7 +141,7 @@ private:
     auto logger = std::make_shared<spdlog::async_logger>(
         logger_name, sinks.begin(), sinks.end(), spdlog::thread_pool(),
         spdlog::async_overflow_policy::block);
-    spdlog::register_logger(logger);
+    // spdlog::register_logger(logger);
     return logger;
   }
 
@@ -169,8 +197,8 @@ private:
         std::cout << "log The client is stopped\n";
         should_recover = false;
       } else if (!options_.protocol.is_reliable()) {
-        std::cout
-            << "The protocol is not reliable, recovery is not applicable \n";
+        std::cout << "The protocol is not reliable, recovery is not "
+                     "applicable \n";
         should_recover = false;
       } else if (!try_build_recovery_uri(recovery_uri)) {
         std::cout << "Connection id or reconnection token is not availble\n";
@@ -317,8 +345,8 @@ private:
     }
 
     if (client_state_.get_state() != client_state::disconnected) {
-      throw std::invalid_argument(
-          "Client restart should happen only when the state is Disconnected");
+      throw std::invalid_argument("Client restart should happen only when "
+                                  "the state is Disconnected");
     }
 
     try {
@@ -332,7 +360,11 @@ private:
   // TODO: final check
   // main loop -> sequence id loop -> close connection
   asio::awaitable<void> async_start_listen_loop() {
-
+    scope_guard _(io_service_.get_io_context(),
+                  [this]() -> asio::awaitable<void> {
+                    co_await this->listen_loop_waiter_.async_complete();
+                  });
+    co_await listen_loop_waiter_.async_start();
     web_socket_close_status web_socket_close_status =
         web_socket_close_status::empty;
 
@@ -370,9 +402,9 @@ private:
           try {
             // TODO: impl
 
-            // TODO: protocol only support text, not support binary here, due
-            // to avoid copy.
-            // The web socket client can return binary here.
+            // TODO: protocol only support text, not support binary here,
+            // due to avoid copy. The web socket client can return binary
+            // here.
             auto response = options_.protocol.read(std::move(payload));
             if (response) {
               co_await async_handle_response(std::move(*response));
@@ -512,8 +544,10 @@ private:
   asio::steady_timer::duration recover_delay_ = std::chrono::seconds(1);
 
 #pragma region Fields per start stop
-  asio::cancellation_signal stop_cancel_;
-  // TODO: move
+  asio::cancellation_signal stopped_signal_;
+  operation_waiter stopping_waiter_;
+  // TODO: replace with cancellation signal
+  // use to cancel listen loop
   cancellation_token_source stop_cts_;
 #pragma endregion
 
@@ -531,9 +565,14 @@ private:
       ack_cache_;
 #pragma endregion
 
+// TODO: add connection lock, start lock, stop lock
+#pragma region locks
+#pragma endregion
+
 #pragma region fields per web socket
   std::unique_ptr<WebSocket> client_;
   WebSocketFactory web_socket_factory_;
+  operation_waiter listen_loop_waiter_;
 #pragma endregion
 };
 } // namespace webpubsub
