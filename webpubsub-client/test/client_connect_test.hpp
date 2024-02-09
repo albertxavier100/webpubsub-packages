@@ -20,24 +20,26 @@
 #include <webpubsub/client/client.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 
-class test_web_socket {
+class test_web_socket_base {
 public:
-  test_web_socket() = default;
+  test_web_socket_base(){};
 
-  asio::awaitable<void> async_connect() { co_return; };
-  asio::awaitable<void> async_close() { co_return; };
+  virtual asio::awaitable<void> async_connect() { co_return; };
+  virtual asio::awaitable<void> async_close() { co_return; };
 
-  asio::awaitable<void> async_write(const std::string payload) { co_return; };
-  asio::awaitable<void> async_read(std::string &payload,
-                                   webpubsub::web_socket_close_status &status) {
-    status = webpubsub::web_socket_close_status::empty;
-    auto connected_message = create_connected_message();
-    payload = std::move(connected_message);
+  virtual asio::awaitable<void> async_write(const std::string payload) {
     co_return;
+  };
+  virtual asio::awaitable<void>
+  async_read(std::string &payload, webpubsub::web_socket_close_status &status) {
+    co_await async_read_connected_message(payload, status);
   };
 
 private:
-  std::string create_connected_message() {
+  asio::awaitable<void>
+  async_read_connected_message(std::string &payload,
+                               webpubsub::web_socket_close_status &status) {
+    status = webpubsub::web_socket_close_status::empty;
     using namespace std::chrono_literals;
     auto json = R"(
 {
@@ -48,25 +50,28 @@ private:
     "reconnectionToken": "<token>"
 }
     )"_json;
-    return json.dump();
+    payload = json.dump();
+    co_return;
   }
 };
-static_assert(webpubsub::web_socket_t<test_web_socket>);
+static_assert(webpubsub::web_socket_t<test_web_socket_base>);
 
-class test_web_socket_factory {
+template <typename TWebSocket> class test_web_socket_factory {
 public:
-  std::unique_ptr<test_web_socket> create(std::string uri,
-                                          std::string protocol_name) {
-    return std::make_unique<test_web_socket>();
+  std::unique_ptr<TWebSocket> create(std::string uri,
+                                     std::string protocol_name) {
+    return std::make_unique<TWebSocket>();
   }
 };
 static_assert(
-    webpubsub::web_socket_factory_t<test_web_socket_factory, test_web_socket>);
+    webpubsub::web_socket_factory_t<
+        test_web_socket_factory<test_web_socket_base>, test_web_socket_base>);
 
 // TODO: better interface
 TEST(RAW, Asio) {
   using webpubsub_client =
-      webpubsub::client<test_web_socket_factory, test_web_socket,
+      webpubsub::client<test_web_socket_factory<test_web_socket_base>,
+                        test_web_socket_base,
                         webpubsub::reliable_json_v1_protocol>;
 
   // client setup
@@ -74,7 +79,7 @@ TEST(RAW, Asio) {
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
   webpubsub::io_service io_service;
-  test_web_socket_factory fac;
+  test_web_socket_factory<test_web_socket_base> fac;
   webpubsub_client client(opts, cre, fac, io_service);
 
   client.on_connected.append([](webpubsub::connected_context context) {
