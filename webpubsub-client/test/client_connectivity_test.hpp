@@ -20,9 +20,9 @@
 #include <webpubsub/client/client.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 
-class test_web_socket_base {
+class test_web_socket_connectivity_base {
 public:
-  test_web_socket_base(){};
+  test_web_socket_connectivity_base(){};
 
   virtual asio::awaitable<void> async_connect() { co_return; };
   virtual asio::awaitable<void> async_close() { co_return; };
@@ -32,7 +32,12 @@ public:
   };
   virtual asio::awaitable<void>
   async_read(std::string &payload, webpubsub::web_socket_close_status &status) {
-    co_await async_read_connected_message(payload, status);
+    using namespace std::chrono_literals;
+    co_await webpubsub::async_delay(1s);
+    if (!is_connected_) {
+      co_await async_read_connected_message(payload, status);
+      is_connected_ = true;
+    }
   };
 
 private:
@@ -53,8 +58,11 @@ private:
     payload = json.dump();
     co_return;
   }
+
+private:
+  bool is_connected_ = false;
 };
-static_assert(webpubsub::web_socket_t<test_web_socket_base>);
+static_assert(webpubsub::web_socket_t<test_web_socket_connectivity_base>);
 
 template <typename TWebSocket> class test_web_socket_factory {
 public:
@@ -63,43 +71,53 @@ public:
     return std::make_unique<TWebSocket>();
   }
 };
-static_assert(
-    webpubsub::web_socket_factory_t<
-        test_web_socket_factory<test_web_socket_base>, test_web_socket_base>);
+static_assert(webpubsub::web_socket_factory_t<
+              test_web_socket_factory<test_web_socket_connectivity_base>,
+              test_web_socket_connectivity_base>);
 
 // TODO: better interface
 TEST(RAW, Asio) {
-  using webpubsub_client =
-      webpubsub::client<test_web_socket_factory<test_web_socket_base>,
-                        test_web_socket_base,
-                        webpubsub::reliable_json_v1_protocol>;
+  using webpubsub_client = webpubsub::client<
+      test_web_socket_factory<test_web_socket_connectivity_base>,
+      test_web_socket_connectivity_base, webpubsub::reliable_json_v1_protocol>;
 
   // client setup
   webpubsub::reliable_json_v1_protocol p;
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
   webpubsub::io_service io_service;
-  test_web_socket_factory<test_web_socket_base> fac;
+  test_web_socket_factory<test_web_socket_connectivity_base> fac;
   webpubsub_client client(opts, cre, fac, io_service);
 
   client.on_connected.append([](webpubsub::connected_context context) {
-    std::cout << std::format("@@@@@ begin validate client.start: ");
+    std::cout << std::format("\n@@@@@ begin validate client.start: \n");
     EXPECT_EQ("abcdefghijklmnop", context.connection_id);
     EXPECT_EQ("user1", context.user_id);
     EXPECT_EQ("<token>", context.reconnection_token);
+    std::cout << std::format("\n@@@@@ end validate client.start: \n");
   });
 
   std::string group("group_name");
   auto &io_context = client.get_io_service().get_io_context();
 
-  auto run = [&]() -> asio::awaitable<void> {
+  auto run_main = [&]() -> asio::awaitable<void> {
     asio::cancellation_signal cs_start;
+    std::cout << "\n***** begin client.async_start\n";
     co_await asio::co_spawn(
         io_context, client.async_start(),
         asio::bind_cancellation_slot(cs_start.slot(), asio::use_awaitable));
+
+    cs_start.emit(asio::cancellation_type::all);
+    std::cout << "\n***** begin client.async_stop\n";
+
+    // co_await client.async_stop();
   };
 
-  asio::co_spawn(io_context, run(), asio::detached);
+  auto stop = [&]() -> asio::awaitable<void> {
+    co_await webpubsub::async_delay(std::chrono::seconds(5));
+  };
+
+  asio::co_spawn(io_context, run_main(), asio::detached);
 
   io_context.run();
 }

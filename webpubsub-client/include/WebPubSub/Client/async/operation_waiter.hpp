@@ -1,6 +1,6 @@
 #pragma once
-#include <asio/experimental/channel.hpp>
 #include <asio/experimental/awaitable_operators.hpp>
+#include <asio/experimental/channel.hpp>
 #include <memory>
 
 namespace webpubsub {
@@ -14,10 +14,10 @@ public:
   }
 
   asio::awaitable<void> async_complete() {
-     co_await channel_.async_receive(asio::use_awaitable);
+    co_await channel_.async_receive(asio::use_awaitable);
   }
 
-  asio::awaitable<void> aysnc_wait() {
+  asio::awaitable<void> async_wait() {
     co_await channel_.async_send(asio::error_code{}, false,
                                  asio::use_awaitable);
     co_await channel_.async_receive(asio::use_awaitable);
