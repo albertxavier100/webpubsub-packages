@@ -73,6 +73,7 @@ public:
 
 public:
 #pragma region webpubsub api for awaitable
+
   // TODO: impl
   asio::awaitable<void> async_stop() {
     // TODO: need to store task
@@ -100,15 +101,22 @@ public:
 
   asio::awaitable<request_result>
   async_join_group(const std::string &group,
-                   const std::optional<uint64_t> &ack_id) {co_return;}
+                   const std::optional<uint64_t> &ack_id) {
+    co_return;
+  }
+
 #pragma endregion
 
 #pragma region getters and setters
+
   const std::string &get_connection_id() { return connection_id_; }
+
 #pragma endregion
 
 #pragma region asio
+
   io_service &get_io_service() { return io_service_; }
+
 #pragma endregion
 
 private:
@@ -135,6 +143,7 @@ private:
           co_await stopping_waiter_.async_complete();
         });
   };
+
   // TODO: allow add customize sink std::shared_ptr<spdlog::logger>
   std::shared_ptr<spdlog::logger> init_logger() {
     std::string logger_name("__webpubsub_client_logger__");
@@ -172,7 +181,7 @@ private:
 
     auto cancellation_state = co_await asio::this_coro::cancellation_state;
     auto cancellation_slot = cancellation_state.slot();
-    
+
     // TODO: use my own function to spawn
     asio::co_spawn(
         io_service_.get_io_context(), async_run_listen_loop_detached(),
@@ -381,8 +390,8 @@ private:
     asio::cancellation_signal sequence_id_loop_cancel_signal;
     operation_waiter sequence_id_loop_waiter(io_service_.get_io_context());
     if (options_.protocol.is_reliable()) {
-        
-        // TODO: use my own function to spawn
+
+      // TODO: use my own function to spawn
       asio::co_spawn(
           io_service_.get_io_context(),
           async_run_sequence_ack_loop_detached(sequence_id_loop_waiter),
@@ -545,8 +554,6 @@ private:
     co_await client_->async_write(std::move(payload));
   }
 
-  
-
 private:
   std::shared_ptr<spdlog::logger> logger_;
   io_service &io_service_;
@@ -592,5 +599,6 @@ private:
 #pragma endregion
 
   asio::cancellation_signal listen_loop_cancel_signal_;
+  asio::cancellation_signal sequence_id_loop_cancel_signal_;
 };
 } // namespace webpubsub
