@@ -100,7 +100,7 @@ public:
 
   asio::awaitable<request_result>
   async_join_group(const std::string &group,
-                   const std::optional<uint64_t> &ack_id) {}
+                   const std::optional<uint64_t> &ack_id) {co_return;}
 #pragma endregion
 
 #pragma region getters and setters
@@ -172,7 +172,8 @@ private:
 
     auto cancellation_state = co_await asio::this_coro::cancellation_state;
     auto cancellation_slot = cancellation_state.slot();
-
+    
+    // TODO: use my own function to spawn
     asio::co_spawn(
         io_service_.get_io_context(), async_run_listen_loop_detached(),
         asio::bind_cancellation_slot(cancellation_slot, asio::detached));
@@ -380,6 +381,8 @@ private:
     asio::cancellation_signal sequence_id_loop_cancel_signal;
     operation_waiter sequence_id_loop_waiter(io_service_.get_io_context());
     if (options_.protocol.is_reliable()) {
+        
+        // TODO: use my own function to spawn
       asio::co_spawn(
           io_service_.get_io_context(),
           async_run_sequence_ack_loop_detached(sequence_id_loop_waiter),
@@ -541,6 +544,8 @@ private:
         webpubsub_protocol_message_type == WebPubSubProtocolMessageText;
     co_await client_->async_write(std::move(payload));
   }
+
+  
 
 private:
   std::shared_ptr<spdlog::logger> logger_;

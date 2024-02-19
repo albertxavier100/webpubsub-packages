@@ -33,3 +33,7 @@ webpubsub-client/out/
 webpubsub-client/build-codeblock/
 
 webpubsub-client/build-sublime/
+
+webpubsub-client/cmake-build-debug/
+
+webpubsub-client/cmake-build-debug-llvm/

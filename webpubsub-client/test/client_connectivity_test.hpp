@@ -90,11 +90,11 @@ TEST(RAW, Asio) {
   webpubsub_client client(opts, cre, fac, io_service);
 
   client.on_connected.append([](webpubsub::connected_context context) {
-    std::cout << std::format("\n@@@@@ begin validate client.start: \n");
+    std::cout << std::format("\n***** begin validate client.start: \n");
     EXPECT_EQ("abcdefghijklmnop", context.connection_id);
     EXPECT_EQ("user1", context.user_id);
     EXPECT_EQ("<token>", context.reconnection_token);
-    std::cout << std::format("\n@@@@@ end validate client.start: \n");
+    std::cout << std::format("\n***** end validate client.start: \n");
   });
 
   std::string group("group_name");

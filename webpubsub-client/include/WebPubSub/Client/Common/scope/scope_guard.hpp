@@ -7,7 +7,7 @@
 namespace webpubsub {
 template <typename F>
 concept ScopeGuardFinallyBlock = requires(F finally_block) { finally_block(); };
-
+// TODO: use async_block instead
 template <ScopeGuardFinallyBlock FinallyBlock> class scope_guard {
 public:
   scope_guard(asio::io_context &io_context, FinallyBlock finally_block)
