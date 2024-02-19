@@ -8,6 +8,57 @@
 #include <string>
 
 namespace webpubsub {
+namespace details {
+template <typename T>
+void getData(const std::optional<DataType> &dataType,
+             const nlohmann::json &data, T &dataOut) {
+  if (dataType.value_or(Json) != Json ||
+      data.type() != nlohmann::json::value_t::object) {
+    throw std::invalid_argument(
+        "DataType is not Json or json value is not object");
+  }
+  data.get_to(dataOut);
+}
+
+template <>
+void getData(const std::optional<DataType> &dataType,
+             const nlohmann::json &data, std::vector<uint8_t> &dataOut) {
+  if (data.type() != nlohmann::json::value_t::string) {
+    throw std::invalid_argument(
+        "try to get binary data but json value is not string");
+  }
+  if (dataType.value_or(Json) != Binary) {
+    throw std::invalid_argument(
+        "try to get binary data but data type is not binary");
+  }
+  auto encoded = data.get<std::string>();
+  using base64 = cppcodec::base64_rfc4648;
+  dataOut = base64::decode(encoded);
+  return;
+}
+template <>
+void getData(const std::optional<DataType> &dataType,
+             const nlohmann::json &data, std::string &dataOut) {
+  switch (dataType.value_or(Json)) {
+  case Text: {
+    if (data.type() != nlohmann::json::value_t::string) {
+      throw std::invalid_argument(
+          "try to get text data but json value is not string");
+    }
+    data.get_to(dataOut);
+    return;
+  }
+  case Json:
+  default: {
+    dataOut = data.dump();
+    return;
+  }
+  }
+}
+} // namespace details
+} // namespace webpubsub
+
+namespace webpubsub {
 class MessageResponseV2 : public Response {
 public:
   MessageResponseV2() = default;
@@ -17,45 +68,9 @@ public:
   const std::optional<DataType> &getDataType() const { return dataType; }
 #pragma region getData
   template <typename T> void getData(T &dataOut) const {
-    if (dataType.value_or(Json) != Json ||
-        data.type() != nlohmann::json::value_t::object) {
-      throw std::invalid_argument(
-          "DataType is not Json or json value is not object");
-    }
-    data.get_to(dataOut);
+    details::getData(dataType, data, dataOut);
   }
 
-  template <> void getData(std::vector<uint8_t> &dataOut) const {
-    if (data.type() != nlohmann::json::value_t::string) {
-      throw std::invalid_argument(
-          "try to get binary data but json value is not string");
-    }
-    if (dataType.value_or(Json) != Binary) {
-      throw std::invalid_argument(
-          "try to get binary data but data type is not binary");
-    }
-    auto encoded = data.get<std::string>();
-    using base64 = cppcodec::base64_rfc4648;
-    dataOut = base64::decode(encoded);
-    return;
-  }
-  template <> void getData(std::string &dataOut) const {
-    switch (dataType.value_or(Json)) {
-    case Text: {
-      if (data.type() != nlohmann::json::value_t::string) {
-        throw std::invalid_argument(
-            "try to get text data but json value is not string");
-      }
-      data.get_to(dataOut);
-      return;
-    }
-    case Json:
-    default: {
-      dataOut = data.dump();
-      return;
-    }
-    }
-  }
 #pragma endregion
 #pragma endregion
 
