@@ -69,7 +69,8 @@ public:
         io_service_(io_service), stop_cts_(io_service_.get_io_context()),
         client_(nullptr), web_socket_factory_(web_socket_factory),
         stopping_waiter_(io_service_.get_io_context()),
-        listen_loop_waiter_(io_service_.get_io_context()) {}
+        listen_loop_waiter_(io_service_.get_io_context()),
+        sequence_id_loop_waiter_(io_service_.get_io_context()) {}
 
 public:
 #pragma region webpubsub api for awaitable
@@ -179,13 +180,10 @@ private:
     client_ = std::move(client);
     client_state_.change_state(client_state::connected);
 
-    auto cancellation_state = co_await asio::this_coro::cancellation_state;
-    auto cancellation_slot = cancellation_state.slot();
-
-    // TODO: use my own function to spawn
-    asio::co_spawn(
-        io_service_.get_io_context(), async_run_listen_loop_detached(),
-        asio::bind_cancellation_slot(cancellation_slot, asio::detached));
+    co_spawn_detached_with_signal(
+        io_service_.get_io_context(),
+        std::move(async_run_listen_loop_detached()), listen_loop_cancel_signal_,
+        std::move([](const auto &_) {}), std::move([](const auto &_) {}));
   }
 
   asio::awaitable<void> async_handle_connection_close(
@@ -376,6 +374,39 @@ private:
     }
   }
 
+  asio::awaitable<void> async_run_sequence_ack_loop_detached() {
+    using namespace asio::experimental::awaitable_operators;
+
+    scope_guard _(io_service_.get_io_context(),
+                  [this]() -> asio::awaitable<void> {
+                    // auto is_canceled = co_await async_is_coro_cancelled();
+                    co_await sequence_id_loop_waiter_.async_complete();
+                  });
+    co_await sequence_id_loop_waiter_.async_start();
+
+    for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
+         is_canceled = co_await async_is_coro_cancelled()) {
+
+      co_await async_block<std::exception>::async_run(
+          [&]() -> asio::awaitable<void> {
+            uint64_t id;
+            if (sequence_id_.try_get_sequence_id(id)) {
+              auto req = SequenceAckSignal(id);
+              auto payload = options_.protocol.write(std::move(req));
+              co_await async_send_core(
+                  std::move(payload),
+                  options_.protocol.get_webpubsub_protocol_message_type());
+            } else {
+              co_await asio::this_coro::executor;
+            }
+          },
+          [&](const std::exception &e) -> asio::awaitable<void> { co_return; },
+          [&]() -> asio::awaitable<void> {
+            co_await webpubsub::async_delay(asio::chrono::seconds(1));
+          });
+    }
+  }
+
   // TODO: final check
   // main loop -> sequence id loop -> close connection
   asio::awaitable<void> async_run_listen_loop_detached() {
@@ -387,26 +418,22 @@ private:
     web_socket_close_status web_socket_close_status =
         web_socket_close_status::empty;
 
-    asio::cancellation_signal sequence_id_loop_cancel_signal;
-    operation_waiter sequence_id_loop_waiter(io_service_.get_io_context());
     if (options_.protocol.is_reliable()) {
-
-      // TODO: use my own function to spawn
-      asio::co_spawn(
+      co_spawn_detached_with_signal(
           io_service_.get_io_context(),
-          async_run_sequence_ack_loop_detached(sequence_id_loop_waiter),
-          asio::bind_cancellation_slot(sequence_id_loop_cancel_signal.slot(),
-                                       asio::detached));
+          std::move(async_run_sequence_ack_loop_detached()),
+          sequence_id_loop_cancel_signal_, std::move([](const auto &_) {}),
+          std::move([](const auto &_) {}));
     }
 
     try {
       scope_guard _(
           io_service_.get_io_context(),
-          [&sequence_id_loop_cancel_signal, &sequence_id_loop_waiter,
-           &web_socket_close_status, this]() -> asio::awaitable<void> {
+          [&web_socket_close_status, this]() -> asio::awaitable<void> {
             std::cout << "log web socket closed\n";
-            sequence_id_loop_cancel_signal.emit(asio::cancellation_type::total);
-            co_await sequence_id_loop_waiter.async_wait();
+            sequence_id_loop_cancel_signal_.emit(
+                asio::cancellation_type::terminal);
+            co_await sequence_id_loop_waiter_.async_wait();
             co_await async_handle_connection_close(web_socket_close_status);
           });
       for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
@@ -511,40 +538,6 @@ private:
   // TODO: impl
   void handle_server_data_response(ServerMessageResponse response) { return; }
 
-  asio::awaitable<void> async_run_sequence_ack_loop_detached(
-      operation_waiter &sequence_id_loop_waiter) {
-    using namespace asio::experimental::awaitable_operators;
-
-    scope_guard _(io_service_.get_io_context(),
-                  [&sequence_id_loop_waiter]() -> asio::awaitable<void> {
-                    // auto is_canceled = co_await async_is_coro_cancelled();
-                    co_await sequence_id_loop_waiter.async_complete();
-                  });
-    co_await sequence_id_loop_waiter.async_start();
-
-    for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
-         is_canceled = co_await async_is_coro_cancelled()) {
-
-      co_await async_block<std::exception>::async_run(
-          [&]() -> asio::awaitable<void> {
-            uint64_t id;
-            if (sequence_id_.try_get_sequence_id(id)) {
-              auto req = SequenceAckSignal(id);
-              auto payload = options_.protocol.write(std::move(req));
-              co_await async_send_core(
-                  std::move(payload),
-                  options_.protocol.get_webpubsub_protocol_message_type());
-            } else {
-              co_await asio::this_coro::executor;
-            }
-          },
-          [&](const std::exception &e) -> asio::awaitable<void> { co_return; },
-          [&]() -> asio::awaitable<void> {
-            co_await webpubsub::async_delay(asio::chrono::seconds(1));
-          });
-    }
-  }
-
   asio::awaitable<void> async_send_core(
       std::string payload,
       WebPubSubProtocolMessageType webpubsub_protocol_message_type) {
@@ -598,7 +591,9 @@ private:
   operation_waiter listen_loop_waiter_;
 #pragma endregion
 
+  // TODO: reset them when connect/reconnect
   asio::cancellation_signal listen_loop_cancel_signal_;
   asio::cancellation_signal sequence_id_loop_cancel_signal_;
+  operation_waiter sequence_id_loop_waiter_;
 };
 } // namespace webpubsub
