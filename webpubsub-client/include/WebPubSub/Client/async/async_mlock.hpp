@@ -17,7 +17,12 @@ public:
                                  asio::use_awaitable);
   }
   asio::awaitable<void> async_release() {
-    co_await channel_.async_receive(asio::use_awaitable);
+    try {
+      co_await channel_.async_receive(asio::use_awaitable);
+
+    } catch (const std::exception &ex) {
+      std::cout << ex.what() << std::endl;
+    }
   }
 
   void reset() { channel_.reset(); }

@@ -77,6 +77,7 @@ static_assert(webpubsub::web_socket_factory_t<
 
 // TODO: better interface
 TEST(RAW, Asio) {
+  using namespace std::chrono_literals;
   using webpubsub_client = webpubsub::client<
       test_web_socket_factory<test_web_socket_connectivity_base>,
       test_web_socket_connectivity_base, webpubsub::reliable_json_v1_protocol>;
@@ -107,10 +108,12 @@ TEST(RAW, Asio) {
         io_context, client.async_start(),
         asio::bind_cancellation_slot(cs_start.slot(), asio::use_awaitable));
 
-    cs_start.emit(asio::cancellation_type::all);
-    std::cout << "\n***** begin client.async_stop\n";
+    cs_start.emit(asio::cancellation_type::terminal);
+    
+    co_await webpubsub::async_delay(1s);
 
-    // co_await client.async_stop();
+    std::cout << "\n***** begin client.async_stop\n";
+    co_await client.async_stop();
   };
 
   auto stop = [&]() -> asio::awaitable<void> {
