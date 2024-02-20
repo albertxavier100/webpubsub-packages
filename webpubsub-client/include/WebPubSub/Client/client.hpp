@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <variant>
 #include <webpubsub/client/async/async_block.hpp>
+#include <webpubsub/client/async/async_mlock.hpp>
 #include <webpubsub/client/async/operation_waiter.hpp>
 #include <webpubsub/client/async/task_cancellation/cancellation_token_source.hpp>
 #include <webpubsub/client/async/task_completion/task_completion_source.hpp>
@@ -66,37 +67,42 @@ public:
          const client_credential &credential,
          const WebSocketFactory &web_socket_factory, io_service &io_service)
       : logger_(init_logger()), options_(options), credential_(credential),
-        io_service_(io_service), stop_cts_(io_service_.get_io_context()),
-        client_(nullptr), web_socket_factory_(web_socket_factory),
-        stopping_waiter_(io_service_.get_io_context()),
+        io_service_(io_service), client_(nullptr),
+        web_socket_factory_(web_socket_factory),
+        stop_lock_(io_service_.get_io_context()),
         listen_loop_waiter_(io_service_.get_io_context()),
         sequence_id_loop_waiter_(io_service_.get_io_context()) {}
 
 public:
 #pragma region webpubsub api for awaitable
 
-  // TODO: impl
-  asio::awaitable<void> async_stop() {
-    // TODO: need to store task
-
-    co_await async_stop_core();
-  }
-
+  asio::awaitable<void> async_stop() { co_await async_stop_core(); }
   asio::awaitable<void> async_start() {
-    // TODO: error: cannot check this way
-    if (stop_cts_.is_cancellation_requested()) {
-      throw std::invalid_argument("Can not start a client during stopping");
-    }
-
-    stopping_waiter_.reset();
-    if (client_state_.get_state() != client_state::stopped) {
-      throw std::invalid_argument(
-          "Client can be only started when the state is Stopped");
-    }
-
     try {
-      co_await async_start_core();
-    } catch (...) {
+      asio::co_spawn(
+          io_service_.get_io_context(), async_start_internal(),
+          asio::bind_cancellation_slot(listen_loop_cancel_signal_.slot(),
+                                       asio::use_awaitable));
+    } catch (const asio::system_error &error) {
+      listen_loop_cancel_signal_.emit(asio::cancellation_type::terminal);
+    }
+  }
+  asio::awaitable<void> async_start_internal() {
+    try {
+      co_await stop_lock_.async_lock();
+      co_await stop_lock_.async_release();
+
+      if (client_state_.get_state() != client_state::stopped) {
+        throw std::invalid_argument(
+            "Client can be only started when the state is Stopped");
+      }
+
+      try {
+        co_await async_start_core();
+      } catch (...) {
+      }
+    } catch (const asio::system_error &error) {
+      throw std::invalid_argument("Can not start a client during stopping");
     }
   }
 
@@ -123,8 +129,8 @@ public:
 private:
   asio::awaitable<void> async_stop_core() {
     co_await async_block<std::exception>::async_run(
-        [&]() -> asio::awaitable<void> {
-          co_await stopping_waiter_.async_start();
+        [this]() -> asio::awaitable<void> {
+          co_await stop_lock_.async_lock();
 
           try {
             co_await client_->async_close();
@@ -132,16 +138,14 @@ private:
           }
 
           try {
-            listen_loop_cancel_signal_.emit(asio::cancellation_type::all);
+            listen_loop_cancel_signal_.emit(asio::cancellation_type::terminal);
             co_await listen_loop_waiter_.async_wait();
           } catch (...) {
           }
         },
-        [&](auto...) -> asio::awaitable<void> { co_return; },
-        [&]() -> asio::awaitable<void> {
-          // TODO: necessary?
-          //  = asio::cancellation_signal();
-          co_await stopping_waiter_.async_complete();
+        [](auto...) -> asio::awaitable<void> { co_return; },
+        [this]() -> asio::awaitable<void> {
+          co_await stop_lock_.async_release();
         });
   };
 
@@ -356,10 +360,11 @@ private:
   }
 
   asio::awaitable<void> async_start_by_reconnection() {
-    // TODO: error: cannot check this way
-    if (stop_cts_.is_cancellation_requested()) {
-      throw std::invalid_argument("Can not start a client during stopping");
-    }
+    // TODO: bind listen_loop_cancel_signal_
+    //    if (stop_cts_.is_cancellation_requested()) {
+    //      throw std::invalid_argument("Can not start a client during
+    //      stopping");
+    //    }
 
     if (client_state_.get_state() != client_state::disconnected) {
       throw std::invalid_argument("Client restart should happen only when "
@@ -560,13 +565,6 @@ private:
   uint64_t next_ack_id_;
   asio::steady_timer::duration recover_delay_ = std::chrono::seconds(1);
 
-#pragma region Fields per start stop
-  operation_waiter stopping_waiter_;
-  // TODO: replace with cancellation signal
-  // use to cancel listen loop
-  cancellation_token_source stop_cts_;
-#pragma endregion
-
 #pragma region fields per connection id
   std::string client_access_uri_; // TODO: use a URI class?
   std::string connection_id_;
@@ -591,9 +589,10 @@ private:
   operation_waiter listen_loop_waiter_;
 #pragma endregion
 
-  // TODO: reset them when connect/reconnect
+  // TODO: reset them when connect/reconnece
   asio::cancellation_signal listen_loop_cancel_signal_;
   asio::cancellation_signal sequence_id_loop_cancel_signal_;
   operation_waiter sequence_id_loop_waiter_;
+  async_mlock stop_lock_;
 };
 } // namespace webpubsub
