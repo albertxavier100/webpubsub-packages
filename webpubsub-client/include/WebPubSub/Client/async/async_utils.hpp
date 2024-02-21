@@ -43,35 +43,4 @@ async_timeout(const asio::steady_timer::duration &duration) {
   std::cout << "Timeout!\n";
   co_return;
 }
-
-void co_spawn_detached_with_signal(
-    asio::io_context &io_context, asio::awaitable<void> awaitable,
-    asio::cancellation_signal &signal,
-    std::function<void(const asio::system_error &)> handle_system_error,
-    std::function<void(const std::exception &)> handle_unknown_error) {
-  auto run =
-      [](asio::io_context &io_context, asio::awaitable<void> awaitable,
-         asio::cancellation_signal &signal,
-         std::function<void(const asio::system_error &)> handle_system_error,
-         std::function<void(const std::exception &)> handle_unknown_error)
-      -> asio::awaitable<void> {
-    try {
-      co_await asio::co_spawn(
-          io_context, std::move(awaitable),
-          asio::bind_cancellation_slot(signal.slot(), asio::use_awaitable));
-    } catch (const asio::system_error &error) {
-      std::cout << std::format("Get system error: {}\n", error.what());
-      handle_system_error(error);
-    } catch (const std::exception &ex) {
-      std::cout << std::format("Get unknown exception: {}\n", ex.what());
-      handle_unknown_error(ex);
-    }
-  };
-  asio::co_spawn(io_context,
-                 run(io_context, std::move(awaitable), signal,
-                     std::move(handle_system_error),
-                     std::move(handle_unknown_error)),
-                 asio::detached);
-}
-
 } // namespace webpubsub
