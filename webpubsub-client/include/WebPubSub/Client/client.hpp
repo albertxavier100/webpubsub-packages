@@ -190,33 +190,9 @@ private:
     client_state_.change_state(client_state::connected);
 
     auto &ioc = io_service_.get_io_context();
-    asio::co_spawn(
-        ioc,
-        [this, &ioc]() -> asio::awaitable<void> {
-          auto token = asio::bind_cancellation_slot(
-              listen_loop_cancel_signal_.slot(), asio::use_awaitable);
-          try {
-            co_await asio::co_spawn(
-                ioc,
-                [this]() -> asio::awaitable<void> {
-                  co_await async_run_listen_loop_detached();
-                },
-                token);
-          } catch (const asio::system_error &error) {
-            std::cout << "[out-system] listen loop: get system error here\n";
-            std::cout << "[out-system] cancel seq loop\n";
-            sequence_id_loop_cancel_signal_.emit(
-                asio::cancellation_type::terminal);
-            // TODO: need to co_wait sequence loop canceled
-          } catch (const std::exception *ex) {
-            std::cout << "[out-unknown] listen loop: get unknown error here\n";
-            std::cout << "[out-unknown] cancel seq loop\n";
-            sequence_id_loop_cancel_signal_.emit(
-                asio::cancellation_type::terminal);
-            // TODO: need to co_wait sequence loop canceled
-          }
-        },
-        asio::detached);
+    asio::co_spawn(ioc, async_run_listen_loop_detached(),
+                   asio::bind_cancellation_slot(
+                       listen_loop_cancel_signal_.slot(), asio::use_awaitable));
   }
 
   asio::awaitable<void> async_handle_connection_close(
@@ -425,17 +401,20 @@ private:
     }
   }
 
-  void run_detached_sequence_loop() {
+  void run_detached_sequence_loop(asio::cancellation_signal &cancel_signal) {
+    sl.assign([&](asio::cancellation_type ct) { cancel_signal.emit(ct); });
+    struct scope_exit {
+      asio::cancellation_slot sl;
+      ~scope_exit() {
+        if (sl.is_connected()) {
+          sl.clear();
+        }
+      }
+    } scope_exit_{sl};
+
     asio::co_spawn(
-        io_service_.get_io_context(),
-        [this]() -> asio::awaitable<void> {
-          auto token = asio::bind_cancellation_slot(
-              sequence_id_loop_cancel_signal_.slot(), asio::use_awaitable);
-          co_await asio::co_spawn(io_service_.get_io_context(),
-                                  async_run_sequence_ack_loop_detached(),
-                                  token);
-        },
-        asio::detached);
+        io_service_.get_io_context(), async_run_sequence_ack_loop_detached(),
+        asio::bind_cancellation_slot(cancel_signal.slot(), asio::detached));
   }
 
   // TODO: final check
@@ -445,7 +424,8 @@ private:
         web_socket_close_status::empty;
 
     if (options_.protocol.is_reliable()) {
-      run_detached_sequence_loop();
+      asio::cancellation_signal sequence_id_loop_cancel_signal;
+      run_detached_sequence_loop(sequence_id_loop_cancel_signal);
     }
 
     try {
@@ -589,13 +569,13 @@ private:
   std::string reconnection_token_;
   bool is_initial_connected_ = false;
   std::optional<DisconnectedResponse> latest_disconnected_response_;
-  // TODO: change
+// TODO: change
 
-  // TODO: add ack cache
-  /* std::unordered_map<
-       uint16_t,
-       std::unique_ptr<task_completion_source<request_result_or_exception>>>
-       ack_cache_;*/
+// TODO: add ack cache
+/* std::unordered_map<
+     uint16_t,
+     std::unique_ptr<task_completion_source<request_result_or_exception>>>
+     ack_cache_;*/
 #pragma endregion
 
 // TODO: add connection lock, start lock, stop lock
