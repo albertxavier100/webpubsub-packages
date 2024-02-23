@@ -8,7 +8,6 @@
 #include <asio/system_error.hpp>
 #include <asio/use_awaitable.hpp>
 #include <iostream>
-#include <webpubsub/client/async/task_cancellation/cancellation_token.hpp>
 
 namespace webpubsub {
 asio::awaitable<bool> async_is_coro_cancelled() {

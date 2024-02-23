@@ -21,9 +21,7 @@
 #include <unordered_map>
 #include <variant>
 #include <webpubsub/client/async/exclusion_lock.hpp>
-#include <webpubsub/client/async/stop_notice.hpp>
 #include <webpubsub/client/common/constants.hpp>
-#include <webpubsub/client/common/scope/scope_guard.hpp>
 #include <webpubsub/client/common/uri/uri.hpp>
 #include <webpubsub/client/common/web_socket/web_socket_close_status.hpp>
 #include <webpubsub/client/concepts/web_socket_factory_t.hpp>

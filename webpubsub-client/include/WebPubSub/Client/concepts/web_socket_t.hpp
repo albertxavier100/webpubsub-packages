@@ -2,11 +2,10 @@
 #include <asio/awaitable.hpp>
 #include <iostream>
 #include <optional>
-#include <webpubsub/client/async/task_cancellation/cancellation_token.hpp>
 #include <webpubsub/client/common/web_socket/web_socket_close_status.hpp>
 namespace webpubsub {
 
-// TODO: imple this, so that uint* and char* don't need to cast
+// TODO: impl this, so that uint* and char* don't need to cast
 template <typename T>
 concept web_socket_t =
     requires(T t, std::string write_frame, std::string &read_frame,
