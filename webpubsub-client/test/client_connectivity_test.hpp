@@ -20,6 +20,8 @@
 #include <webpubsub/client/client.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 
+webpubsub::io_service io_service;
+
 class test_web_socket_connectivity_base {
 public:
   test_web_socket_connectivity_base(){};
@@ -33,7 +35,7 @@ public:
   virtual asio::awaitable<void>
   async_read(std::string &payload, webpubsub::web_socket_close_status &status) {
     using namespace std::chrono_literals;
-    co_await webpubsub::async_delay(1s);
+    co_await webpubsub::async_delay(io_service.get_io_context(), 1s);
     if (!is_connected_) {
       co_await async_read_connected_message(payload, status);
       is_connected_ = true;
@@ -86,7 +88,6 @@ TEST(RAW, Asio) {
   webpubsub::reliable_json_v1_protocol p;
   webpubsub::client_credential cre("");
   webpubsub::client_options opts{p};
-  webpubsub::io_service io_service;
   test_web_socket_factory<test_web_socket_connectivity_base> fac;
   webpubsub_client client(opts, cre, fac, io_service);
 
@@ -110,14 +111,14 @@ TEST(RAW, Asio) {
 
     cs_start.emit(asio::cancellation_type::terminal);
 
-    co_await webpubsub::async_delay(1s);
+    co_await webpubsub::async_delay(io_context, 1s);
 
     std::cout << "\n***** begin client.async_stop\n";
     co_await client.async_stop();
   };
 
   auto stop = [&]() -> asio::awaitable<void> {
-    co_await webpubsub::async_delay(std::chrono::seconds(5));
+    co_await webpubsub::async_delay( io_context, std::chrono::seconds(5));
   };
 
   asio::co_spawn(io_context, run_main(), asio::detached);

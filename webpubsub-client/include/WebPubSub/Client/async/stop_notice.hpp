@@ -1,6 +1,5 @@
 #pragma once
 
-#include <asio/as_tuple.hpp>
 #include <asio/awaitable.hpp>
 #include <asio/io_context.hpp>
 #include <asio/steady_timer.hpp>
@@ -15,13 +14,18 @@ public:
 
   asio::awaitable<void> async_wait() {
     std::cout << "timer_.async_wait start\n";
-    auto atoken = asio::use_awaitable;
-    auto token = asio::as_tuple(atoken);
-    const auto [ec] = co_await timer_.async_wait(token);
-    std::cout << "timer_.async_wait finish" << ec << "\n";
+    try {
+      co_await timer_.async_wait(asio::use_awaitable);
+    } catch (...) {
+      std::cout << "hello???\n";
+    }
+    std::cout << "something stop\n";
   }
 
-  void stop() { timer_.expires_after(std::chrono::seconds(0)); }
+  void stop() {
+    timer_.expires_after(std::chrono::seconds(0));
+    timer_.cancel();
+  }
 
 private:
   asio::steady_timer timer_;
