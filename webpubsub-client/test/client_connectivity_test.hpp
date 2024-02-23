@@ -20,20 +20,22 @@
 #include <webpubsub/client/client.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 
+using task = asio::awaitable<void>;
+static constexpr asio::steady_timer::time_point max_time_point =
+    asio::steady_timer::time_point::max();
+
 webpubsub::io_service io_service;
 
 class test_web_socket_connectivity_base {
 public:
   test_web_socket_connectivity_base(){};
 
-  virtual asio::awaitable<void> async_connect() { co_return; };
-  virtual asio::awaitable<void> async_close() { co_return; };
+  virtual task async_connect() { co_return; };
+  virtual task async_close() { co_return; };
 
-  virtual asio::awaitable<void> async_write(const std::string payload) {
-    co_return;
-  };
-  virtual asio::awaitable<void>
-  async_read(std::string &payload, webpubsub::web_socket_close_status &status) {
+  virtual task async_write(const std::string payload) { co_return; };
+  virtual task async_read(std::string &payload,
+                          webpubsub::web_socket_close_status &status) {
     using namespace std::chrono_literals;
     co_await webpubsub::async_delay(io_service.get_io_context(), 1s);
     if (!is_connected_) {
@@ -43,7 +45,7 @@ public:
   };
 
 private:
-  asio::awaitable<void>
+  task
   async_read_connected_message(std::string &payload,
                                webpubsub::web_socket_close_status &status) {
     status = webpubsub::web_socket_close_status::empty;
@@ -102,7 +104,7 @@ TEST(RAW, Asio) {
   std::string group("group_name");
   auto &io_context = client.get_io_service().get_io_context();
 
-  auto run_main = [&]() -> asio::awaitable<void> {
+  auto run_main = [&]() -> task {
     asio::cancellation_signal cs_start;
     std::cout << "\n***** begin client.async_start\n";
     co_await asio::co_spawn(
@@ -115,10 +117,6 @@ TEST(RAW, Asio) {
 
     std::cout << "\n***** begin client.async_stop\n";
     co_await client.async_stop();
-  };
-
-  auto stop = [&]() -> asio::awaitable<void> {
-    co_await webpubsub::async_delay( io_context, std::chrono::seconds(5));
   };
 
   asio::co_spawn(io_context, run_main(), asio::detached);

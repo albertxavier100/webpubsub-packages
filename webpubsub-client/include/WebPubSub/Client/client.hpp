@@ -486,7 +486,7 @@ private:
       } catch (...) {
       }
       std::cout << "async_handle_connection_close start\n";
-      // TODO: add back, only for debug now
+      // TODO: [DEBUG] add back later
       // co_await async_handle_connection_close(web_socket_close_status);
       std::cout << "async_handle_connection_close finish\n";
 
@@ -527,10 +527,7 @@ private:
 
   task async_handle_connection_connected(ConnectedResponse response) {
     if (options_.auto_rejoin_groups) {
-      // TODO
-      // for (auto group : groups_) {
-      //
-      //}
+      // TODO: impl
     }
     co_await asio::co_spawn(io_service_.get_io_context(),
                             async_safe_invoke_connected(response),
