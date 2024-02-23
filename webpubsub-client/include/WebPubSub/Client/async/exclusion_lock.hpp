@@ -9,9 +9,9 @@
 #include <memory>
 
 namespace webpubsub {
-class async_mlock {
+class exclusion_lock {
 public:
-  async_mlock(asio::io_context &io_context) : channel_(io_context, 1) {}
+  exclusion_lock(asio::io_context &io_context) : channel_(io_context, 1) {}
 
   asio::awaitable<void> async_lock() {
     co_await channel_.async_send(asio::error_code{}, false,

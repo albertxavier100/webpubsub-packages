@@ -16,7 +16,7 @@
 #include <format>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
-#include <webpubsub/client/async/async_utils.hpp>
+#include <webpubsub/client/async/utils.hpp>
 #include <webpubsub/client/client.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 
@@ -109,7 +109,7 @@ TEST(RAW, Asio) {
         asio::bind_cancellation_slot(cs_start.slot(), asio::use_awaitable));
 
     cs_start.emit(asio::cancellation_type::terminal);
-    
+
     co_await webpubsub::async_delay(1s);
 
     std::cout << "\n***** begin client.async_stop\n";
