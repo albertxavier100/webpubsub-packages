@@ -91,8 +91,8 @@ public:
   }
   task async_start_internal() {
     try {
-      //&&&// co_await stop_lock_.async_lock();
-      //&&&// co_await stop_lock_.async_release();
+       co_await stop_lock_.async_lock();
+       co_await stop_lock_.async_release();
 
       if (client_state_.get_state() != client_state::stopped) {
         throw std::invalid_argument(
@@ -131,7 +131,7 @@ public:
 private:
   task async_stop_core() {
     try {
-      //&&&// co_await stop_lock_.async_lock();
+       co_await stop_lock_.async_lock();
 
       try {
         co_await client_->async_close();
@@ -155,7 +155,7 @@ private:
       std::cout << "here\n";
     }
     /* finally */ {
-      //&&&// co_await stop_lock_.async_release();
+       co_await stop_lock_.async_release();
       std::cout << "release stop lock\n";
     }
   };
@@ -398,7 +398,7 @@ private:
             auto payload = options_.protocol.write(std::move(req));
             auto protocol = options_.protocol;
             auto ws_msg_type = protocol.get_webpubsub_protocol_message_type();
-            //&&&// co_await async_send_core(std::move(payload), ws_msg_type);
+             co_await async_send_core(std::move(payload), ws_msg_type);
           }
         } catch (const std::exception &e) {
           std::cout << "[in] seq loop get exception\n";
@@ -462,7 +462,7 @@ private:
             // here.
             auto response = options_.protocol.read(std::move(payload));
             if (response) {
-              //&&&// co_await async_handle_response(std::move(*response));
+               co_await async_handle_response(std::move(*response));
 
             } else {
               std::cout << "log failed to parse message\n";
