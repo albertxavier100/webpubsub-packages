@@ -26,6 +26,7 @@
 #include <webpubsub/client/concepts/web_socket_factory_t.hpp>
 #include <webpubsub/client/credentials/client_credential.hpp>
 #include <webpubsub/client/detail/async/exclusion_lock.hpp>
+#include <webpubsub/client/detail/async/utils.hpp>
 #include <webpubsub/client/detail/client/client_context.hpp>
 #include <webpubsub/client/detail/client/group_context.hpp>
 #include <webpubsub/client/detail/client/group_context_store.hpp>
@@ -224,7 +225,7 @@ private:
       if (web_socket_status == web_socket_close_status::policy_violation) {
         std::cout << "log The web socket close with status: policy_violation\n";
         should_recover = false;
-      } else if (co_await async_is_coro_cancelled()) {
+      } else if (co_await detail::async_is_coro_cancelled()) {
         std::cout << "log The client is stopped\n";
         should_recover = false;
       } else if (!options_.protocol.is_reliable()) {
@@ -250,8 +251,9 @@ private:
       // TODO: add cts here
       try {
         // TODO: error: cannot link them in this way
-        for (auto is_canceled = co_await async_is_coro_cancelled();
-             !is_canceled; is_canceled = co_await async_is_coro_cancelled()) {
+        for (auto is_canceled = co_await detail::async_is_coro_cancelled();
+             !is_canceled;
+             is_canceled = co_await detail::async_is_coro_cancelled()) {
           try {
             co_await async_connect(recovery_uri);
             recovered = true;
@@ -260,7 +262,7 @@ private:
             std::cout << "log fail to recover connection \n";
             std::cerr << e.what() << '\n';
           }
-          co_await async_delay(
+          co_await detail::async_delay(
               io_service_.get_io_context(),
               recover_delay_); // TODO: add cancellation token here
         }
@@ -320,8 +322,9 @@ private:
     bool is_success = false;
     uint64_t retry_attempt = 0;
     try {
-      for (auto is_canceled = co_await async_is_coro_cancelled(); !is_canceled;
-           is_canceled = co_await async_is_coro_cancelled()) {
+      for (auto is_canceled = co_await detail::async_is_coro_cancelled();
+           !is_canceled;
+           is_canceled = co_await detail::async_is_coro_cancelled()) {
         bool catched = false;
         try {
           using namespace asio::experimental::awaitable_operators;
@@ -402,7 +405,7 @@ private:
         }
         /* finally */ {
           std::cout << "[in] seq loop delay in finally\n";
-          co_await webpubsub::detail::async_delay(io_service_.get_io_context(),
+          co_await detail::async_delay(io_service_.get_io_context(),
                                                   asio::chrono::seconds(1));
         }
       }
