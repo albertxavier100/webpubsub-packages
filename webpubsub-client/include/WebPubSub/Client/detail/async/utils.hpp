@@ -1,15 +1,16 @@
 #pragma once
 
-#include <asio/awaitable.hpp>
-#include <asio/bind_cancellation_slot.hpp>
-#include <asio/co_spawn.hpp>
-#include <asio/detached.hpp>
-#include <asio/steady_timer.hpp>
-#include <asio/system_error.hpp>
-#include <asio/use_awaitable.hpp>
+#include "asio/awaitable.hpp"
+#include "asio/bind_cancellation_slot.hpp"
+#include "asio/co_spawn.hpp"
+#include "asio/detached.hpp"
+#include "asio/steady_timer.hpp"
+#include "asio/system_error.hpp"
+#include "asio/use_awaitable.hpp"
 #include <iostream>
 
 namespace webpubsub {
+namespace detail {
 asio::awaitable<bool> async_is_coro_cancelled() {
   asio::cancellation_state cs = co_await asio::this_coro::cancellation_state;
   if (cs.cancelled() != asio::cancellation_type::none) {
@@ -39,4 +40,5 @@ async_timeout(const asio::steady_timer::duration &duration) {
   std::cout << "Timeout!\n";
   co_return;
 }
+} // namespace detail
 } // namespace webpubsub

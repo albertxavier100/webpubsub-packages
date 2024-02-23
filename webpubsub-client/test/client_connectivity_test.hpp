@@ -16,8 +16,8 @@
 #include <format>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
-#include <webpubsub/client/async/utils.hpp>
 #include <webpubsub/client/client.hpp>
+#include <webpubsub/client/detail/async/utils.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 
 using task = asio::awaitable<void>;
@@ -37,7 +37,7 @@ public:
   virtual task async_read(std::string &payload,
                           webpubsub::web_socket_close_status &status) {
     using namespace std::chrono_literals;
-    co_await webpubsub::async_delay(io_service.get_io_context(), 1s);
+    co_await webpubsub::detail::async_delay(io_service.get_io_context(), 1s);
     if (!is_connected_) {
       co_await async_read_connected_message(payload, status);
       is_connected_ = true;
@@ -113,7 +113,7 @@ TEST(RAW, Asio) {
 
     cs_start.emit(asio::cancellation_type::terminal);
 
-    co_await webpubsub::async_delay(io_context, 1s);
+    co_await webpubsub::detail::async_delay(io_context, 1s);
 
     std::cout << "\n***** begin client.async_stop\n";
     co_await client.async_stop();

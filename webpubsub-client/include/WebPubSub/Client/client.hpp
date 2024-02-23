@@ -20,12 +20,13 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
-#include <webpubsub/client/async/exclusion_lock.hpp>
 #include <webpubsub/client/common/constants.hpp>
 #include <webpubsub/client/common/uri/uri.hpp>
 #include <webpubsub/client/common/web_socket/web_socket_close_status.hpp>
 #include <webpubsub/client/concepts/web_socket_factory_t.hpp>
 #include <webpubsub/client/credentials/client_credential.hpp>
+#include <webpubsub/client/detail/async/exclusion_lock.hpp>
+#include <webpubsub/client/detail/client/client_context.hpp>
 #include <webpubsub/client/detail/client/group_context.hpp>
 #include <webpubsub/client/detail/client/group_context_store.hpp>
 #include <webpubsub/client/detail/client/sequence_id.hpp>
@@ -401,8 +402,8 @@ private:
         }
         /* finally */ {
           std::cout << "[in] seq loop delay in finally\n";
-          co_await webpubsub::async_delay(io_service_.get_io_context(),
-                                          asio::chrono::seconds(1));
+          co_await webpubsub::detail::async_delay(io_service_.get_io_context(),
+                                                  asio::chrono::seconds(1));
         }
       }
     } catch (...) {
@@ -606,7 +607,7 @@ private:
   // TODO: reset them when connect/reconnect
   asio::cancellation_signal listen_loop_cancel_signal_;
   asio::cancellation_signal sequence_id_loop_cancel_signal_;
-  exclusion_lock stop_lock_;
+  detail::exclusion_lock stop_lock_;
   asio::steady_timer listen_loop_stop_notice_;
   asio::steady_timer sequence_id_ack_loop_stop_notice_;
 };
