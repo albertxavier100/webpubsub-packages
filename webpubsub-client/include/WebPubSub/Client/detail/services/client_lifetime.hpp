@@ -87,7 +87,7 @@ private:
     match(
         ev, //
         [this, &callback](const event::start &e) {
-          io::co_spawn(strand_, async_start_core(std::move(e)), callback);
+          io::co_spawn(strand_, async_start_internal(std::move(e)), callback);
         },
         [this, &callback](const stop &e) {
           // TODO: remove
@@ -99,21 +99,28 @@ private:
   auto async_stop_core(event::stop e) -> async_t<> { co_return; }
 
   // TODO: IMPL
-  auto async_start_core(event::start e) -> async_t<> {
+  auto async_start_internal(event::start e) -> async_t<> {
     using namespace state;
     using namespace event;
-    spdlog::trace("lifetime.async_start_core begin");
+
+    spdlog::trace("lifetime.async_start_internal begin");
     match(state_, //
-          [this, &e](auto &s) {
-    spdlog::trace("lifetime.async_start_core.match begin");
+          [this](auto &s) {
+            spdlog::trace("lifetime.async_start_internal.match begin");
             using t = std::decay_t<decltype(s)>;
             if constexpr (!std::is_same_v<t, stopped>) {
-              spdlog::trace("lifetime.async_start_core.match.throw begin");
               throw invalid_operation{
-                  "TODO fail to connect in non stopped state"};
+                  "Client can be only started when the state is Stopped"};
             }
-            state_ = connecting{};
-            io::co_spawn(strand_, async_connect(e), [this](auto ex) {
+            if constexpr (std::is_same_v<t, stopping>) {
+              // TODO: IMPL: cancel stop op, and then start
+            }
+            io::co_spawn(strand_, async_start_core(), [this](auto ex) {
+              if (ex) {
+                state_ = stopped{};
+                spdlog::trace("client failed to connected");
+                std::rethrow_exception(ex);
+              }
               state_ = connected{};
               spdlog::trace("client connected");
             });
@@ -122,7 +129,33 @@ private:
   }
 
   // TODO: IMPL
-  auto async_connect(event::start e) -> async_t<> { co_return; }
+  auto async_start_core() -> async_t<> {
+    using namespace state;
+    using namespace event;
+
+    state_ = connecting{};
+    spdlog::trace("client is starting");
+
+    reset_client();
+    auto uri = co_await async_get_client_access_uri();
+    co_await async_connect(std::move(uri));
+    co_return;
+  }
+
+  // TODO: IMPL
+  auto async_connect(std::string uri) -> async_t<> {
+    spdlog::trace("client_lifetime.async_connect begin");
+
+    co_return;
+  }
+
+  // TODO: IMPL
+  auto async_get_client_access_uri() -> async_t<std::string> {
+    co_return "client uri";
+  }
+
+  // TODO: IMPL
+  auto reset_client() {}
 
   // TODO: IMPL
   auto async_stop_receiving_service() -> async_t<> { co_return; }
