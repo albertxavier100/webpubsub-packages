@@ -20,7 +20,7 @@ public:
             const client_options<protocol_t> &options,
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(spdlog::get(logger_name)),
+      : log_(logger_name),
         lifetime_{strand, websocket_factory, log_} {}
 
   auto async_start() -> async_t<> {
@@ -30,7 +30,7 @@ public:
 
 private:
   client_lifetime_t<websocket_factory_t, websocket_t> lifetime_;
-  detail::log log_;
+  const detail::log log_;
 
   // TODO: DEBUG
   std::string uri_ = "TODO: debug";

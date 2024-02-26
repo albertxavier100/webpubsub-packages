@@ -75,13 +75,19 @@ TEST(connectivity, happy_start_stop) {
   using client_t =
       webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
 
+  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+  auto console_logger =
+      std::make_shared<spdlog::logger>("console", console_sink);
+  spdlog::register_logger(console_logger);
   spdlog::set_level(spdlog::level::trace);
 
   factory_t factory;
   protocol_t p;
   options_t opts{p};
+
   client_t client(strand, opts, factory, "console");
 
+  spdlog::trace("start test");
   auto async_test = [&]() -> webpubsub::io::awaitable<void> {
     co_await client.async_start();
   };

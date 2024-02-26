@@ -14,6 +14,12 @@
 
 namespace webpubsub {
 namespace detail {
+template <class... Ts> struct async_overloaded : Ts... {
+  using Ts::operator()...;
+};
+
+template <class... Ts> async_overloaded(Ts...) -> async_overloaded<Ts...>;
+
 template <class... Ts> struct overloaded : Ts... {
   using Ts::operator()...;
 };
