@@ -33,6 +33,7 @@ concept webpubsub_protocol_t = requires(T t) {
   {
     t.get_webpubsub_protocol_message_type()
   } -> std::same_as<WebPubSubProtocolMessageType>;
+  {t.is_reliable()}->std::same_as<bool>;
 };
 
 class DummyWebPubSubProtocol {
@@ -48,6 +49,7 @@ public:
 
   std::string get_name() { return ""; }
 
+  bool is_reliable() {return false;}
   WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() const {
     return WebPubSubProtocolMessageText;
   }

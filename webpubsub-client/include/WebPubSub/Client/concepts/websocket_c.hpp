@@ -7,7 +7,7 @@ namespace webpubsub {
 
 // TODO: impl this, so that uint* and char* don't need to cast
 template <typename T>
-concept websocket_t =
+concept websocket_c =
     requires(T t, std::string write_frame, std::string &read_frame,
              websocket_close_status &status) {
       { t.async_connect() } -> std::same_as<asio::awaitable<void>>;

@@ -22,8 +22,8 @@
 #include <variant>
 #include <webpubsub/client/common/constants.hpp>
 #include <webpubsub/client/common/uri/uri.hpp>
-#include <webpubsub/client/common/web_socket/web_socket_close_status.hpp>
-#include <webpubsub/client/concepts/web_socket_factory_t.hpp>
+#include <webpubsub/client/common/websocket/websocket_close_status.hpp>
+#include <webpubsub/client/concepts/websocket_factory_c.hpp>
 #include <webpubsub/client/credentials/client_credential.hpp>
 #include <webpubsub/client/detail/async/exclusion_lock.hpp>
 #include <webpubsub/client/detail/async/utils.hpp>
@@ -41,7 +41,7 @@
 namespace webpubsub {
 template <typename WebSocketFactory, typename WebSocket,
           typename WebPubSubProtocol = reliable_json_v1_protocol>
-  requires web_socket_factory_t<WebSocketFactory, WebSocket>
+  requires websocket_factory_t<WebSocketFactory, WebSocket>
 class client {
   using task = asio::awaitable<void>;
   static constexpr asio::steady_timer::time_point max_time_point =
@@ -200,7 +200,7 @@ private:
   }
 
   task async_handle_connection_close(
-      const web_socket_close_status &web_socket_status) {
+      const websocket_close_status &web_socket_status) {
     // TODO: handle ack cache
     // for (auto &[ack_id, ack_completion_source] : ack_cache_) {
     //  if (ack_cache_.find(ack_id) != ack_cache_.end()) {
@@ -222,7 +222,7 @@ private:
       using namespace std::chrono_literals;
 
       bool should_recover = true;
-      if (web_socket_status == web_socket_close_status::policy_violation) {
+      if (web_socket_status == websocket_close_status::policy_violation) {
         std::cout << "log The web socket close with status: policy_violation\n";
         should_recover = false;
       } else if (co_await detail::async_is_coro_cancelled()) {
@@ -406,7 +406,7 @@ private:
         /* finally */ {
           std::cout << "[in] seq loop delay in finally\n";
           co_await detail::async_delay(io_service_.get_io_context(),
-                                                  asio::chrono::seconds(1));
+                                       asio::chrono::seconds(1));
         }
       }
     } catch (...) {
@@ -431,8 +431,8 @@ private:
   task async_run_listen_loop() {
     using ct = asio::cancellation_type;
 
-    web_socket_close_status web_socket_close_status =
-        web_socket_close_status::empty;
+    websocket_close_status web_socket_close_status =
+        websocket_close_status::empty;
 
     if (options_.protocol.is_reliable()) {
       async_detach_run_sequence_ack_loop();
@@ -448,7 +448,7 @@ private:
         co_await client_->async_read(payload, web_socket_close_status);
 
         // TODO: handle the payload
-        if (web_socket_close_status != web_socket_close_status::empty) {
+        if (web_socket_close_status != websocket_close_status::empty) {
           break;
         }
 
@@ -489,7 +489,7 @@ private:
       }
       std::cout << "async_handle_connection_close start\n";
       // TODO: [DEBUG] add back later
-      // co_await async_handle_connection_close(web_socket_close_status);
+      // co_await async_handle_connection_close(websocket_close_status);
       std::cout << "async_handle_connection_close finish\n";
 
       std::cout << "listen_loop_stop_notice_.stop start\n";

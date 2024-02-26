@@ -2,7 +2,7 @@
 #include <../impl/default_web_socket.hpp>
 #include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 #include <optional>
-#include <webpubsub/client/concepts/web_socket_factory_t.hpp>
+#include <webpubsub/client/concepts/websocket_factory_c.hpp>
 
 namespace webpubsub {
 // TODO: dev for now

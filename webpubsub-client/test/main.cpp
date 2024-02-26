@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "client_connectivity_test.hpp"
+#include "client_connectivity_test_v2.hpp"
 
 int main(int argc, char **argv) {
   // Initialize Google Test

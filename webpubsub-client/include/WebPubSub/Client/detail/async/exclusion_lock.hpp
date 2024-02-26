@@ -11,16 +11,16 @@
 namespace webpubsub {
 namespace detail {
 class exclusion_lock {
+  using task = asio::awaitable<void>;
+
 public:
   exclusion_lock(asio::io_context &io_context) : channel_(io_context, 1) {}
 
-  asio::awaitable<void> async_lock() {
+  task async_lock() {
     co_await channel_.async_send(asio::error_code{}, false,
                                  asio::use_awaitable);
   }
-  asio::awaitable<void> async_release() {
-    co_await channel_.async_receive(asio::use_awaitable);
-  }
+  task async_release() { co_await channel_.async_receive(asio::use_awaitable); }
 
   void reset() { channel_.reset(); }
 

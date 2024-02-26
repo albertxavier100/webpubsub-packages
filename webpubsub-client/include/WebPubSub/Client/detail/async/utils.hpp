@@ -7,6 +7,7 @@
 #include "asio/steady_timer.hpp"
 #include "asio/system_error.hpp"
 #include "asio/use_awaitable.hpp"
+#include "webpubsub/client/common/asio.hpp"
 #include <iostream>
 
 namespace webpubsub {
@@ -26,6 +27,13 @@ async_delay(asio::io_context &io_context,
             const asio::steady_timer::duration &duration) {
   asio::steady_timer timer{io_context, duration};
   co_await timer.async_wait(asio::use_awaitable);
+}
+
+io::awaitable<void>
+async_delay(io::strand<io::io_context::executor_type> &strand,
+            const io::steady_timer::duration &duration) {
+  io::steady_timer timer{strand, duration};
+  const auto [ec] = co_await timer.async_wait(io::as_tuple(io::use_awaitable));
 }
 
 // TODO: add cancel_signal

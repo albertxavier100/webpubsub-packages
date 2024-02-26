@@ -3,7 +3,7 @@
 #include <asio/co_spawn.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/use_awaitable.hpp>
-#include <webpubsub/client/concepts/web_socket_t.hpp>
+#include <webpubsub/client/concepts/websocket_c.hpp>
 
 namespace webpubsub {
 class default_web_socket {
@@ -22,9 +22,7 @@ public:
     return *this;
   }
 
-  asio::awaitable<void> async_connect() {
-    co_await test();
-  }
+  asio::awaitable<void> async_connect() { co_await test(); }
 
   asio::awaitable<void> async_write(const uint64_t *start, const uint64_t size,
                                     const bool as_text = true) {
