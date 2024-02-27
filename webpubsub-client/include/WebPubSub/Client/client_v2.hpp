@@ -3,7 +3,6 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
-#include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
 #include "webpubsub/client/models/client_options.hpp"
@@ -20,8 +19,7 @@ public:
             const client_options<protocol_t> &options,
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), lifetime_{strand, websocket_factory, log_},
-        channel_{strand, log_} {}
+      : log_(logger_name), lifetime_{strand, websocket_factory, log_} {}
 
   auto async_start(const io::cancellation_slot slot) -> async_t<> {
     co_await lifetime_.async_handle_event(detail::to_connecting_state{});
@@ -38,7 +36,6 @@ public:
 
 private:
   detail::client_lifetime_service<websocket_factory_t, websocket_t> lifetime_;
-  detail::client_channel_service channel_;
   const detail::log log_;
 
   // TODO: DEBUG
