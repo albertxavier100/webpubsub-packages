@@ -39,7 +39,6 @@ struct connecting {
 };
 
 struct stopped {
-
   stopped() = default;
 
   template <typename t> auto async_move_to(event_t ev) -> async_t<t> {

@@ -3,7 +3,7 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
-#include "webpubsub/client/detail/services/client_lifetime.hpp"
+#include "webpubsub/client/detail/services/client_lifetime_service/client_lifetime.hpp"
 #include "webpubsub/client/models/client_options.hpp"
 
 namespace webpubsub {
