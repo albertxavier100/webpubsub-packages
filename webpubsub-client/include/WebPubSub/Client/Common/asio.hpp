@@ -17,6 +17,7 @@ static_assert(false, "The minimum version of standalone Asio is 1.8.0");
 #endif
 
 #include <asio/awaitable.hpp>
+#include <asio/co_spawn.hpp>
 #include <asio/detached.hpp>
 #include <asio/experimental/channel.hpp>
 #include <asio/io_context.hpp>

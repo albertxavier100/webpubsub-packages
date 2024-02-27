@@ -18,6 +18,7 @@ protected:
 };
 
 // TODO: IMPL
+// TODO: use this ex for all, design later
 class invalid_operation : public exception {
 public:
   explicit invalid_operation(std::string const &message) : exception(message) {}
