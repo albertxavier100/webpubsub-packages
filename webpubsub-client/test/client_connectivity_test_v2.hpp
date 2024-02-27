@@ -6,9 +6,13 @@
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "gtest/gtest.h"
 
+using strand_t =
+    webpubsub::io::strand<webpubsub::io::io_context::executor_type>;
 webpubsub::io::io_context io_context;
-webpubsub::io::strand<webpubsub::io::io_context::executor_type> strand{
-    io_context.get_executor()};
+strand_t strand{io_context.get_executor()};
+template <typename T = void> using async_t = webpubsub::io::awaitable<T>;
+asio::cancellation_signal cancel;
+asio::cancellation_signal cancel_dummy;
 
 class test_websocket_1 {
   template <typename T = void> using async_t = webpubsub::io::awaitable<T>;
@@ -27,7 +31,7 @@ public:
              webpubsub::websocket_close_status &status) -> async_t<> {
     using namespace std::chrono_literals;
 
-    co_await webpubsub::detail::async_delay(strand, 1s);
+    co_await webpubsub::detail::async_delay(strand, 1s, cancel_.slot());
     if (!is_connected_) {
       co_await async_read_connected_message(payload, status);
       is_connected_ = true;
@@ -53,7 +57,7 @@ private:
     co_return;
   }
 
-private:
+  webpubsub::io::cancellation_signal cancel_;
   bool is_connected_ = false;
 };
 static_assert(webpubsub::websocket_c<test_websocket_1>);
@@ -69,11 +73,14 @@ static_assert(webpubsub::websocket_factory_c<
               test_websocket_factory_1<test_websocket_1>, test_websocket_1>);
 
 TEST(connectivity, happy_start_stop) {
+  namespace io = webpubsub::io;
+  using namespace io::experimental::awaitable_operators;
   using protocol_t = webpubsub::reliable_json_v1_protocol;
   using options_t = webpubsub::client_options<protocol_t>;
   using factory_t = test_websocket_factory_1<test_websocket_1>;
   using client_t =
       webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
+  using namespace std::chrono_literals;
 
   auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   auto console_logger =
@@ -84,13 +91,34 @@ TEST(connectivity, happy_start_stop) {
   factory_t factory;
   protocol_t p;
   options_t opts{p};
-
   client_t client(strand, opts, factory, "console");
 
   spdlog::trace("start test");
-  auto async_test = [&]() -> webpubsub::io::awaitable<void> {
-    co_await client.async_start();
+  auto async_test = [&]() -> async_t<> {
+    try {
+      co_await client.async_start(cancel.slot());
+      spdlog::trace("client connected in test");
+    } catch (...) {
+      spdlog::trace("xxx");
+    };
+    co_return;
   };
-  webpubsub::io::co_spawn(strand, async_test(), webpubsub::io::detached);
-  io_context.run();
+
+  auto async_cancel_2s = []() -> async_t<> {
+    using namespace std::chrono_literals;
+    co_await webpubsub::detail::async_delay(strand, 1s, cancel_dummy.slot());
+    spdlog::trace("emit cancel");
+    cancel.emit(io::cancellation_type::terminal);
+  };
+  try {
+    io::co_spawn(strand, async_test(), io::detached);
+    // io::co_spawn(strand, async_cancel_2s(), io::detached);
+  } catch (...) {
+    spdlog::trace("ex in test body");
+  }
+  try {
+    io_context.run();
+  } catch (std::exception &ex) {
+    spdlog::trace("ex in main: {0}", ex.what());
+  }
 }

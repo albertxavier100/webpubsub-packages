@@ -22,18 +22,35 @@ asio::awaitable<bool> async_is_coro_cancelled() {
 }
 
 // TODO: add cancel_signal
-asio::awaitable<void>
-async_delay(asio::io_context &io_context,
-            const asio::steady_timer::duration &duration) {
-  asio::steady_timer timer{io_context, duration};
-  co_await timer.async_wait(asio::use_awaitable);
+io::awaitable<void> async_delay(io::io_context &io_context,
+                                const io::steady_timer::duration &duration) {
+  io::steady_timer timer{io_context, duration};
+  co_await timer.async_wait(io::use_awaitable);
 }
 
 io::awaitable<void>
 async_delay(io::strand<io::io_context::executor_type> &strand,
+            const io::steady_timer::duration &duration,
+            const io::cancellation_slot slot) {
+  io::steady_timer timer{strand, duration};
+  //auto token =
+  //    io::bind_cancellation_slot(slot, io::as_tuple(io::use_awaitable));
+  auto token =
+      io::as_tuple(io::use_awaitable);
+
+  const auto [ec] = co_await timer.async_wait(token);
+  spdlog::trace("finish delay: {0}", ec.message());
+}
+
+io::awaitable<io::error_code>
+async_delay_v2(io::strand<io::io_context::executor_type> &strand,
             const io::steady_timer::duration &duration) {
   io::steady_timer timer{strand, duration};
-  const auto [ec] = co_await timer.async_wait(io::as_tuple(io::use_awaitable));
+  auto token = io::as_tuple(io::use_awaitable);
+
+  const auto [ec] = co_await timer.async_wait(token);
+  spdlog::trace("finish delay: {0}", ec.message());
+  co_return ec;
 }
 
 // TODO: add cancel_signal

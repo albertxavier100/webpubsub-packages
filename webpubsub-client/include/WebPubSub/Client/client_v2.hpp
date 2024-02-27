@@ -20,12 +20,21 @@ public:
             const client_options<protocol_t> &options,
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name),
-        lifetime_{strand, websocket_factory, log_} {}
+      : log_(logger_name), lifetime_{strand, websocket_factory, log_} {}
 
-  auto async_start() -> async_t<> {
-    using namespace detail::lifetime::event;
-    co_await lifetime_.async_start(start{.uri = uri_});
+  auto async_start(const io::cancellation_slot slot) -> async_t<> {
+    using namespace detail::lifetime;
+    co_await lifetime_.async_handle_event(
+        detail::lifetime::to_connecting_state{});
+    if (!lifetime_.is_in_state<connecting>()) {
+      throw invalid_operation(
+          "failed to to start connection due to resetting connection failure");
+    }
+    co_await lifetime_.async_handle_event(to_connected_state{});
+    if (!lifetime_.is_in_state<connected>()) {
+      throw invalid_operation("failed to start connection due to establishing "
+                              "websocket connection failure");
+    }
   }
 
 private:
