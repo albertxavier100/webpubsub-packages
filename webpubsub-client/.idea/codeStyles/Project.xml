@@ -5,7 +5,7 @@
     </clangFormatSettings>
     <files>
       <extensions>
-        <pair source="cpp" header="hpp" fileNamingConvention="NONE" />
+        <pair source="cpp" header="ipp" fileNamingConvention="NONE" />
         <pair source="c" header="h" fileNamingConvention="NONE" />
         <pair source="cu" header="cuh" fileNamingConvention="NONE" />
         <pair source="ixx" header="" fileNamingConvention="NONE" />

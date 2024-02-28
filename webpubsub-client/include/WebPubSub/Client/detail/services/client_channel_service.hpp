@@ -11,6 +11,7 @@
 
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/logging/log.hpp"
 
 namespace webpubsub {
 namespace detail {
@@ -28,7 +29,7 @@ using channel_t = io::experimental::channel<void(io::error_code, data_t)>;
 
 class client_channel_service {
 public:
-  client_channel_service(strand &strand, const detail::log log)
+  client_channel_service(strand &strand, const detail::log &log)
       : log_{log}, lifetime_channel_{strand}, receive_channel_{strand},
         send_channel_{strand} {}
 
@@ -37,7 +38,7 @@ public:
   auto &get_send_channel() { return send_channel_; }
 
 private:
-  const log log_;
+  const log &log_;
   channel_t<event_t> lifetime_channel_;
   channel_t<> receive_channel_;
   channel_t<> send_channel_;

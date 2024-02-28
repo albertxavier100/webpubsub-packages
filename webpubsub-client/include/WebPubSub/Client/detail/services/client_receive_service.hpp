@@ -12,15 +12,29 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 
-class client_lifetime_service;
-
 namespace webpubsub {
 namespace detail {
 
 class ack_cache {};
 
+template <typename websocket_factory_t, typename websocket_t>
+  requires websocket_factory_c<websocket_factory_t, websocket_t>
+class client_lifetime_service;
+
+template <typename websocket_factory_t, typename websocket_t>
+  requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_receive_service {
+
+  using client_lifetime_service_t =
+      detail::client_lifetime_service<websocket_factory_t, websocket_t>;
+  using client_channel_service_t = detail::client_channel_service;
+
 public:
+  client_receive_service(strand &strand,
+                         const client_channel_service_t &channel_service,
+                         const log &log)
+      : strand_(strand_), log_(log), channel_service_(channel_service) {}
+
   // TODO: IMPL
   auto spawn_message_coro() {
     io::co_spawn(strand_, async_start_message_loop(), io::detached);
@@ -35,26 +49,11 @@ public:
 private:
   auto async_start_message_loop() -> async_t<> { co_return; }
 
-  template <typename websocket_factory_t, typename websocket_t>
-    requires websocket_factory_c<websocket_factory_t, websocket_t>
-  auto send_event_to_client_lifetime(
-      const client_lifetime_service<websocket_factory_t, websocket_t> &lifetime,
-      event_t event) -> async_t<>;
   ack_cache ack_cache_;
-  strand strand_;
+  strand &strand_;
+  const client_channel_service_t &channel_service_;
+  const log &log_;
 };
-
-#include "webpubsub/client/detail/services/client_lifetime_service.hpp"
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto send_event_to_client_lifetime(
-    const client_lifetime_service<websocket_factory_t, websocket_t> &lifetime,
-    event_t event) -> async_t<> {
-
-  co_await lifetime.async_handle_event(event);
-}
-
 } // namespace detail
 } // namespace webpubsub
 

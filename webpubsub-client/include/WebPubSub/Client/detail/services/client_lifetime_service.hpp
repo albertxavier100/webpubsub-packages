@@ -13,10 +13,10 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
-#include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 #include <optional>
 
+// states
 namespace webpubsub {
 namespace detail {
 
@@ -88,25 +88,34 @@ struct state_visitor {
 
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
+class client_receive_service;
+
+template <typename websocket_factory_t, typename websocket_t>
+  requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_lifetime_service {
   using strand_t = io::strand<io::io_context::executor_type>;
   // TODO: use optional
   using channel_t = io::experimental::channel<void(io::error_code, bool)>;
+  using client_receive_service_t =
+      detail::client_receive_service<websocket_factory_t, websocket_t>;
+  using client_channel_service_t = detail::client_channel_service;
 
 public:
   client_lifetime_service(strand_t &strand,
                           const websocket_factory_t &websocket_factory,
+                          const client_channel_service_t &channel_service,
                           const log &log)
-      : log_{log}, state_{stopped{}}, strand_{strand}, channel_{strand, 1},
-        websocket_factory_{websocket_factory} {}
+      : log_(log), state_(stopped{}), strand_(strand),
+        channel_service_(channel_service),
+        websocket_factory_(websocket_factory) {}
 
   // TODO: IMPL
-  auto async_handle_event(event_t event) -> async_t<> {
+  auto async_handle_event(event_t ev) -> async_t<> {
     spdlog::trace("lifetime.async_handle_event begin");
     state_visitor sta_visitor;
     std::visit(sta_visitor, state_);
     spdlog::trace("std::visit(sta_visitor begin");
-    state_ = co_await sta_visitor.async_move_to(std::move(event));
+    state_ = co_await sta_visitor.async_move_to(std::move(ev));
     co_return;
   }
 
@@ -118,14 +127,12 @@ public:
 
 private:
   const log &log_;
-
   state_t state_;
-
   strand_t &strand_;
-  const channel_t channel_;
-
+  const client_channel_service_t &channel_service_;
   const websocket_factory_t &websocket_factory_;
 };
+
 } // namespace detail
 } // namespace webpubsub
 
