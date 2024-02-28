@@ -9,8 +9,8 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "webpubsub/client/exceptions/exception.hpp"
 #include "webpubsub/client/detail/services/detail/events/client_lifetime_events.hpp"
+#include "webpubsub/client/exceptions/exception.hpp"
 #include <variant>
 
 // states
@@ -53,6 +53,8 @@ struct stopping {};
 using state_t =
     std::variant<stopped, connecting, connected, recovering, stopping>;
 
+#pragma region IMPL
+
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 // TODO: IMPL
 template <typename t, typename websocket_factory_t, typename websocket_t>
@@ -83,7 +85,7 @@ auto stopped::async_move_to(
   spdlog::trace("stopped -> connecting: reset connection");
   co_return connecting{};
 }
-
+#pragma endregion
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_CLIENT_LIFETIME_STATES_HPP

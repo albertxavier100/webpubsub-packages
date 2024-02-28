@@ -58,6 +58,7 @@ private:
   client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_service_;
 };
 
+#pragma region IMPL
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
@@ -67,7 +68,7 @@ auto client_receive_service<websocket_factory_t, websocket_t>::
             *lifetime_service) {
   lifetime_service_ = lifetime_service;
 }
-
+#pragma endregion
 } // namespace detail
 } // namespace webpubsub
 
