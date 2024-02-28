@@ -13,83 +13,15 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/services/client_receive_service.hpp"
+#include "webpubsub/client/detail/services/detail/events/client_lifetime_events.hpp"
+#include "webpubsub/client/detail/services/detail/states/client_lifetime_states.hpp"
+#include "webpubsub/client/detail/services/detail/visitors/client_lifetime_state_visitor.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 #include <optional>
 
-// states
 namespace webpubsub {
 namespace detail {
-
-struct connected {};
-
-struct connecting {
-  connecting() = default;
-
-  // TODO: IMPL
-  template <typename t> auto async_move_to(event_t ev) -> async_t<t> {
-    spdlog::trace("connecting -> connected: establish websocket connection");
-
-    try {
-      co_await async_connect_websocket();
-    } catch (const std::exception &ex) {
-      throw invalid_operation("failed to connect to websocket");
-    }
-
-    co_return connected{};
-  }
-
-private:
-  auto async_connect_websocket() -> async_t<> { co_return; }
-};
-
-struct stopped {
-  stopped() = default;
-
-  template <typename t> auto async_move_to(event_t ev) -> async_t<t> {
-    spdlog::trace("stopped -> connecting: reset connection");
-    co_return connecting{};
-  }
-};
-
-struct recovering {};
-struct stopping {};
-
-using state_t =
-    std::variant<stopped, connecting, connected, recovering, stopping>;
-
-} // namespace detail
-} // namespace webpubsub
-
-// TODO: move to new file
-namespace webpubsub {
-namespace detail {
-// TODO: move to new file
-struct state_visitor {
-
-  using async_move_to_t = auto(event_t) -> async_t<state_t>;
-
-  // TODO: IMPL
-  void operator()(stopped &s) {
-    async_move_to =
-        std::bind(&stopped::async_move_to<state_t>, &s, std::placeholders::_1);
-  };
-  void operator()(connecting &s) {
-    async_move_to = std::bind(&connecting::async_move_to<state_t>, &s,
-                              std::placeholders::_1);
-  };
-  // TODO: IMPL
-  void operator()(connected &s) {};
-  // TODO: IMPL
-  void operator()(recovering &s) {};
-  // TODO: IMPL
-  void operator()(stopping &s) {};
-  std::function<async_move_to_t> async_move_to;
-};
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-class client_receive_service;
-
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_lifetime_service {
@@ -125,11 +57,17 @@ public:
     return std::holds_alternative<t>(state_);
   }
 
+  auto set_receive_service(client_receive_service_t *receive_service) {
+    receive_service_ = receive_service;
+  }
+
 private:
   const log &log_;
   state_t state_;
   strand_t &strand_;
+  // TODO: remove
   const client_channel_service_t &channel_service_;
+  client_receive_service_t *receive_service_;
   const websocket_factory_t &websocket_factory_;
 };
 

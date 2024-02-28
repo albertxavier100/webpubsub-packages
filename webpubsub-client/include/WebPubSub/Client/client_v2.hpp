@@ -22,7 +22,9 @@ public:
             const std::string &logger_name)
       : log_(logger_name), channel_service_(strand, log_),
         lifetime_service_(strand, websocket_factory, channel_service_, log_),
-        receive_service_(strand, channel_service_, log_) {}
+        receive_service_(strand, channel_service_, log_) {
+    receive_service_.set_lifetime_service(&lifetime_service_);
+  }
 
   auto async_start(const io::cancellation_slot slot) -> async_t<> {
     co_await lifetime_service_.async_handle_event(

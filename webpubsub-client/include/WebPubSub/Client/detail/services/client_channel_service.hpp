@@ -12,18 +12,11 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
+#include "webpubsub/client/detail/services/detail/events/client_lifetime_events.hpp"
 
 namespace webpubsub {
 namespace detail {
-// lifetime events
-struct to_connecting_state {};
-struct to_connected_state {};
-struct to_stopped_state {};
-// receive events
-// send events
 
-using event_t =
-    std::variant<to_stopped_state, to_connected_state, to_connecting_state>;
 template <typename data_t = uint8_t>
 using channel_t = io::experimental::channel<void(io::error_code, data_t)>;
 

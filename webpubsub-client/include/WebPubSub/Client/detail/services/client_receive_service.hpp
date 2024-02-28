@@ -25,8 +25,6 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_receive_service {
 
-  using client_lifetime_service_t =
-      detail::client_lifetime_service<websocket_factory_t, websocket_t>;
   using client_channel_service_t = detail::client_channel_service;
 
 public:
@@ -46,6 +44,10 @@ public:
   // TODO: IMPL
   auto async_wait_ack_id(uint64_t ack_id) -> async_t<> { co_return; }
 
+  auto
+  set_lifetime_service(client_lifetime_service<websocket_factory_t, websocket_t>
+                           *lifetime_service);
+
 private:
   auto async_start_message_loop() -> async_t<> { co_return; }
 
@@ -53,7 +55,19 @@ private:
   strand &strand_;
   const client_channel_service_t &channel_service_;
   const log &log_;
+  client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_service_;
 };
+
+#include "webpubsub/client/detail/services/client_lifetime_service.hpp"
+template <typename websocket_factory_t, typename websocket_t>
+  requires websocket_factory_c<websocket_factory_t, websocket_t>
+auto client_receive_service<websocket_factory_t, websocket_t>::
+    set_lifetime_service(
+        client_lifetime_service<websocket_factory_t, websocket_t>
+            *lifetime_service) {
+  lifetime_service_ = lifetime_service;
+}
+
 } // namespace detail
 } // namespace webpubsub
 
