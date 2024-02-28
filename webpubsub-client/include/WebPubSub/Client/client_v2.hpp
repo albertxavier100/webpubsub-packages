@@ -6,6 +6,7 @@
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
+#include "webpubsub/client/exceptions/exception.hpp"
 #include "webpubsub/client/models/client_options.hpp"
 
 namespace webpubsub {

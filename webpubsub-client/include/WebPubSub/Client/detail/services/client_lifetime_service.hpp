@@ -44,10 +44,10 @@ public:
   // TODO: IMPL
   auto async_handle_event(event_t ev) -> async_t<> {
     spdlog::trace("lifetime.async_handle_event begin");
-    state_visitor sta_visitor;
+    state_visitor<websocket_factory_t, websocket_t> sta_visitor;
     std::visit(sta_visitor, state_);
     spdlog::trace("std::visit(sta_visitor begin");
-    state_ = co_await sta_visitor.async_move_to(std::move(ev));
+    state_ = co_await sta_visitor.async_move_to(std::move(ev), this);
     co_return;
   }
 
