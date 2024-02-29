@@ -25,16 +25,16 @@ public:
         lifetime_service_(strand, websocket_factory, channel_service_, log_),
         receive_service_(strand, channel_service_, log_) {
     receive_service_.set_lifetime_service(&lifetime_service_);
+    lifetime_service_.set_receive_service(&receive_service_);
   }
 
   auto async_start(const io::cancellation_slot slot) -> async_t<> {
-    co_await lifetime_service_.async_handle_event(
-        detail::to_connecting_state{});
+    co_await lifetime_service_.async_raise_event(detail::to_connecting_state{});
     if (!lifetime_service_.is_in_state<detail::connecting>()) {
       throw invalid_operation(
           "failed to to start connection due to resetting connection failure");
     }
-    co_await lifetime_service_.async_handle_event(detail::to_connected_state{});
+    co_await lifetime_service_.async_raise_event(detail::to_connected_state{});
     if (!lifetime_service_.is_in_state<detail::connected>()) {
       throw invalid_operation("failed to start connection due to establishing "
                               "websocket connection failure");

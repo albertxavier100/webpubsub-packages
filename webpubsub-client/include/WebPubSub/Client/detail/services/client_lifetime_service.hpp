@@ -14,14 +14,22 @@
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
-#include "webpubsub/client/detail/services/detail/events/client_lifetime_events.hpp"
-#include "webpubsub/client/detail/services/detail/states/client_lifetime_states.hpp"
-#include "webpubsub/client/detail/services/detail/visitors/client_lifetime_state_visitor.hpp"
+#include "webpubsub/client/detail/services/models/events/client_lifetime_events.hpp"
+#include "webpubsub/client/detail/services/models/states/client_lifetime_states.hpp"
+#include "webpubsub/client/detail/services/models/transitions.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 #include <optional>
 
 namespace webpubsub {
 namespace detail {
+
+// TODO: move to new file
+template <class... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_lifetime_service {
@@ -41,15 +49,19 @@ public:
         channel_service_(channel_service),
         websocket_factory_(websocket_factory) {}
 
-  // TODO: IMPL
-  auto async_handle_event(event_t ev) -> async_t<> {
-    spdlog::trace("lifetime.async_handle_event begin");
-    state_visitor<websocket_factory_t, websocket_t> sta_visitor;
-    std::visit(sta_visitor, state_);
-    spdlog::trace("std::visit(sta_visitor begin");
-    state_ = co_await sta_visitor.async_move_to(std::move(ev), this);
-    co_return;
+  // TODO: IMPL ???
+  auto async_raise_event(event_t event) -> async_t<> {
+    state_ = co_await std::visit(overloaded{[this](auto &e) {
+                                   return std::visit(
+                                       overloaded{[this, &e](auto &s) {
+                                         return async_on_event(this, s, e);
+                                       }},
+                                       state_);
+                                 }},
+                                 event);
   }
+
+  auto async_connect_websocket() -> async_t<> { co_return; }
 
   auto get_state() { return state_; }
 
@@ -60,6 +72,8 @@ public:
   auto set_receive_service(client_receive_service_t *receive_service) {
     receive_service_ = receive_service;
   }
+
+  auto get_receive_service() { return receive_service_; }
 
 private:
   const log &log_;

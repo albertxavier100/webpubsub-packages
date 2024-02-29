@@ -12,7 +12,7 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
-#include "webpubsub/client/detail/services/detail/events/client_lifetime_events.hpp"
+#include "webpubsub/client/detail/services/models/events/client_lifetime_events.hpp"
 
 namespace webpubsub {
 namespace detail {
