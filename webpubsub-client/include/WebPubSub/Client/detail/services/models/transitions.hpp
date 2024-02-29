@@ -21,6 +21,7 @@
 namespace webpubsub {
 namespace detail {
 
+#pragma region STOPPED
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
@@ -29,7 +30,9 @@ auto async_on_event(
   spdlog::trace("stopped -> connecting: reset connection");
   co_return connecting{};
 }
+#pragma endregion
 
+#pragma region CONNECTING
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
@@ -48,7 +51,9 @@ auto async_on_event(
 
   co_return connected{};
 }
+#pragma endregion
 
+#pragma region CONNECTED
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
@@ -57,7 +62,9 @@ auto async_on_event(
   spdlog::trace("connected -> recovering! TODO");
   co_return recovering{};
 }
+#pragma endregion
 
+#pragma region RECOVERING
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
@@ -66,7 +73,9 @@ auto async_on_event(
   spdlog::trace("recovering -> connected");
   co_return connected{};
 }
+#pragma endregion
 
+#pragma region STOPPING
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
@@ -75,6 +84,7 @@ auto async_on_event(
   co_return stopped{};
 }
 
+#pragma region UNSUPPORTED
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
@@ -82,6 +92,7 @@ auto async_on_event(
     auto &) -> async_t<state_t> {
   throw std::logic_error{"Unsupported state transition"};
 }
+#pragma endregion
 
 } // namespace detail
 } // namespace webpubsub
