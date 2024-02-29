@@ -59,7 +59,7 @@ template <typename websocket_factory_t, typename websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     connected &connected, to_recovering_state &event) -> async_t<state_t> {
-  spdlog::trace("connected -> recovering! TODO");
+  spdlog::trace("connected -> recovering");
   co_return recovering{};
 }
 #pragma endregion

@@ -61,7 +61,10 @@ public:
                                  event);
   }
 
-  auto async_connect_websocket() -> async_t<> { co_return; }
+  auto async_connect_websocket() -> async_t<> {
+    spdlog::trace("async_connect_websocket -- begin");
+    co_return;
+  }
 
   auto get_state() { return state_; }
 

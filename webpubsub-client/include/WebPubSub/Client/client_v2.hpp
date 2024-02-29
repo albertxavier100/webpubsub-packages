@@ -30,15 +30,7 @@ public:
 
   auto async_start(const io::cancellation_slot slot) -> async_t<> {
     co_await lifetime_service_.async_raise_event(detail::to_connecting_state{});
-    if (!lifetime_service_.is_in_state<detail::connecting>()) {
-      throw invalid_operation(
-          "failed to to start connection due to resetting connection failure");
-    }
     co_await lifetime_service_.async_raise_event(detail::to_connected_state{});
-    if (!lifetime_service_.is_in_state<detail::connected>()) {
-      throw invalid_operation("failed to start connection due to establishing "
-                              "websocket connection failure");
-    }
   }
 
 private:

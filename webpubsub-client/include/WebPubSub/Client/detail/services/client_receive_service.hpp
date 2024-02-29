@@ -70,6 +70,7 @@ private:
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_service_->async_raise_event -- begin");
       co_await lifetime_service_->async_raise_event(to_recovering_state{});
+      co_await lifetime_service_->async_raise_event(to_connected_state{});
     }
 
     co_return;
