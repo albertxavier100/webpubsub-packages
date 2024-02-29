@@ -9,7 +9,7 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "webpubsub/client/detail/services/models/events/client_lifetime_events.hpp"
+#include "client_lifetime_events.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 
 #include <variant>

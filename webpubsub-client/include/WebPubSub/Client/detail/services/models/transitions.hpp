@@ -9,13 +9,13 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "client_lifetime_states.hpp"
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
-#include "webpubsub/client/detail/services/models/states/client_lifetime_states.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 
 namespace webpubsub {

@@ -14,8 +14,8 @@
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
-#include "webpubsub/client/detail/services/models/events/client_lifetime_events.hpp"
-#include "webpubsub/client/detail/services/models/states/client_lifetime_states.hpp"
+#include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
+#include "webpubsub/client/detail/services/models/client_lifetime_states.hpp"
 #include "webpubsub/client/detail/services/models/transitions.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 #include <optional>
