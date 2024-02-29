@@ -35,9 +35,10 @@ public:
       : strand_(strand), log_(log), channel_service_(channel_service) {}
 
   // TODO: IMPL
-  auto spawn_message_loop_coro() {
+  auto spawn_message_loop_coro(io::cancellation_slot slot) {
     spdlog::trace("client_receive_service.spawn_message_loop_coro");
-    io::co_spawn(strand_, async_start_message_loop(), io::detached);
+    auto token = io::bind_cancellation_slot(slot, io::detached);
+    io::co_spawn(strand_, async_start_message_loop(slot), token);
   }
 
   // TODO: IMPL
@@ -51,16 +52,19 @@ public:
                            *lifetime_service);
 
 private:
-  auto async_start_message_loop() -> async_t<> {
+  auto async_start_message_loop(io::cancellation_slot slot) -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool should_recover = false;
     try {
-
       for (;;) {
+        auto cs = co_await io::this_coro::cancellation_state;
+        if (cs.cancelled() != io::cancellation_type::none) {
+          spdlog::trace("receiving... break");
+          break;
+        }
         co_await async_delay_v2(strand_, 1s);
-        // TODO: debug
-        throw std::exception("dev");
+        spdlog::trace("receiving...");
       }
     } catch (const std::exception &ex) {
       should_recover = true;
@@ -68,9 +72,9 @@ private:
 
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
-                    "lifetime_service_->async_raise_event -- begin");
-      co_await lifetime_service_->async_raise_event(to_recovering_state{});
-      co_await lifetime_service_->async_raise_event(to_connected_state{});
+                    "lifetime_->async_raise_event -- begin");
+      co_await lifetime_->async_raise_event(to_recovering_state{}, slot);
+      co_await lifetime_->async_raise_event(to_connected_state{}, slot);
     }
 
     co_return;
@@ -80,7 +84,7 @@ private:
   strand &strand_;
   const client_channel_service_t &channel_service_;
   const log &log_;
-  client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_service_;
+  client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
 };
 
 #pragma region IMPL
@@ -91,7 +95,7 @@ auto client_receive_service<websocket_factory_t, websocket_t>::
     set_lifetime_service(
         client_lifetime_service<websocket_factory_t, websocket_t>
             *lifetime_service) {
-  lifetime_service_ = lifetime_service;
+  lifetime_ = lifetime_service;
 }
 #pragma endregion
 } // namespace detail

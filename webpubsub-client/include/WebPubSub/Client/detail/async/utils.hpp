@@ -48,7 +48,6 @@ async_delay_v2(io::strand<io::io_context::executor_type> &strand,
   auto token = io::as_tuple(io::use_awaitable);
 
   const auto [ec] = co_await timer.async_wait(token);
-  spdlog::trace("finish delay: {0}", ec.message());
   co_return ec;
 }
 

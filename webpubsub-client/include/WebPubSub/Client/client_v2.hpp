@@ -22,20 +22,19 @@ public:
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
       : log_(logger_name), channel_service_(strand, log_),
-        lifetime_service_(strand, websocket_factory, channel_service_, log_),
+        lifetime_(strand, websocket_factory, channel_service_, log_),
         receive_service_(strand, channel_service_, log_) {
-    receive_service_.set_lifetime_service(&lifetime_service_);
-    lifetime_service_.set_receive_service(&receive_service_);
+    receive_service_.set_lifetime_service(&lifetime_);
+    lifetime_.set_receive_service(&receive_service_);
   }
 
-  auto async_start(const io::cancellation_slot slot) -> async_t<> {
-    co_await lifetime_service_.async_raise_event(detail::to_connecting_state{});
-    co_await lifetime_service_.async_raise_event(detail::to_connected_state{});
+  auto async_start(io::cancellation_slot slot) -> async_t<> {
+    co_await lifetime_.async_raise_event(detail::to_connecting_state{}, slot);
+    co_await lifetime_.async_raise_event(detail::to_connected_state{}, slot);
   }
 
 private:
-  detail::client_lifetime_service<websocket_factory_t, websocket_t>
-      lifetime_service_;
+  detail::client_lifetime_service<websocket_factory_t, websocket_t> lifetime_;
   detail::client_receive_service<websocket_factory_t, websocket_t>
       receive_service_;
   detail::client_channel_service channel_service_;
