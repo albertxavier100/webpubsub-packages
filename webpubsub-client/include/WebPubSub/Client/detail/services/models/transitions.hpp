@@ -26,8 +26,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    stopped &stopped, to_connecting_state &event,
-    io::cancellation_slot slot) -> async_t<state_t> {
+    stopped &stopped, to_connecting_state &event) -> async_t<state_t> {
   spdlog::trace("stopped -> connecting: reset connection");
   co_return connecting{};
 }
@@ -38,8 +37,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    connecting &connecting, to_connected_state &event,
-    io::cancellation_slot _) -> async_t<state_t> {
+    connecting &connecting, to_connected_state &event) -> async_t<state_t> {
   try {
 
     co_await lifetime->async_connect_websocket();
@@ -61,8 +59,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    connected &connected, to_recovering_state &event,
-    io::cancellation_slot slot) -> async_t<state_t> {
+    connected &connected, to_recovering_state &event) -> async_t<state_t> {
   spdlog::trace("connected -> recovering");
   co_return recovering{};
 }
@@ -71,8 +68,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    connected &connected, to_stopping_state &event,
-    io::cancellation_slot slot) -> async_t<state_t> {
+    connected &connected, to_stopping_state &event) -> async_t<state_t> {
   spdlog::trace("connected -> stopping");
   co_return stopping{};
 }
@@ -83,8 +79,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    recovering &recovering, to_connected_state &event,
-    io::cancellation_slot slot) -> async_t<state_t> {
+    recovering &recovering, to_connected_state &event) -> async_t<state_t> {
   spdlog::trace("recovering -> connected");
   co_return connected{};
 }
@@ -95,8 +90,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    stopping &stopping, to_stopped_state &event,
-    io::cancellation_slot slot) -> async_t<state_t> {
+    stopping &stopping, to_stopped_state &event) -> async_t<state_t> {
   co_await lifetime->get_receive_service()->async_cancel_message_loop_coro();
   spdlog::trace("stopping -> stopped");
   // TODO: cancel receive loop
@@ -110,7 +104,7 @@ template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime, auto &,
-    auto &, io::cancellation_slot slot) -> async_t<state_t> {
+    auto &) -> async_t<state_t> {
   throw std::logic_error{"Unsupported state transition"};
 }
 #pragma endregion

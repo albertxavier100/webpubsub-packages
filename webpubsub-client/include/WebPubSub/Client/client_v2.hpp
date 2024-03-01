@@ -28,16 +28,15 @@ public:
     lifetime_.set_receive_service(&receive_service_);
   }
 
-  auto async_start(io::cancellation_slot slot) -> async_t<> {
-    co_await lifetime_.async_raise_event(detail::to_connecting_state{}, slot);
-    co_await lifetime_.async_raise_event(detail::to_connected_state{}, slot);
+  auto async_start() -> async_t<> {
+    co_await lifetime_.async_raise_event(detail::to_connecting_state{});
+    co_await lifetime_.async_raise_event(detail::to_connected_state{});
   }
 
   auto async_stop() -> async_t<> {
     spdlog::trace("async_stop -- beg");
-    auto slot = dummy_signal_.slot();
-    co_await lifetime_.async_raise_event(detail::to_stopping_state{}, slot);
-    co_await lifetime_.async_raise_event(detail::to_stopped_state{}, slot);
+    co_await lifetime_.async_raise_event(detail::to_stopping_state{});
+    co_await lifetime_.async_raise_event(detail::to_stopped_state{});
     spdlog::trace("async_stop -- end");
   }
 
@@ -48,7 +47,6 @@ private:
   detail::client_channel_service channel_service_;
 
   const detail::log log_;
-  io::cancellation_signal dummy_signal_;
   // TODO: DEBUG
   std::string uri_ = "TODO: debug";
 };

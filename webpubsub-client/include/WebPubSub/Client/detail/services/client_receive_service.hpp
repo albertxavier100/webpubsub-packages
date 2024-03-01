@@ -53,7 +53,7 @@ public:
 
     spdlog::trace("client_receive_service.spawn_message_loop_coro");
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
-    io::co_spawn(strand_, async_start_message_loop(signal.slot()), token);
+    io::co_spawn(strand_, async_start_message_loop(), token);
   }
 
   // TODO: IMPL
@@ -71,7 +71,7 @@ public:
                            *lifetime_service);
 
 private:
-  auto async_start_message_loop(io::cancellation_slot slot) -> async_t<> {
+  auto async_start_message_loop() -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool should_recover = false;
@@ -96,8 +96,8 @@ private:
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
       // TODO: still use this slot?
-      co_await lifetime_->async_raise_event(to_recovering_state{}, slot);
-      co_await lifetime_->async_raise_event(to_connected_state{}, slot);
+      co_await lifetime_->async_raise_event(to_recovering_state{});
+      co_await lifetime_->async_raise_event(to_connected_state{});
     }
 
     co_return;

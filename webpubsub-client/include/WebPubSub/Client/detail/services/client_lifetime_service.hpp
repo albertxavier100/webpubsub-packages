@@ -50,17 +50,15 @@ public:
         websocket_factory_(websocket_factory) {}
 
   // TODO: IMPL
-  auto async_raise_event(event_t event,
-                         io::cancellation_slot slot) -> async_t<> {
-    state_ = co_await std::visit(
-        overloaded{[this, slot = std::move(slot)](auto &e) {
-          return std::visit(
-              overloaded{[this, &e, slot = std::move(slot)](auto &s) {
-                return async_on_event(this, s, e, std::move(slot));
-              }},
-              state_);
-        }},
-        event);
+  auto async_raise_event(event_t event) -> async_t<> {
+    state_ = co_await std::visit(overloaded{[this](auto &e) {
+                                   return std::visit(
+                                       overloaded{[this, &e](auto &s) {
+                                         return async_on_event(this, s, e);
+                                       }},
+                                       state_);
+                                 }},
+                                 event);
   }
 
   auto async_connect_websocket() -> async_t<> {

@@ -97,7 +97,7 @@ TEST(connectivity, start_stop_basic) {
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
     try {
-      co_await client.async_start(std::move(cancel.slot()));
+      co_await client.async_start();
       spdlog::trace("client started in test");
       co_await client.async_stop();
       spdlog::trace("client stopped in test");
