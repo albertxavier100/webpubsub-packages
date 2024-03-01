@@ -38,15 +38,12 @@ class client_lifetime_service {
   using channel_t = io::experimental::channel<void(io::error_code, bool)>;
   using client_receive_service_t =
       detail::client_receive_service<websocket_factory_t, websocket_t>;
-  using client_channel_service_t = detail::client_channel_service;
 
 public:
   client_lifetime_service(strand_t &strand,
                           const websocket_factory_t &websocket_factory,
-                          const client_channel_service_t &channel_service,
                           const log &log)
       : log_(log), state_(stopped{}), strand_(strand),
-        channel_service_(channel_service),
         websocket_factory_(websocket_factory) {}
 
   // TODO: IMPL
@@ -82,8 +79,6 @@ private:
   const log &log_;
   state_t state_;
   strand_t &strand_;
-  // TODO: remove
-  const client_channel_service_t &channel_service_;
   client_receive_service_t *receive_service_;
   const websocket_factory_t &websocket_factory_;
 };

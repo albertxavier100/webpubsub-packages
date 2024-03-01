@@ -21,11 +21,10 @@ public:
             const client_options<protocol_t> &options,
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), channel_service_(strand, log_),
-        lifetime_(strand, websocket_factory, channel_service_, log_),
-        receive_service_(strand, channel_service_, log_) {
-    receive_service_.set_lifetime_service(&lifetime_);
-    lifetime_.set_receive_service(&receive_service_);
+      : log_(logger_name), lifetime_(strand, websocket_factory, log_),
+        receive_(strand, log_) {
+    receive_.set_lifetime_service(&lifetime_);
+    lifetime_.set_receive_service(&receive_);
   }
 
   // TODO: make start_slot optional
@@ -50,13 +49,9 @@ public:
 
 private:
   detail::client_lifetime_service<websocket_factory_t, websocket_t> lifetime_;
-  detail::client_receive_service<websocket_factory_t, websocket_t>
-      receive_service_;
-  detail::client_channel_service channel_service_;
+  detail::client_receive_service<websocket_factory_t, websocket_t> receive_;
 
   const detail::log log_;
-  // TODO: DEBUG
-  std::string uri_ = "TODO: debug";
   io::cancellation_signal dummy_start_signal_;
 };
 } // namespace webpubsub

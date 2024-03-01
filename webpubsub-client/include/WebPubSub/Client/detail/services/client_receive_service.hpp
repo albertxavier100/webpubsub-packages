@@ -25,23 +25,15 @@ class client_lifetime_service;
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_receive_service {
-
-  using client_channel_service_t = detail::client_channel_service;
-
 public:
-  client_receive_service(strand_t &strand,
-                         const client_channel_service_t &channel_service,
-                         const log &log)
-      : strand_(strand), log_(log), channel_service_(channel_service),
-        message_loop_coro_completion_(strand_, 1) {}
+  client_receive_service(strand_t &strand, const log &log)
+      : strand_(strand), log_(log), message_loop_coro_completion_(strand_, 1) {}
 
-  // TODO: IMPL
   auto
   async_spawn_message_loop_coro(io::cancellation_slot start_slot) -> async_t<> {
     co_await message_loop_coro_completion_.async_send(io::error_code{}, true,
                                                       io::use_awaitable);
     auto &signal = message_loop_coro_cancel_signal_;
-    //    auto slot = (co_await io::this_coro::cancellation_state).slot();
     start_slot.assign([&](io::cancellation_type ct) {
       spdlog::trace("message_loop_coro_cancel_signal_ cancel");
       signal.emit(ct);
@@ -52,7 +44,6 @@ public:
     io::co_spawn(strand_, async_start_message_loop(), token);
   }
 
-  // TODO: IMPL
   auto async_cancel_message_loop_coro() -> async_t<> {
     message_loop_coro_cancel_signal_.emit(io::cancellation_type::terminal);
     co_await message_loop_coro_completion_.async_receive(io::use_awaitable);
@@ -72,7 +63,6 @@ private:
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool should_recover = false;
-    is_running_receiving_loop_ = true;
     try {
       for (;;) {
         auto cs = co_await io::this_coro::cancellation_state;
@@ -86,7 +76,6 @@ private:
     } catch (const std::exception &ex) {
       spdlog::trace("message loop stopped with ex: {0}", ex.what());
       should_recover = true;
-      is_running_receiving_loop_ = false;
     }
 
     if (should_recover) {
@@ -101,10 +90,8 @@ private:
 
   ack_cache ack_cache_;
   strand_t &strand_;
-  const client_channel_service_t &channel_service_;
   const log &log_;
   client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
-  bool is_running_receiving_loop_ = false;
   io::cancellation_signal message_loop_coro_cancel_signal_;
   notification_t message_loop_coro_completion_;
 };
