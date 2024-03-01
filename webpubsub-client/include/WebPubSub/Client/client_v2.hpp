@@ -28,9 +28,13 @@ public:
     lifetime_.set_receive_service(&receive_service_);
   }
 
-  auto async_start() -> async_t<> {
+  // TODO: make start_slot optional
+  auto async_start(std::optional<io::cancellation_slot> slot = std::nullopt)
+      -> async_t<> {
+    //    (*slot).assign([](auto x) { spdlog::trace("cancelled!!!!!"); });
     co_await lifetime_.async_raise_event(detail::to_connecting_state{});
-    co_await lifetime_.async_raise_event(detail::to_connected_state{});
+    auto event = detail::to_connected_state{.start_slot = std::move(*slot)};
+    co_await lifetime_.async_raise_event(std::move(event));
   }
 
   auto async_stop() -> async_t<> {
@@ -49,5 +53,6 @@ private:
   const detail::log log_;
   // TODO: DEBUG
   std::string uri_ = "TODO: debug";
+  io::cancellation_slot default_start_slot_;
 };
 } // namespace webpubsub

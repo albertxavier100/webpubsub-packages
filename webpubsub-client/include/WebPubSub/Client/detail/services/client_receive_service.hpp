@@ -36,19 +36,16 @@ public:
         message_loop_coro_completion_(strand_, 1) {}
 
   // TODO: IMPL
-  auto async_spawn_message_loop_coro() -> async_t<> {
+  auto
+  async_spawn_message_loop_coro(io::cancellation_slot start_slot) -> async_t<> {
     co_await message_loop_coro_completion_.async_send(io::error_code{}, true,
                                                       io::use_awaitable);
     auto &signal = message_loop_coro_cancel_signal_;
-    auto slot = (co_await io::this_coro::cancellation_state).slot();
-    slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
-    struct scope_exit {
-      io::cancellation_slot slot;
-      ~scope_exit() {
-        if (slot.is_connected())
-          slot.clear();
-      }
-    } scope_exit{slot};
+    //    auto slot = (co_await io::this_coro::cancellation_state).slot();
+    start_slot.assign([&](io::cancellation_type ct) {
+      spdlog::trace("message_loop_coro_cancel_signal_ cancel");
+      signal.emit(ct);
+    });
 
     spdlog::trace("client_receive_service.spawn_message_loop_coro");
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
@@ -95,7 +92,6 @@ private:
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
-      // TODO: still use this slot?
       co_await lifetime_->async_raise_event(to_recovering_state{});
       co_await lifetime_->async_raise_event(to_connected_state{});
     }

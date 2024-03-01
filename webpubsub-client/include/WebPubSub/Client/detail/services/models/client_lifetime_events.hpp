@@ -9,13 +9,16 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "webpubsub/client/common/asio.hpp"
 #include <variant>
 
 namespace webpubsub {
 namespace detail {
 // lifetime events
 struct to_connecting_state {};
-struct to_connected_state {};
+struct to_connected_state {
+  io::cancellation_slot start_slot;
+};
 struct to_stopped_state {};
 struct to_stopping_state {};
 struct to_recovering_state {};

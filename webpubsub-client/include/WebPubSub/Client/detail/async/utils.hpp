@@ -34,11 +34,11 @@ async_delay(io::strand<io::io_context::executor_type> &strand,
             const io::cancellation_slot slot) {
   io::steady_timer timer{strand, duration};
   // auto token =
-  //     io::bind_cancellation_slot(slot, io::as_tuple(io::use_awaitable));
+  //     io::bind_cancellation_slot(start_slot,
+  //     io::as_tuple(io::use_awaitable));
   auto token = io::as_tuple(io::use_awaitable);
 
   const auto [ec] = co_await timer.async_wait(token);
-  spdlog::trace("finish delay: {0}", ec.message());
 }
 
 io::awaitable<io::error_code>
