@@ -11,12 +11,11 @@
 
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 
 namespace webpubsub {
 namespace detail {
-
-class ack_cache {};
 
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
@@ -27,36 +26,25 @@ template <typename websocket_factory_t, typename websocket_t>
 class client_receive_service {
 public:
   client_receive_service(strand_t &strand, const log &log)
-      : strand_(strand), log_(log), message_loop_coro_completion_(strand_, 1) {}
+      : loop_svc_(strand, log) {}
 
   auto
   async_spawn_message_loop_coro(io::cancellation_slot start_slot) -> async_t<> {
-    co_await message_loop_coro_completion_.async_send(io::error_code{}, true,
-                                                      io::use_awaitable);
-    auto &signal = message_loop_coro_cancel_signal_;
-    start_slot.assign([&](io::cancellation_type ct) {
-      spdlog::trace("message_loop_coro_cancel_signal_ cancel");
-      signal.emit(ct);
-    });
-
-    spdlog::trace("client_receive_service.spawn_message_loop_coro");
-    auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
-    io::co_spawn(strand_, async_start_message_loop(), token);
+    co_await loop_svc_.async_spawn_loop_coro(async_start_message_loop(),
+                                             std::move(start_slot));
   }
 
   auto async_cancel_message_loop_coro() -> async_t<> {
-    message_loop_coro_cancel_signal_.emit(io::cancellation_type::terminal);
-    co_await message_loop_coro_completion_.async_receive(io::use_awaitable);
+    co_await loop_svc_.async_cancel_loop_coro();
     spdlog::trace("message loop cancel waited");
     co_return;
   }
 
-  // TODO: IMPL
-  auto async_wait_ack_id(uint64_t ack_id) -> async_t<> { co_return; }
-
   auto
   set_lifetime_service(client_lifetime_service<websocket_factory_t, websocket_t>
-                           *lifetime_service);
+                           *lifetime_service) {
+    loop_svc_.set_lifetime_service(lifetime_service);
+  }
 
 private:
   auto async_start_message_loop() -> async_t<> {
@@ -70,7 +58,7 @@ private:
           spdlog::trace("receiving... break");
           break;
         }
-        co_await async_delay_v2(strand_, 1s);
+        co_await async_delay_v2(loop_svc_.strand(), 1s);
         spdlog::trace("receiving...");
       }
     } catch (const std::exception &ex) {
@@ -81,32 +69,14 @@ private:
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
-      co_await lifetime_->async_raise_event(to_recovering_state{});
-      co_await lifetime_->async_raise_event(to_connected_state{});
+      co_await loop_svc_.lifetime()->async_raise_event(to_recovering_state{});
+      co_await loop_svc_.lifetime()->async_raise_event(to_connected_state{});
     }
-
     co_return;
   }
 
-  ack_cache ack_cache_;
-  strand_t &strand_;
-  const log &log_;
-  client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
-  io::cancellation_signal message_loop_coro_cancel_signal_;
-  notification_t message_loop_coro_completion_;
+  client_loop_service<websocket_factory_t, websocket_t> loop_svc_;
 };
-
-#pragma region IMPL
-#include "webpubsub/client/detail/services/client_lifetime_service.hpp"
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto client_receive_service<websocket_factory_t, websocket_t>::
-    set_lifetime_service(
-        client_lifetime_service<websocket_factory_t, websocket_t>
-            *lifetime_service) {
-  lifetime_ = lifetime_service;
-}
-#pragma endregion
 } // namespace detail
 } // namespace webpubsub
 

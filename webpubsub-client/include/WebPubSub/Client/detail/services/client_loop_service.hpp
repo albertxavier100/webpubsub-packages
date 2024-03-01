@@ -27,30 +27,41 @@ template <typename websocket_factory_t, typename websocket_t>
 class client_loop_service {
 public:
   client_loop_service(strand_t &strand, const log &log)
-      : strand_(strand), log_(log), message_loop_coro_completion_(strand_, 1) {}
+      : strand_(strand), log_(log), notification_(strand_, 1) {}
 
-protected:
-  auto
-  async_spawn_message_loop_coro(async_t<> async_run,
-                                io::cancellation_slot start_slot) -> async_t<> {
-    co_await message_loop_coro_completion_.async_send(io::error_code{}, true,
-                                                      io::use_awaitable);
-    auto &signal = message_loop_coro_cancel_signal_;
+  auto async_spawn_loop_coro(async_t<> async_run,
+                             io::cancellation_slot start_slot) -> async_t<> {
+    co_await notification_.async_send(io::error_code{}, true,
+                                      io::use_awaitable);
+    auto &signal = cancel_signal_;
     start_slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
 
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
     io::co_spawn(strand_, std::move(async_run), token);
   }
 
+  auto async_cancel_loop_coro() -> async_t<> {
+    cancel_signal_.emit(io::cancellation_type::terminal);
+    co_await notification_.async_receive(io::use_awaitable);
+    co_return;
+  }
+
   auto
   set_lifetime_service(client_lifetime_service<websocket_factory_t, websocket_t>
                            *lifetime_service);
 
+  auto lifetime() { return lifetime_; }
+  auto &strand() { return strand_; }
+  auto &log() { return log_; }
+  auto &notification() { return notification_; }
+  auto &cancel_signal() { return cancel_signal_; }
+
+private:
   strand_t &strand_;
-  const log &log_;
+  const detail::log &log_;
   client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
-  io::cancellation_signal message_loop_coro_cancel_signal_;
-  notification_t message_loop_coro_completion_;
+  io::cancellation_signal cancel_signal_;
+  notification_t notification_;
 };
 
 #pragma region IMPL
