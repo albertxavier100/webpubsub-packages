@@ -31,9 +31,13 @@ public:
   // TODO: make start_slot optional
   auto async_start(std::optional<io::cancellation_slot> slot = std::nullopt)
       -> async_t<> {
-    //    (*slot).assign([](auto x) { spdlog::trace("cancelled!!!!!"); });
     co_await lifetime_.async_raise_event(detail::to_connecting_state{});
-    auto event = detail::to_connected_state{.start_slot = std::move(*slot)};
+    auto event = detail::to_connected_state{};
+    if (slot) {
+      event.start_slot = *slot;
+    } else {
+      event.start_slot = dummy_start_signal_.slot();
+    }
     co_await lifetime_.async_raise_event(std::move(event));
   }
 
@@ -53,6 +57,6 @@ private:
   const detail::log log_;
   // TODO: DEBUG
   std::string uri_ = "TODO: debug";
-  io::cancellation_slot default_start_slot_;
+  io::cancellation_signal dummy_start_signal_;
 };
 } // namespace webpubsub
