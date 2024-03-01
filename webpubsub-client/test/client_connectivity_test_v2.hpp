@@ -133,7 +133,7 @@ TEST(connectivity, start_stop_basic) {
 //   factory_t factory;
 //   protocol_t p;
 //   options_t opts{p};
-//   client_t client(strand, opts, factory, "console");
+//   client_t client(strand_t, opts, factory, "console");
 //
 //   asio::cancellation_signal cancel;
 //   asio::cancellation_signal cancel_dummy;
@@ -151,14 +151,14 @@ TEST(connectivity, start_stop_basic) {
 //
 //   auto async_cancel_2s = [&]() -> async_t<> {
 //     using namespace std::chrono_literals;
-//     co_await webpubsub::detail::async_delay(strand, 1s, cancel_dummy.slot());
-//     spdlog::trace("emit cancel");
+//     co_await webpubsub::detail::async_delay(strand_t, 1s,
+//     cancel_dummy.slot()); spdlog::trace("emit cancel");
 //     cancel.emit(io::cancellation_type::terminal);
 //   };
 //   try {
 //     auto token = io::bind_cancellation_slot(cancel.slot(), io::detached);
-//     io::co_spawn(strand, async_test(), token);
-//     io::co_spawn(strand, async_cancel_2s(), io::detached);
+//     io::co_spawn(strand_t, async_test(), token);
+//     io::co_spawn(strand_t, async_cancel_2s(), io::detached);
 //   } catch (...) {
 //     spdlog::trace("ex in test body");
 //   }

@@ -15,7 +15,8 @@ namespace webpubsub {
 namespace detail {
 
 template <typename t = void> using async_t = io::awaitable<t>;
-using strand = io::strand<io::io_context::executor_type>;
+using strand_t = io::strand<io::io_context::executor_type>;
+using notification_t = io::experimental::channel<void(io::error_code, bool)>;
 } // namespace detail
 } // namespace webpubsub
 

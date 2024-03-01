@@ -22,7 +22,7 @@ using channel_t = io::experimental::channel<void(io::error_code, data_t)>;
 
 class client_channel_service {
 public:
-  client_channel_service(strand &strand, const detail::log &log)
+  client_channel_service(strand_t &strand, const detail::log &log)
       : log_{log}, lifetime_channel_{strand}, receive_channel_{strand},
         send_channel_{strand} {}
 

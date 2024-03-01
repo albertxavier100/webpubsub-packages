@@ -29,14 +29,17 @@ class client_receive_service {
   using client_channel_service_t = detail::client_channel_service;
 
 public:
-  client_receive_service(strand &strand,
+  client_receive_service(strand_t &strand,
                          const client_channel_service_t &channel_service,
                          const log &log)
-      : strand_(strand), log_(log), channel_service_(channel_service) {}
+      : strand_(strand), log_(log), channel_service_(channel_service),
+        message_loop_coro_completion_(strand_, 1) {}
 
   // TODO: IMPL
   auto async_spawn_message_loop_coro() -> async_t<> {
-    auto &signal = message_loop_cancel_signal_;
+    co_await message_loop_coro_completion_.async_send(io::error_code{}, true,
+                                                      io::use_awaitable);
+    auto &signal = message_loop_coro_cancel_signal_;
     auto slot = (co_await io::this_coro::cancellation_state).slot();
     slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
     struct scope_exit {
@@ -54,8 +57,9 @@ public:
 
   // TODO: IMPL
   auto async_cancel_message_loop_coro() -> async_t<> {
-    message_loop_cancel_signal_.emit(io::cancellation_type::terminal);
-    // TODO: wait for message loop stop
+    message_loop_coro_cancel_signal_.emit(io::cancellation_type::terminal);
+    co_await message_loop_coro_completion_.async_receive(io::use_awaitable);
+    spdlog::trace("message loop cancel waited");
     co_return;
   }
 
@@ -100,12 +104,13 @@ private:
   }
 
   ack_cache ack_cache_;
-  strand &strand_;
+  strand_t &strand_;
   const client_channel_service_t &channel_service_;
   const log &log_;
   client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
   bool is_running_receiving_loop_ = false;
-  io::cancellation_signal message_loop_cancel_signal_;
+  io::cancellation_signal message_loop_coro_cancel_signal_;
+  notification_t message_loop_coro_completion_;
 };
 
 #pragma region IMPL
