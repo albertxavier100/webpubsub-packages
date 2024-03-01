@@ -39,14 +39,14 @@ template <typename websocket_factory_t, typename websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     connecting &connecting, to_connected_state &event,
-    io::cancellation_slot slot) -> async_t<state_t> {
+    io::cancellation_slot _) -> async_t<state_t> {
   try {
 
     co_await lifetime->async_connect_websocket();
     auto receive_service = lifetime->get_receive_service();
     spdlog::trace(
         "connecting -> connected: receive_service->spawn_message_loop_coro");
-    receive_service->spawn_message_loop_coro(std::move(slot));
+    co_await receive_service->async_spawn_message_loop_coro();
     // TODO: start sequence id loop
   } catch (const std::exception &ex) {
     throw invalid_operation("failed to connect to websocket");
@@ -65,6 +65,16 @@ auto async_on_event(
     io::cancellation_slot slot) -> async_t<state_t> {
   spdlog::trace("connected -> recovering");
   co_return recovering{};
+}
+
+template <typename websocket_factory_t, typename websocket_t>
+  requires websocket_factory_c<websocket_factory_t, websocket_t>
+auto async_on_event(
+    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
+    connected &connected, to_stopping_state &event,
+    io::cancellation_slot slot) -> async_t<state_t> {
+  spdlog::trace("connected -> stopping");
+  co_return stopping{};
 }
 #pragma endregion
 
@@ -87,10 +97,15 @@ auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     stopping &stopping, to_stopped_state &event,
     io::cancellation_slot slot) -> async_t<state_t> {
+  co_await lifetime->get_receive_service()->async_cancel_message_loop_coro();
+  spdlog::trace("stopping -> stopped");
+  // TODO: cancel receive loop
+  // TODO: cancel sequence loop
   co_return stopped{};
 }
 
 #pragma region UNSUPPORTED
+// TODO: careful about un-wired transitions
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(

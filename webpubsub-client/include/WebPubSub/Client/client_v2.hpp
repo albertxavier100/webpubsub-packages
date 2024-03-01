@@ -33,6 +33,14 @@ public:
     co_await lifetime_.async_raise_event(detail::to_connected_state{}, slot);
   }
 
+  auto async_stop() -> async_t<> {
+    spdlog::trace("async_stop -- beg");
+    auto slot = dummy_signal_.slot();
+    co_await lifetime_.async_raise_event(detail::to_stopping_state{}, slot);
+    co_await lifetime_.async_raise_event(detail::to_stopped_state{}, slot);
+    spdlog::trace("async_stop -- end");
+  }
+
 private:
   detail::client_lifetime_service<websocket_factory_t, websocket_t> lifetime_;
   detail::client_receive_service<websocket_factory_t, websocket_t>
@@ -40,7 +48,7 @@ private:
   detail::client_channel_service channel_service_;
 
   const detail::log log_;
-
+  io::cancellation_signal dummy_signal_;
   // TODO: DEBUG
   std::string uri_ = "TODO: debug";
 };

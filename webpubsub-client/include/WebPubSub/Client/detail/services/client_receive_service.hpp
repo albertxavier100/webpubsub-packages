@@ -35,14 +35,33 @@ public:
       : strand_(strand), log_(log), channel_service_(channel_service) {}
 
   // TODO: IMPL
-  auto spawn_message_loop_coro(io::cancellation_slot slot) {
+  auto async_spawn_message_loop_coro() -> async_t<> {
+    auto &signal = message_loop_cancel_signal_;
+    auto sl = (co_await io::this_coro::cancellation_state).slot();
+    sl.assign([&](io::cancellation_type ct) {
+      spdlog::trace("start slot cancel: {0}", (unsigned int)ct);
+      signal.emit(ct);
+    });
+
+    struct scope_exit {
+      io::cancellation_slot sl;
+      ~scope_exit() {
+        if (sl.is_connected())
+          sl.clear();
+      }
+    } scope_exit_{sl};
+
     spdlog::trace("client_receive_service.spawn_message_loop_coro");
-    auto token = io::bind_cancellation_slot(slot, io::detached);
-    io::co_spawn(strand_, async_start_message_loop(slot), token);
+    auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
+    io::co_spawn(strand_, async_start_message_loop(signal.slot()), token);
   }
 
   // TODO: IMPL
-  auto cancel_message_loop_coro() {}
+  auto async_cancel_message_loop_coro() -> async_t<> {
+    message_loop_cancel_signal_.emit(io::cancellation_type::terminal);
+    // TODO: wait for message loop stop
+    co_return;
+  }
 
   // TODO: IMPL
   auto async_wait_ack_id(uint64_t ack_id) -> async_t<> { co_return; }
@@ -56,6 +75,7 @@ private:
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool should_recover = false;
+    is_running_receiving_loop_ = true;
     try {
       for (;;) {
         auto cs = co_await io::this_coro::cancellation_state;
@@ -67,12 +87,15 @@ private:
         spdlog::trace("receiving...");
       }
     } catch (const std::exception &ex) {
+      spdlog::trace("message loop stopped with ex: {0}", ex.what());
       should_recover = true;
+      is_running_receiving_loop_ = false;
     }
 
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
+      // TODO: still use this slot?
       co_await lifetime_->async_raise_event(to_recovering_state{}, slot);
       co_await lifetime_->async_raise_event(to_connected_state{}, slot);
     }
@@ -85,6 +108,8 @@ private:
   const client_channel_service_t &channel_service_;
   const log &log_;
   client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
+  bool is_running_receiving_loop_ = false;
+  io::cancellation_signal message_loop_cancel_signal_;
 };
 
 #pragma region IMPL
