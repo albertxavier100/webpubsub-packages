@@ -37,19 +37,15 @@ public:
   // TODO: IMPL
   auto async_spawn_message_loop_coro() -> async_t<> {
     auto &signal = message_loop_cancel_signal_;
-    auto sl = (co_await io::this_coro::cancellation_state).slot();
-    sl.assign([&](io::cancellation_type ct) {
-      spdlog::trace("start slot cancel: {0}", (unsigned int)ct);
-      signal.emit(ct);
-    });
-
+    auto slot = (co_await io::this_coro::cancellation_state).slot();
+    slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
     struct scope_exit {
-      io::cancellation_slot sl;
+      io::cancellation_slot slot;
       ~scope_exit() {
-        if (sl.is_connected())
-          sl.clear();
+        if (slot.is_connected())
+          slot.clear();
       }
-    } scope_exit_{sl};
+    } scope_exit{slot};
 
     spdlog::trace("client_receive_service.spawn_message_loop_coro");
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
