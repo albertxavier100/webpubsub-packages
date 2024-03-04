@@ -31,18 +31,19 @@ public:
 
   auto async_spawn_loop_coro(async_t<> async_run,
                              io::cancellation_slot start_slot) -> async_t<> {
-    co_await notification_.async_send(io::error_code{}, true,
-                                      io::use_awaitable);
     auto &signal = cancel_signal_;
     start_slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
 
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
     io::co_spawn(strand_, std::move(async_run), token);
+    spdlog::trace("loop started");
   }
 
   auto async_cancel_loop_coro() -> async_t<> {
     cancel_signal_.emit(io::cancellation_type::terminal);
+    // TODO: fix it!!!
     co_await notification_.async_receive(io::use_awaitable);
+    spdlog::trace("cancel finished");
     co_return;
   }
 
