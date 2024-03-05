@@ -10,6 +10,7 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"

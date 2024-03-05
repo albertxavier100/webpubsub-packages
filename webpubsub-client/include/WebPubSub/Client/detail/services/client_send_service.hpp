@@ -14,7 +14,6 @@
 
 namespace webpubsub {
 namespace detail {
-namespace message {
 class latest_sequence_id {
 public:
 private:
@@ -26,7 +25,6 @@ public:
 
 private:
 };
-} // namespace message
 } // namespace detail
 } // namespace webpubsub
 
