@@ -1,26 +1,48 @@
+//
+// Created by alber on 2024/3/5.
+//
+
+#ifndef TEST_WEBPUBSUB_CLIENT_ACK_ENTITY_HPP
+#define TEST_WEBPUBSUB_CLIENT_ACK_ENTITY_HPP
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1200)
 #pragma once
+#endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
+
+#include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/exceptions/exception.hpp"
 #include <variant>
-#include <webpubsub/client/async/task_completion/task_completion_source.hpp>
-#include <webpubsub/client/models/request_result.hpp>
+
 namespace webpubsub {
-using result_or_exception = std::variant<
-    request_result,
-    std::invalid_argument /* TODO: replace my own exception in the future*/,
-    std::exception>;
+namespace detail {
+class ack_entity {
+  enum class result {
+    cancelled,
+    completed,
+  };
+  using result_t = std::variant<invalid_operation, result>;
+  using ack_channel_t =
+      io::experimental::channel<void(io::error_code, result_t)>;
 
-class ack_entity__ {
 public:
-  ack_entity(uint64_t ack_id) id_(ack_id) {}
-  auto get_ack_id() { return id_; }
+  ack_entity(strand_t &strand, const uint64_t &ack_id)
+      : id_(ack_id), ack_channel_(strand, 1) {}
 
-  // TODO: in the future, limit set function, and consider try set...
-  auto set_result(request_result result) {
-    tcs_.set_value_once(std::move(result));
+  auto async_finish_with(result_t result) -> async_t<> {
+    co_await ack_channel_.async_send(io::error_code{}, std::move(result),
+                                     io::use_awaitable);
+  }
+
+  auto async_await() -> async_t<result_t> {
+    auto result = co_await ack_channel_.async_receive(io::use_awaitable);
+    co_return result;
   }
 
 private:
   uint64_t id_;
-
-  task_completion_source<request_result_or_exception> tcs_;
+  ack_channel_t ack_channel_;
 };
+} // namespace detail
 } // namespace webpubsub
+#endif

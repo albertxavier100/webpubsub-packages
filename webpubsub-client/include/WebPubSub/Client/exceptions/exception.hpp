@@ -21,6 +21,7 @@ protected:
 // TODO: use this ex for all, design later
 class invalid_operation : public exception {
 public:
+  invalid_operation() : exception(""){};
   explicit invalid_operation(std::string const &message) : exception(message) {}
 };
 } // namespace webpubsub
