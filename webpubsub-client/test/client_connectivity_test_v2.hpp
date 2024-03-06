@@ -6,6 +6,9 @@
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "gtest/gtest.h"
 
+namespace test {
+namespace connectivity {
+
 using strand_t =
     webpubsub::io::strand<webpubsub::io::io_context::executor_type>;
 webpubsub::io::io_context io_context;
@@ -166,3 +169,5 @@ TEST(connectivity, start_stop_with_cancel) {
     spdlog::trace("ex in main: {0}", ex.what());
   }
 }
+} // namespace connectivity
+} // namespace test

@@ -30,10 +30,9 @@ public:
   client_receive_service(strand_t &strand, const log &log)
       : loop_svc_(strand, log) {}
 
-  auto
-  async_spawn_message_loop_coro(io::cancellation_slot start_slot) -> async_t<> {
-    co_await loop_svc_.async_spawn_loop_coro(async_start_message_loop(),
-                                             std::move(start_slot));
+  auto spawn_message_loop_coro(io::cancellation_slot start_slot) {
+    loop_svc_.spawn_loop_coro(async_start_message_loop(),
+                              std::move(start_slot));
   }
 
   auto async_cancel_message_loop_coro() -> async_t<> {

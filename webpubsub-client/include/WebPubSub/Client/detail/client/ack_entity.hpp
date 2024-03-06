@@ -17,6 +17,7 @@
 namespace webpubsub {
 namespace detail {
 class ack_entity {
+public:
   enum class result {
     cancelled,
     completed,
@@ -25,7 +26,6 @@ class ack_entity {
   using ack_channel_t =
       io::experimental::channel<void(io::error_code, result_t)>;
 
-public:
   ack_entity(strand_t &strand, const uint64_t &ack_id)
       : id_(ack_id), ack_channel_(strand, 1) {}
 
@@ -34,7 +34,7 @@ public:
                                      io::use_awaitable);
   }
 
-  auto async_await() -> async_t<result_t> {
+  auto async_wait() -> async_t<result_t> {
     auto result = co_await ack_channel_.async_receive(io::use_awaitable);
     co_return result;
   }

@@ -43,8 +43,7 @@ auto async_on_event(
     co_await lifetime->async_connect_websocket();
     auto rcv = lifetime->get_receive_service();
     spdlog::trace("connecting -> connected: rcv->spawn_message_loop_coro");
-    // TODO: use start slot
-    co_await rcv->async_spawn_message_loop_coro(std::move(event.start_slot));
+    rcv->spawn_message_loop_coro(std::move(event.start_slot));
     // TODO: start sequence id loop
   } catch (const std::exception &ex) {
     throw invalid_operation("failed to connect to websocket");

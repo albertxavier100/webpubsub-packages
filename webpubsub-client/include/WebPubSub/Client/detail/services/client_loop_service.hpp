@@ -29,8 +29,7 @@ public:
   client_loop_service(strand_t &strand, const log &log)
       : strand_(strand), log_(log), notification_(strand_, 1) {}
 
-  auto async_spawn_loop_coro(async_t<> async_run,
-                             io::cancellation_slot start_slot) -> async_t<> {
+  auto spawn_loop_coro(async_t<> async_run, io::cancellation_slot start_slot) {
     auto &signal = cancel_signal_;
     start_slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
 
