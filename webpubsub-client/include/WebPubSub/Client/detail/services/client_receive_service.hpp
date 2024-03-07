@@ -11,6 +11,7 @@
 
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/ack_entity.hpp"
+#include "webpubsub/client/detail/client/loop_tracker.hpp"
 #include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
@@ -26,9 +27,10 @@ class client_lifetime_service;
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_receive_service {
+
 public:
   client_receive_service(strand_t &strand, const log &log)
-      : loop_svc_(strand, log) {}
+      : loop_svc_(strand, log), loop_tracker_(strand) {}
 
   auto spawn_message_loop_coro(io::cancellation_slot start_slot) {
     loop_svc_.spawn_loop_coro(async_start_message_loop(),
@@ -37,7 +39,9 @@ public:
 
   auto async_cancel_message_loop_coro() -> async_t<> {
     co_await loop_svc_.async_cancel_loop_coro();
-    spdlog::trace("message loop cancel waited");
+    spdlog::trace("wait loop finish begin");
+    co_await loop_tracker_.async_wait();
+    spdlog::trace("wait loop finish end");
     co_return;
   }
 
@@ -67,6 +71,10 @@ private:
       should_recover = true;
     }
 
+    spdlog::trace("receive loop finished beg");
+    loop_tracker_.finish();
+    spdlog::trace("receive loop finished end");
+
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
@@ -77,6 +85,7 @@ private:
   }
 
   client_loop_service<websocket_factory_t, websocket_t> loop_svc_;
+  loop_tracker loop_tracker_;
 };
 } // namespace detail
 } // namespace webpubsub

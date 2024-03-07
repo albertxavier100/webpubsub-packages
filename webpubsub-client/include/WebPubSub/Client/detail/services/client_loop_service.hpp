@@ -27,7 +27,7 @@ template <typename websocket_factory_t, typename websocket_t>
 class client_loop_service {
 public:
   client_loop_service(strand_t &strand, const log &log)
-      : strand_(strand), log_(log), notification_(strand_, 1) {}
+      : strand_(strand), log_(log) {}
 
   auto spawn_loop_coro(async_t<> async_run, io::cancellation_slot start_slot) {
     auto &signal = cancel_signal_;
@@ -40,8 +40,6 @@ public:
 
   auto async_cancel_loop_coro() -> async_t<> {
     cancel_signal_.emit(io::cancellation_type::terminal);
-    // TODO: fix it!!!
-    co_await notification_.async_receive(io::use_awaitable);
     spdlog::trace("cancel finished");
     co_return;
   }
@@ -53,7 +51,6 @@ public:
   auto lifetime() { return lifetime_; }
   auto &strand() { return strand_; }
   auto &log() { return log_; }
-  auto &notification() { return notification_; }
   auto &cancel_signal() { return cancel_signal_; }
 
 private:
@@ -61,7 +58,6 @@ private:
   const detail::log &log_;
   client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
   io::cancellation_signal cancel_signal_;
-  notification_t notification_;
 };
 
 #pragma region IMPL

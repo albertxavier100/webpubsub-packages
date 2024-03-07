@@ -90,10 +90,10 @@ template <typename websocket_factory_t, typename websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     stopping &stopping, to_stopped_state &event) -> async_t<state_t> {
-  co_await lifetime->get_receive_service()->async_cancel_message_loop_coro();
-  spdlog::trace("stopping -> stopped");
   // TODO: cancel receive loop
+  co_await lifetime->get_receive_service()->async_cancel_message_loop_coro();
   // TODO: cancel sequence loop
+  spdlog::trace("stopping -> stopped");
   co_return stopped{};
 }
 
