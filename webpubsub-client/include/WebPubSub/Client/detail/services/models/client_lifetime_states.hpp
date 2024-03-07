@@ -18,12 +18,11 @@
 namespace webpubsub {
 namespace detail {
 struct connected {};
-
-struct connecting {};
-
 struct stopped {};
+struct disconnected {};
 struct stopping {};
 struct recovering {};
+struct connecting {};
 
 using state_t =
     std::variant<stopped, connecting, connected, recovering, stopping>;

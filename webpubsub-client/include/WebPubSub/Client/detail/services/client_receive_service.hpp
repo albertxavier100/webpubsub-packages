@@ -54,15 +54,12 @@ public:
 private:
   auto async_start_message_loop() -> async_t<> {
     struct exit_scope {
-      exit_scope(loop_tracker &lt) : lt_(lt) {}
       ~exit_scope() {
         spdlog::trace("receive loop finished beg");
         lt_.finish();
       }
-
-    private:
       loop_tracker &lt_;
-    } _(loop_tracker_);
+    } _{loop_tracker_};
 
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
@@ -74,7 +71,7 @@ private:
           spdlog::trace("receiving... break");
           break;
         }
-        // TODO: dev
+        // TODO: IMPL
         co_await async_delay_v2(loop_svc_.strand(), 1s);
         spdlog::trace("receiving...");
       }

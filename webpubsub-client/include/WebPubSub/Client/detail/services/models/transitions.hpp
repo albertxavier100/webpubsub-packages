@@ -28,6 +28,7 @@ auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     stopped &stopped, to_connecting_state &event) -> async_t<state_t> {
   spdlog::trace("stopped -> connecting: reset connection");
+  // TODO: reset connection
   co_return connecting{};
 }
 #pragma endregion
@@ -59,6 +60,7 @@ template <typename websocket_factory_t, typename websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     connected &connected, to_recovering_state &event) -> async_t<state_t> {
+  // TODO: reset connection
   spdlog::trace("connected -> recovering");
   co_return recovering{};
 }
@@ -74,14 +76,21 @@ auto async_on_event(
 #pragma endregion
 
 #pragma region RECOVERING
+
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
     client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
     recovering &recovering, to_connected_state &event) -> async_t<state_t> {
   spdlog::trace("recovering -> connected");
-  co_return connected{};
+  try {
+    co_await lifetime->async_reconnect();
+    co_return connected{};
+  } catch (...) {
+    co_return disconnected{};
+  }
 }
+
 #pragma endregion
 
 #pragma region STOPPING
@@ -102,9 +111,11 @@ auto async_on_event(
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime, auto &,
-    auto &) -> async_t<state_t> {
-  throw std::logic_error{"Unsupported state transition"};
+    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
+    auto &state, auto &event) -> async_t<state_t> {
+  throw std::logic_error{
+      std::format("Unsupported state and transition: state: {}, transition: {}",
+                  typeid(state).name(), typeid(event).name())};
 }
 #pragma endregion
 

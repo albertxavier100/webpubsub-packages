@@ -63,6 +63,47 @@ public:
     co_return;
   }
 
+  auto async_auto_reconnect() -> async_t<> {
+    bool ok = false;
+
+    struct exit_scope {
+      ~exit_scope() {
+        if (!ok) {
+          // TODO: IMPL: handle client stop
+        }
+      }
+    } _;
+
+    auto retry = 0;
+
+    for (;;) {
+      auto cs = co_await io::this_coro::cancellation_state;
+      if (cs.cancelled() != io::cancellation_type::none) {
+        spdlog::trace("auto reconnect break;");
+        break;
+      }
+      bool should_retry = false;
+      try {
+        co_await async_connect_websocket();
+        ok = true;
+        co_return;
+      } catch (const std::exception &ex) {
+        should_retry = true;
+      }
+      if (should_retry) {
+        spdlog::trace("fail to reconnect");
+        retry++;
+        if (auto delay =) {
+          co_await async_delay_v2();
+        }
+      }
+    }
+
+    // TODO: check if anything else should do before ws connect
+    co_await async_connect_websocket();
+    co_return;
+  }
+
   auto get_state() { return state_; }
 
   template <typename t> auto is_in_state() {
@@ -81,6 +122,7 @@ private:
   strand_t &strand_;
   client_receive_service_t *receive_service_;
   const websocket_factory_t &websocket_factory_;
+  // TODO: add connection lock?
 };
 
 } // namespace detail
