@@ -11,16 +11,13 @@
 
 #include "spdlog/spdlog.h"
 #include "webpubsub/client/common/asio.hpp"
-#include "webpubsub/client/concepts/websocket_factory_c.hpp"
+#include "webpubsub/client/detail/client/retry_policy.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 
 namespace webpubsub {
 namespace detail {
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-class client_lifetime_service;
 
 template <typename websocket_factory_t, typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>

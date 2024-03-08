@@ -2,14 +2,15 @@
 #include <WebPubSub/Protocols/reliable_json_v1_protocol.hpp>
 #include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 
+#include "webpubsub/client/models/retry_options.hpp"
+
 namespace webpubsub {
-template <webpubsub_protocol_t protocol> struct client_options {
-  protocol protocol;
+template <webpubsub_protocol_t protocol_t> struct client_options {
+  protocol_t protocol;
   bool enable_multi_thread = false;
   bool auto_reconnect = true;
   bool auto_rejoin_groups = true;
-  // TODO: change types
-  int message_retry_options;
-  int reconnect_retry_options;
+  retry_options message_retry_options;
+  retry_options reconnect_retry_options;
 };
 } // namespace webpubsub

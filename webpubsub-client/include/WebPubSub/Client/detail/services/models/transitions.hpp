@@ -17,7 +17,6 @@
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
-
 namespace webpubsub {
 namespace detail {
 
@@ -84,7 +83,7 @@ auto async_on_event(
     recovering &recovering, to_connected_state &event) -> async_t<state_t> {
   spdlog::trace("recovering -> connected");
   try {
-    co_await lifetime->async_reconnect();
+    // TODO: reconnect or stop
     co_return connected{};
   } catch (...) {
     co_return disconnected{};

@@ -12,6 +12,7 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
+#include "webpubsub/client/detail/client/retry_policy.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
@@ -31,7 +32,6 @@ template <class... Ts> struct overloaded : Ts... {
 template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_lifetime_service {
   using strand_t = io::strand<io::io_context::executor_type>;
   // TODO: use optional
@@ -42,7 +42,9 @@ class client_lifetime_service {
 public:
   client_lifetime_service(strand_t &strand,
                           const websocket_factory_t &websocket_factory,
-                          const log &log)
+                          const retry_policy_c &retry_policy, const log &log)
+    requires websocket_factory_c<websocket_factory_t, websocket_t> &&
+                 retry_policy_c<retry_policy_t>
       : log_(log), state_(stopped{}), strand_(strand),
         websocket_factory_(websocket_factory) {}
 
@@ -122,6 +124,7 @@ private:
   strand_t &strand_;
   client_receive_service_t *receive_service_;
   const websocket_factory_t &websocket_factory_;
+  const retry_policy reconnect_retry_delay_;
   // TODO: add connection lock?
 };
 
