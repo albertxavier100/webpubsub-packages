@@ -36,7 +36,7 @@
 #include <webpubsub/client/models/client_state.hpp>
 #include <webpubsub/client/models/io_service.hpp>
 #include <webpubsub/client/models/request_result.hpp>
-#include <webpubsub/client/policies/retry_policy.hpp>
+// #include <webpubsub/client/policies/retry_policy.hpp>
 
 namespace webpubsub {
 template <typename WebSocketFactory, typename WebSocket,

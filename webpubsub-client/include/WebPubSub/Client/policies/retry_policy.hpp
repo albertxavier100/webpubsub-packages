@@ -1,54 +1,62 @@
+//
+// Created by alber on 2024/3/7.
+//
+
+#ifndef TEST_WEBPUBSUB_CLIENT_RETRY_POLICY_HPP
+#define TEST_WEBPUBSUB_CLIENT_RETRY_POLICY_HPP
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1200)
 #pragma once
-#include <chrono>
-#include <optional>
-#include <webpubsub/client/common/constants.hpp>
+#endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-// TODO: move to new file
+#include "webpubsub/client/detail/client/retry_context.hpp"
+#include "webpubsub/client/models/retry_options.hpp"
+#include <type_traits>
+
 namespace webpubsub {
-struct retry_context {
-  uint64_t retry_attempt;
+template <typename policy_t>
+concept policy_c = requires(policy_t p, detail::retry_context retry) {
+  {
+    p.next_retry_delay(retry)
+  } -> std::same_as<std::optional<std::chrono::milliseconds>>;
 };
-} // namespace webpubsub
 
-namespace webpubsub {
-class retry_policy {
+class fixed_retry_policy {
 public:
-  enum retry_mode {
-    expotential,
-    fixed,
-  };
+  fixed_retry_policy(int max_retry, std::chrono::milliseconds delay)
+      : max_retry_(std::move(max_retry)), delay_(std::move(delay)) {}
 
-public:
-  retry_policy()
-      : max_retries_(constants::retry::MAX_RETRIES),
-        max_delay_(constants::retry::MAX_DELAY),
-        max_retries_to_get_max_delay_(
-            constants::retry::MAX_RETRIES_TO_GET_MAX_DELAY),
-        retry_mode_(expotential), delay_(constants::retry::DEFAULT_DELAY){};
-  std::optional<asio::steady_timer::duration>
-  next_retry_delay(retry_context retry_context) const {
-    if (retry_context.retry_attempt > max_retries_) {
+  auto next_retry_delay(detail::retry_context retry)
+      -> std::optional<std::chrono::milliseconds> {
+    if (retry.attempts > max_retry_) {
       return std::nullopt;
     }
-    return get_delay(retry_context.retry_attempt);
+    return delay_;
   }
 
 private:
-  asio::steady_timer::duration get_delay(uint64_t attempted) const {
-    // TODO: impl
-    return std::chrono::seconds(1);
-  }
-
-  float calculate_exponetial_delay(uint64_t attempted) const {
-    // TODO
-    return -1;
-  }
-
-private:
-  const uint64_t max_retries_;
-  const float max_delay_;
-  const uint64_t max_retries_to_get_max_delay_;
-  const retry_mode retry_mode_;
-  const float delay_;
+  int max_retry_;
+  std::chrono::milliseconds delay_;
 };
+static_assert(policy_c<fixed_retry_policy>);
+
+class exponential_retry_policy {
+public:
+  exponential_retry_policy(int max_retry, std::chrono::milliseconds delay)
+      : max_retry_(std::move(max_retry)), delay_(std::move(delay)) {}
+
+  auto next_retry_delay(detail::retry_context retry)
+      -> std::optional<std::chrono::milliseconds> {
+    if (retry.attempts > max_retry_) {
+      return std::nullopt;
+    }
+  }
+
+private:
+  int max_retry_;
+  std::chrono::milliseconds delay_;
+};
+
+static_assert(policy_c<exponential_retry_policy>);
 } // namespace webpubsub
+#endif // TEST_WEBPUBSUB_CLIENT_RETRY_POLICY_HPP
