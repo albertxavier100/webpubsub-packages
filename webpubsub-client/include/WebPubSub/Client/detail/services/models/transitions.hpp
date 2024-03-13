@@ -14,18 +14,17 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/concepts/transition_context_c.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
+
 namespace webpubsub {
 namespace detail {
-
 #pragma region STOPPED
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    stopped &stopped, to_connecting_state &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, stopped &stopped,
+                    to_connecting_state &event) -> async_t<state_t> {
   spdlog::trace("stopped -> connecting: reset connection");
   // TODO: reset connection
   co_return connecting{};
@@ -33,17 +32,15 @@ auto async_on_event(
 #pragma endregion
 
 #pragma region CONNECTING
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    connecting &connecting, to_connected_state &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, connecting &connecting,
+                    to_connected_state &event) -> async_t<state_t> {
   try {
 
-    co_await lifetime->async_connect_websocket();
-    auto rcv = lifetime->get_receive_service();
+    co_await context->lifetime().async_connect_websocket();
     spdlog::trace("connecting -> connected: rcv->spawn_message_loop_coro");
-    rcv->spawn_message_loop_coro(std::move(event.start_slot));
+    context->receive().spawn_message_loop_coro(*context,
+                                               std::move(event.start_slot));
     // TODO: start sequence id loop
   } catch (const std::exception &ex) {
     throw invalid_operation("failed to connect to websocket");
@@ -54,33 +51,26 @@ auto async_on_event(
 #pragma endregion
 
 #pragma region CONNECTED
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    connected &connected, to_recovering_state &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, connected &connected,
+                    to_recovering_state &event) -> async_t<state_t> {
   // TODO: reset connection
   spdlog::trace("connected -> recovering");
   co_return recovering{};
 }
 
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    connected &connected, to_stopping_state &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, connected &connected,
+                    to_stopping_state &event) -> async_t<state_t> {
   spdlog::trace("connected -> stopping");
   co_return stopping{};
 }
 #pragma endregion
 
 #pragma region RECOVERING
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    recovering &recovering, to_connected_state &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, recovering &recovering,
+                    to_connected_state &event) -> async_t<state_t> {
   spdlog::trace("recovering -> connected");
   try {
     // TODO: reconnect or stop
@@ -93,13 +83,11 @@ auto async_on_event(
 #pragma endregion
 
 #pragma region STOPPING
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    stopping &stopping, to_stopped_state &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, stopping &stopping,
+                    to_stopped_state &event) -> async_t<state_t> {
   // TODO: cancel receive loop
-  co_await lifetime->get_receive_service()->async_cancel_message_loop_coro();
+  co_await context->receive().async_cancel_message_loop_coro();
   // TODO: cancel sequence loop
   spdlog::trace("stopping -> stopped");
   co_return stopped{};
@@ -107,11 +95,9 @@ auto async_on_event(
 
 #pragma region UNSUPPORTED
 // TODO: careful about un-wired transitions
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto async_on_event(
-    client_lifetime_service<websocket_factory_t, websocket_t> *lifetime,
-    auto &state, auto &event) -> async_t<state_t> {
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, auto &state,
+                    auto &event) -> async_t<state_t> {
   throw std::logic_error{
       std::format("Unsupported state and transition: state: {}, transition: {}",
                   typeid(state).name(), typeid(event).name())};

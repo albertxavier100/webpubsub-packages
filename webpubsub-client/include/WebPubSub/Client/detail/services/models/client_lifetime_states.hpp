@@ -24,8 +24,8 @@ struct stopping {};
 struct recovering {};
 struct connecting {};
 
-using state_t =
-    std::variant<stopped, connecting, connected, recovering, stopping>;
+using state_t = std::variant<stopped, connecting, connected, recovering,
+                             stopping, disconnected>;
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_CLIENT_LIFETIME_STATES_HPP

@@ -14,26 +14,22 @@
 #include "webpubsub/client/detail/client/loop_tracker.hpp"
 #include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
+#include "webpubsub/client/detail/concepts/transition_context_c.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 
 namespace webpubsub {
 namespace detail {
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-class client_lifetime_service;
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_receive_service {
-
 public:
   client_receive_service(strand_t &strand, const log &log)
       : loop_svc_(strand, log), loop_tracker_(strand) {}
 
-  auto spawn_message_loop_coro(io::cancellation_slot start_slot) {
-    loop_svc_.spawn_loop_coro(async_start_message_loop(),
+  template <transition_context_c transition_context_t>
+  auto spawn_message_loop_coro(transition_context_t &context,
+                               io::cancellation_slot start_slot) {
+    loop_svc_.spawn_loop_coro(async_start_message_loop(context),
                               std::move(start_slot));
   }
 
@@ -45,14 +41,9 @@ public:
     co_return;
   }
 
-  auto
-  set_lifetime_service(client_lifetime_service<websocket_factory_t, websocket_t>
-                           *lifetime_service) {
-    loop_svc_.set_lifetime_service(lifetime_service);
-  }
-
-private:
-  auto async_start_message_loop() -> async_t<> {
+  // use context pointer
+  template <transition_context_c transition_context_t>
+  auto async_start_message_loop(transition_context_t &context) -> async_t<> {
     struct exit_scope {
       ~exit_scope() {
         spdlog::trace("receive loop finished beg");
@@ -83,13 +74,14 @@ private:
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
-      co_await loop_svc_.lifetime()->async_raise_event(to_recovering_state{});
-      co_await loop_svc_.lifetime()->async_raise_event(to_connected_state{});
+      co_await context.async_raise_event(to_recovering_state{});
+      co_await context.async_raise_event(to_connected_state{});
     }
     co_return;
   }
 
-  client_loop_service<websocket_factory_t, websocket_t> loop_svc_;
+private:
+  client_loop_service loop_svc_;
   loop_tracker loop_tracker_;
 };
 } // namespace detail

@@ -9,18 +9,15 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "client_lifetime_service.hpp"
 #include "spdlog/spdlog.h"
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/retry_policy.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
-#include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 
 namespace webpubsub {
 namespace detail {
-
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
 class client_loop_service {
 public:
   client_loop_service(strand_t &strand, const log &log)
@@ -41,11 +38,6 @@ public:
     co_return;
   }
 
-  auto
-  set_lifetime_service(client_lifetime_service<websocket_factory_t, websocket_t>
-                           *lifetime_service);
-
-  auto lifetime() { return lifetime_; }
   auto &strand() { return strand_; }
   auto &log() { return log_; }
   auto &cancel_signal() { return cancel_signal_; }
@@ -53,21 +45,8 @@ public:
 private:
   strand_t &strand_;
   const detail::log &log_;
-  client_lifetime_service<websocket_factory_t, websocket_t> *lifetime_;
   io::cancellation_signal cancel_signal_;
 };
-
-#pragma region IMPL
-#include "webpubsub/client/detail/services/client_lifetime_service.hpp"
-template <typename websocket_factory_t, typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
-auto client_loop_service<websocket_factory_t, websocket_t>::
-    set_lifetime_service(
-        client_lifetime_service<websocket_factory_t, websocket_t>
-            *lifetime_service) {
-  lifetime_ = lifetime_service;
-}
-#pragma endregion
 } // namespace detail
 } // namespace webpubsub
 
