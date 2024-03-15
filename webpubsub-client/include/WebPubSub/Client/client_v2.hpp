@@ -1,5 +1,6 @@
 #pragma once
 
+#include "eventpp/callbacklist.h"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
@@ -22,10 +23,24 @@ public:
             const client_options<protocol_t> &options,
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), lifetime_(strand, websocket_factory,
-                                     options.reconnect_retry_options, log_),
-        receive_(strand, log_), transition_context_(lifetime_, receive_, log_) {
-  }
+      : log_(logger_name),
+        lifetime_(strand, websocket_factory, options.auto_reconnect,
+                  options.reconnect_retry_options, log_),
+        receive_(strand, log_), transition_context_(lifetime_, receive_, log_),
+        on_connected(transition_context_.on_connected),
+        on_disconnected(transition_context_.on_disconnected),
+        on_group_data(transition_context_.on_group_data),
+        on_server_data(transition_context_.on_server_data),
+        on_rejoin_group_failed(transition_context_.on_rejoin_group_failed),
+        on_stopped(transition_context_.on_stopped) {}
+
+  eventpp::CallbackList<void(const connected_context)> &on_connected;
+  eventpp::CallbackList<void(const disconnected_context)> &on_disconnected;
+  eventpp::CallbackList<void(const group_data_context)> &on_group_data;
+  eventpp::CallbackList<void(const server_data_context)> &on_server_data;
+  eventpp::CallbackList<void(const rejoin_group_failed_context)>
+      &on_rejoin_group_failed;
+  eventpp::CallbackList<void(const stopped_context)> &on_stopped;
 
   // TODO: make start_slot optional
   auto async_start(std::optional<io::cancellation_slot> slot = std::nullopt)

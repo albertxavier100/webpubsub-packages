@@ -39,14 +39,23 @@ class client_lifetime_service {
 public:
   client_lifetime_service(strand_t &strand,
                           const websocket_factory_t &websocket_factory,
+                          const bool auto_reconnect,
                           const retry_options &retry_options, const log &log)
       : log_(log), strand_(strand), websocket_factory_(websocket_factory),
-        retry_policy_(
-            fixed_retry_policy(retry_options.max_retry, retry_options.delay)) {
-    if (retry_options.retry_mode == retry_mode::exponential) {
+        auto_reconnect_(auto_reconnect), retry_policy_(disable_retry_policy()) {
+    if (!auto_reconnect_) {
+      return;
+    }
+    switch (retry_options.retry_mode) {
+    case retry_mode::exponential:
       retry_policy_.emplace<exponential_retry_policy>(
           exponential_retry_policy(retry_options.max_retry, retry_options.delay,
                                    retry_options.max_delay));
+      return;
+    case retry_mode::fixed:
+      retry_policy_.emplace<fixed_retry_policy>(
+          fixed_retry_policy(retry_options.max_retry, retry_options.delay));
+      return;
     }
   }
 
@@ -54,8 +63,6 @@ public:
     spdlog::trace("async_connect_websocket -- begin");
     co_return;
   }
-
-  auto async_handle_connection_close_and_no_recovery() -> async_t<> {}
 
   auto async_auto_reconnect() -> async_t<> {
     bool ok = false;
@@ -101,14 +108,16 @@ public:
   // TODO: dev
   auto test() {}
 
-private:
-  auto init_retry_policy() {}
+  auto auto_reconnect() -> const bool & { return auto_reconnect_; }
 
+private:
   const log &log_;
   strand_t &strand_;
   const websocket_factory_t &websocket_factory_;
-  // TODO: make it const
-  std::variant<fixed_retry_policy, exponential_retry_policy> retry_policy_;
+  const bool &auto_reconnect_;
+  std::variant<fixed_retry_policy, exponential_retry_policy,
+               disable_retry_policy>
+      retry_policy_;
   //  TODO: add connection lock?
 };
 

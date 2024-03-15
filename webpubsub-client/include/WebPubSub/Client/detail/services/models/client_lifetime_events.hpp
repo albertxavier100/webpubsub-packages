@@ -19,12 +19,14 @@ struct to_connecting_state {};
 struct to_connected_state {
   io::cancellation_slot start_slot;
 };
-struct to_disconnected_state {};
+struct to_connected_or_stopped_state {};
+struct to_disconnected_state {
+  std::string connection_id;
+  std::string reason;
+};
 struct to_stopped_state {};
 struct to_stopping_state {};
-struct to_recovering_or_stopped_state {
-  bool should_recover;
-};
+struct to_recovering_or_stopped_state {};
 // receive events
 // send events
 

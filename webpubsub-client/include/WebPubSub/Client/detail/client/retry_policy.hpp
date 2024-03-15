@@ -72,6 +72,8 @@ private:
 };
 
 static_assert(retry_policy_c<exponential_retry_policy>);
+
+class disable_retry_policy {};
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_RETRY_POLICY_HPP

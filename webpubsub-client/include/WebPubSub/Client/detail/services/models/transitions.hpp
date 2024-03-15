@@ -63,7 +63,14 @@ auto async_on_event(transition_context_t *context, connected &connected,
                     to_disconnected_state &event) -> async_t<state_t> {
   // TODO: reset connection
   spdlog::trace("connected -> disconnected");
-
+  try {
+    context->on_disconnected(disconnected_context{
+        .connection_id = std::move(event.connection_id),
+        .reason = std::move(event.reason),
+    });
+  } catch (const std::exception &ex) {
+    spdlog::trace("failed to invoke disconnected event: {0}", ex.what());
+  }
   co_return disconnected{};
 }
 
@@ -80,8 +87,14 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, disconnected &disconnected,
                     to_recovering_or_stopped_state &event) -> async_t<state_t> {
   spdlog::trace("disconnected -> recovering / stopped");
-  if (event.should_recover) {
+
+  if (context->lifetime().auto_reconnect()) {
     co_return recovering{};
+  }
+  try {
+    context->on_stopped(stopped_context{});
+  } catch (const std::exception &ex) {
+    spdlog::trace("failed to invoke disconnected event: {0}", ex.what());
   }
   co_return stopped{};
 }
@@ -90,12 +103,12 @@ auto async_on_event(transition_context_t *context, disconnected &disconnected,
 #pragma region RECOVERING
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
-                    to_connected_state &event) -> async_t<state_t> {
-  spdlog::trace("recovering -> connected");
+                    to_connected_or_stopped_state &event) -> async_t<state_t> {
+  spdlog::trace("recovering -> connected / stopped");
   try {
     co_return connected{};
   } catch (...) {
-    co_return disconnected{};
+    co_return stopped{};
   }
 }
 

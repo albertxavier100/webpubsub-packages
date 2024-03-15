@@ -16,6 +16,7 @@
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/transitions.hpp"
+#include "webpubsub/client/models/callback_contexts.hpp"
 
 namespace webpubsub {
 namespace detail {
@@ -30,6 +31,14 @@ public:
     static_assert(
         transition_context_c<transition_context<lifetime_t, receive_t>>);
   }
+
+  eventpp::CallbackList<void(const connected_context)> on_connected;
+  eventpp::CallbackList<void(const disconnected_context)> on_disconnected;
+  eventpp::CallbackList<void(const group_data_context)> on_group_data;
+  eventpp::CallbackList<void(const server_data_context)> on_server_data;
+  eventpp::CallbackList<void(const rejoin_group_failed_context)>
+      on_rejoin_group_failed;
+  eventpp::CallbackList<void(const stopped_context)> on_stopped;
 
   // TODO: remove
   auto test() {}

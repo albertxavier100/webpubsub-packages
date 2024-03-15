@@ -4,6 +4,7 @@
 #include "spdlog/spdlog.h"
 #include "webpubsub/client/client_v2.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
+#include "webpubsub/client/models/retry_mode.hpp"
 #include "gtest/gtest.h"
 
 namespace test {
@@ -168,6 +169,52 @@ TEST(connectivity, start_stop_with_cancel) {
   } catch (std::exception &ex) {
     spdlog::trace("ex in main: {0}", ex.what());
   }
+}
+
+TEST(connectivity, auto_reconnect) {
+  namespace io = webpubsub::io;
+  using namespace io::experimental::awaitable_operators;
+  using protocol_t = webpubsub::reliable_json_v1_protocol;
+  using options_t = webpubsub::client_options<protocol_t>;
+  using factory_t = test_websocket_factory_1<test_websocket_1>;
+  using client_t =
+      webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
+  using namespace std::chrono_literals;
+
+  if (!spdlog::get("console")) {
+    spdlog::register_logger(console_logger);
+    spdlog::set_level(spdlog::level::trace);
+  }
+
+  factory_t factory;
+  protocol_t p;
+  options_t opts{
+      .protocol = p,
+      .reconnect_retry_options = {.retry_mode = webpubsub::retry_mode::fixed,
+                                  .max_retry = 3,
+                                  .delay = std::chrono::milliseconds(1000)}};
+  client_t client(strand, opts, factory, "console");
+
+  asio::cancellation_signal cancel;
+  asio::cancellation_signal cancel_dummy;
+
+  spdlog::trace("start test");
+  auto async_test = [&]() -> async_t<> {
+    try {
+      co_await client.async_start();
+      spdlog::trace("client started in test");
+      co_await client.async_stop();
+      spdlog::trace("client stopped in test");
+    } catch (const std::exception &ex) {
+      spdlog::trace("get exception in async_test: {0}", ex.what());
+    };
+    co_return;
+  };
+
+  auto token = io::bind_cancellation_slot(cancel.slot(), io::detached);
+  io::co_spawn(strand, async_test(), token);
+
+  io_context.run();
 }
 } // namespace connectivity
 } // namespace test
