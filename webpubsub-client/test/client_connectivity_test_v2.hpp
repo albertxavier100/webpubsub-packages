@@ -20,9 +20,9 @@ auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 auto console_logger = std::make_shared<spdlog::logger>("console", console_sink);
 
 class test_websocket_1 {
-  template <typename T = void> using async_t = webpubsub::io::awaitable<T>;
 
 public:
+  template <typename T = void> using async_t = webpubsub::io::awaitable<T>;
   test_websocket_1(){};
 
   virtual auto async_connect() -> async_t<> { co_return; };
@@ -66,6 +66,16 @@ private:
   bool is_connected_ = false;
 };
 static_assert(webpubsub::websocket_c<test_websocket_1>);
+
+class test_websocket_reconnect : public test_websocket_1 {
+public:
+  auto
+  async_read(std::string &payload,
+             webpubsub::websocket_close_status &status) -> async_t<> override {
+    throw std::exception("test reconnect");
+  };
+};
+static_assert(webpubsub::websocket_c<test_websocket_reconnect>);
 
 template <typename websocket> class test_websocket_factory_1 {
 public:
@@ -176,9 +186,9 @@ TEST(connectivity, auto_reconnect) {
   using namespace io::experimental::awaitable_operators;
   using protocol_t = webpubsub::reliable_json_v1_protocol;
   using options_t = webpubsub::client_options<protocol_t>;
-  using factory_t = test_websocket_factory_1<test_websocket_1>;
+  using factory_t = test_websocket_factory_1<test_websocket_reconnect>;
   using client_t =
-      webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
+      webpubsub::client_v2<protocol_t, factory_t, test_websocket_reconnect>;
   using namespace std::chrono_literals;
 
   if (!spdlog::get("console")) {
@@ -190,9 +200,9 @@ TEST(connectivity, auto_reconnect) {
   protocol_t p;
   options_t opts{
       .protocol = p,
-      .reconnect_retry_options = {.retry_mode = webpubsub::retry_mode::fixed,
-                                  .max_retry = 3,
-                                  .delay = std::chrono::milliseconds(1000)}};
+      .reconnect_retry_options = {.max_retry = 3,
+                                  .delay = std::chrono::milliseconds(1000),
+                                  .retry_mode = webpubsub::retry_mode::fixed}};
   client_t client(strand, opts, factory, "console");
 
   asio::cancellation_signal cancel;
@@ -203,8 +213,6 @@ TEST(connectivity, auto_reconnect) {
     try {
       co_await client.async_start();
       spdlog::trace("client started in test");
-      co_await client.async_stop();
-      spdlog::trace("client stopped in test");
     } catch (const std::exception &ex) {
       spdlog::trace("get exception in async_test: {0}", ex.what());
     };

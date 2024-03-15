@@ -21,11 +21,9 @@ class client_v2 {
 public:
   client_v2(io::strand<io::io_context::executor_type> &strand,
             const client_options<protocol_t> &options,
-            const websocket_factory_t &websocket_factory,
+            websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name),
-        lifetime_(strand, websocket_factory, options.auto_reconnect,
-                  options.reconnect_retry_options, log_),
+      : log_(logger_name), lifetime_(strand, websocket_factory, options, log_),
         receive_(strand, log_), transition_context_(lifetime_, receive_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
@@ -64,12 +62,13 @@ public:
   }
 
 private:
-  detail::client_lifetime_service<websocket_factory_t, websocket_t> lifetime_;
+  detail::client_lifetime_service<protocol_t, websocket_factory_t, websocket_t>
+      lifetime_;
   detail::client_receive_service receive_;
 
-  detail::transition_context<
-      detail::client_lifetime_service<websocket_factory_t, websocket_t>,
-      detail::client_receive_service>
+  detail::transition_context<detail::client_lifetime_service<
+                                 protocol_t, websocket_factory_t, websocket_t>,
+                             detail::client_receive_service>
       transition_context_;
   const detail::log log_;
   io::cancellation_signal dummy_start_signal_;

@@ -63,8 +63,10 @@ public:
           spdlog::trace("receiving... break");
           break;
         }
-        // TODO: IMPL
-        co_await async_delay_v2(loop_svc_.strand(), 1s);
+        std::string payload;
+        websocket_close_status status;
+        co_await context.lifetime().async_read_message(payload, status);
+        // TODO: handle message
         spdlog::trace("receiving...");
       }
     } catch (const std::exception &ex) {
