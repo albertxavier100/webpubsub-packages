@@ -19,6 +19,7 @@ concept retry_policy_c = requires(policy_t p) {
   {
     p.next_retry_delay()
   } -> std::same_as<std::optional<std::chrono::milliseconds>>;
+  { p.reset() } -> std::same_as<void>;
 };
 } // namespace detail
 } // namespace webpubsub

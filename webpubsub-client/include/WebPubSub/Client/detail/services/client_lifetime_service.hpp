@@ -14,6 +14,7 @@
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/client/retry_policy.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/concepts/retry_policy_c.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_states.hpp"
@@ -38,13 +39,23 @@ class client_lifetime_service {
 public:
   client_lifetime_service(strand_t &strand,
                           const websocket_factory_t &websocket_factory,
-                          const log &log)
-      : log_(log), strand_(strand), websocket_factory_(websocket_factory) {}
+                          const retry_options &retry_options, const log &log)
+      : log_(log), strand_(strand), websocket_factory_(websocket_factory),
+        retry_policy_(
+            fixed_retry_policy(retry_options.max_retry, retry_options.delay)) {
+    if (retry_options.retry_mode == retry_mode::exponential) {
+      retry_policy_.emplace<exponential_retry_policy>(
+          exponential_retry_policy(retry_options.max_retry, retry_options.delay,
+                                   retry_options.max_delay));
+    }
+  }
 
   auto async_connect_websocket() -> async_t<> {
     spdlog::trace("async_connect_websocket -- begin");
     co_return;
   }
+
+  auto async_handle_connection_close_and_no_recovery() -> async_t<> {}
 
   auto async_auto_reconnect() -> async_t<> {
     bool ok = false;
@@ -76,25 +87,28 @@ public:
       if (should_retry) {
         spdlog::trace("fail to reconnect");
         retry++;
-        // TODO: IMPL
-        //        if (auto delay =) {
-        //          co_await async_delay_v2();
-        //        }
+        if (auto delay = std::visit(
+                overloaded{[](auto &p) { return p.next_retry_delay(); }},
+                retry_policy_)) {
+          co_await async_delay_v2(*delay);
+        } else {
+          co_return;
+        }
       }
     }
-
-    // TODO: check if anything else should do before ws connect
-    co_await async_connect_websocket();
-    co_return;
   }
 
+  // TODO: dev
   auto test() {}
 
 private:
+  auto init_retry_policy() {}
+
   const log &log_;
   strand_t &strand_;
   const websocket_factory_t &websocket_factory_;
-  // const retry_policy reconnect_retry_delay_;
+  // TODO: make it const
+  std::variant<fixed_retry_policy, exponential_retry_policy> retry_policy_;
   //  TODO: add connection lock?
 };
 

@@ -29,6 +29,13 @@ auto async_on_event(transition_context_t *context, stopped &stopped,
   // TODO: reset connection
   co_return connecting{};
 }
+
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, stopped &stopped,
+                    to_connected_state &event) -> async_t<state_t> {
+  spdlog::trace("stopped -> connected: give warning: do nothing");
+  co_return connected{};
+}
 #pragma endregion
 
 #pragma region CONNECTING
@@ -53,10 +60,11 @@ auto async_on_event(transition_context_t *context, connecting &connecting,
 #pragma region CONNECTED
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
-                    to_recovering_state &event) -> async_t<state_t> {
+                    to_disconnected_state &event) -> async_t<state_t> {
   // TODO: reset connection
-  spdlog::trace("connected -> recovering");
-  co_return recovering{};
+  spdlog::trace("connected -> disconnected");
+
+  co_return disconnected{};
 }
 
 template <transition_context_c transition_context_t>
@@ -67,13 +75,24 @@ auto async_on_event(transition_context_t *context, connected &connected,
 }
 #pragma endregion
 
+#pragma region DISCONNECTED
+template <transition_context_c transition_context_t>
+auto async_on_event(transition_context_t *context, disconnected &disconnected,
+                    to_recovering_or_stopped_state &event) -> async_t<state_t> {
+  spdlog::trace("disconnected -> recovering / stopped");
+  if (event.should_recover) {
+    co_return recovering{};
+  }
+  co_return stopped{};
+}
+#pragma endregion
+
 #pragma region RECOVERING
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
                     to_connected_state &event) -> async_t<state_t> {
   spdlog::trace("recovering -> connected");
   try {
-    // TODO: reconnect or stop
     co_return connected{};
   } catch (...) {
     co_return disconnected{};

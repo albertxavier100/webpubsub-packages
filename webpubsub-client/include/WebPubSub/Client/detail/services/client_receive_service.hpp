@@ -18,6 +18,7 @@
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
+#include "webpubsub/client/detail/services/models/client_lifetime_states.hpp"
 
 namespace webpubsub {
 namespace detail {
@@ -41,7 +42,7 @@ public:
     co_return;
   }
 
-  // use context pointer
+  // TODO: use context pointer
   template <transition_context_c transition_context_t>
   auto async_start_message_loop(transition_context_t &context) -> async_t<> {
     struct exit_scope {
@@ -69,12 +70,15 @@ public:
     } catch (const std::exception &ex) {
       spdlog::trace("message loop stopped with ex: {0}", ex.what());
       should_recover = true;
+      // TODO: handle unhandled ack entity
     }
 
     if (should_recover) {
       spdlog::trace("async_start_message_loop -- "
                     "lifetime_->async_raise_event -- begin");
-      co_await context.async_raise_event(to_recovering_state{});
+      co_await context.async_raise_event(to_disconnected_state{});
+      // TODO: check auto reconnect
+      co_await context.async_raise_event(to_recovering_or_stopped_state{});
       co_await context.async_raise_event(to_connected_state{});
     }
     co_return;

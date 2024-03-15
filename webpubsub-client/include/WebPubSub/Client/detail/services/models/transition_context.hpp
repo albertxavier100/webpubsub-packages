@@ -34,20 +34,11 @@ public:
   // TODO: remove
   auto test() {}
 
-  //  auto async_cancel_message_loop_coro() -> async_t<> {
-  //    co_await receive_.async_cancel_message_loop_coro();
-  //  }
-
-  //  auto spawn_message_loop_coro(const transition_context &context,
-  //                               io::cancellation_slot start_slot) {
-  //    receive_.spawn_message_loop_coro(context, std::move(start_slot));
-  //  }
-
   auto &lifetime() { return lifetime_; }
 
   auto &receive() { return receive_; }
 
-  auto get_state() { return state_; }
+  const auto &get_state() { return state_; }
 
   auto async_raise_event(event_t event) -> async_t<> {
     state_ = co_await std::visit(overloaded{[this](auto &e) {

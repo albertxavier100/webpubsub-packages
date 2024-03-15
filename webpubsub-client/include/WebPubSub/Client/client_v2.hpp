@@ -22,7 +22,8 @@ public:
             const client_options<protocol_t> &options,
             const websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), lifetime_(strand, websocket_factory, log_),
+      : log_(logger_name), lifetime_(strand, websocket_factory,
+                                     options.reconnect_retry_options, log_),
         receive_(strand, log_), transition_context_(lifetime_, receive_, log_) {
   }
 
@@ -48,9 +49,7 @@ public:
   }
 
 private:
-  // TODO: remove
   detail::client_lifetime_service<websocket_factory_t, websocket_t> lifetime_;
-  // TODO: remove
   detail::client_receive_service receive_;
 
   detail::transition_context<

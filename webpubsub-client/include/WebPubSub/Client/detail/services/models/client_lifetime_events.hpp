@@ -19,15 +19,18 @@ struct to_connecting_state {};
 struct to_connected_state {
   io::cancellation_slot start_slot;
 };
+struct to_disconnected_state {};
 struct to_stopped_state {};
 struct to_stopping_state {};
-struct to_recovering_state {};
+struct to_recovering_or_stopped_state {
+  bool should_recover;
+};
 // receive events
 // send events
 
-using event_t =
-    std::variant<to_stopped_state, to_connected_state, to_connecting_state,
-                 to_recovering_state, to_stopping_state>;
+using event_t = std::variant<to_stopped_state, to_connected_state,
+                             to_disconnected_state, to_connecting_state,
+                             to_recovering_or_stopped_state, to_stopping_state>;
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_CLIENT_LIFETIME_EVENTS_HPP

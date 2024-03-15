@@ -20,6 +20,9 @@ namespace detail {
 
 class fixed_retry_policy {
 public:
+  fixed_retry_policy()
+      : attempts_(0), max_retry_(10), delay_(std::chrono::milliseconds(5000)) {}
+
   fixed_retry_policy(int max_retry, std::chrono::milliseconds delay)
       : attempts_(0), max_retry_(std::move(max_retry)),
         delay_(std::move(delay)) {}
@@ -28,8 +31,10 @@ public:
     if (attempts_ > max_retry_) {
       return std::nullopt;
     }
+    attempts_++;
     return delay_;
   }
+  auto reset() { attempts_ = 0; }
 
 private:
   const int max_retry_;
@@ -42,27 +47,29 @@ class exponential_retry_policy {
 public:
   exponential_retry_policy(int max_retry, std::chrono::milliseconds delay,
                            std::chrono::milliseconds max_delay)
-      : max_retry_(std::move(max_retry)), delay_(std::move(delay)),
-        max_delay_(std::move(max_delay)),
-        max_retry_to_get_max_delay_(
-            ceil(log2(max_delay_.count()) - log2(delay_.count()) + 1)) {}
+      : attempts_(0), max_retry_(std::move(max_retry)),
+        delay_(std::move(delay)), max_delay_(std::move(max_delay)) {}
 
   auto next_retry_delay() -> std::optional<std::chrono::milliseconds> {
     if (attempts_ > max_retry_) {
       return std::nullopt;
     }
 
-    if (attempts_ >= max_retry_to_get_max_delay_) {
+    if (delay_ >= max_delay_) {
+      attempts_++;
       return max_delay_;
     }
 
-    return delay_ * (1 << (attempts_ - 1));
+    attempts_++;
+    delay_ = delay_ + delay_;
+    return delay_;
   }
+
+  auto reset() { attempts_ = 0; }
 
 private:
   const int max_retry_;
-  const int max_retry_to_get_max_delay_;
-  const std::chrono::milliseconds delay_;
+  std::chrono::milliseconds delay_;
   const std::chrono::milliseconds max_delay_;
   int attempts_;
 };
