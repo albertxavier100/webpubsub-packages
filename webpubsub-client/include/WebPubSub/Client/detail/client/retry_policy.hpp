@@ -20,9 +20,6 @@ namespace detail {
 
 class fixed_retry_policy {
 public:
-  fixed_retry_policy()
-      : attempts_(0), max_retry_(10), delay_(std::chrono::milliseconds(5000)) {}
-
   fixed_retry_policy(int max_retry, std::chrono::milliseconds delay)
       : attempts_(0), max_retry_(std::move(max_retry)),
         delay_(std::move(delay)) {}
