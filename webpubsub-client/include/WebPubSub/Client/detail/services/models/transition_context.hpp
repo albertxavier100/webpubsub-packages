@@ -25,11 +25,23 @@ namespace detail {
 template <client_lifetime_service_c lifetime_t, typename receive_t>
 class transition_context {
 public:
-  transition_context(lifetime_t &lifetime, receive_t &receive, const log &log)
-      : state_(stopped{}), lifetime_(lifetime), receive_(receive), log_(log) {
-
+  transition_context(strand_t &strand, lifetime_t &lifetime, receive_t &receive,
+                     const log &log)
+      : strand_(strand), state_(stopped{}), lifetime_(lifetime),
+        receive_(receive), log_(log) {
     static_assert(
         transition_context_c<transition_context<lifetime_t, receive_t>>);
+    receive_.on_receive_failed.append([this](const bool _) {
+      io::co_spawn(
+          strand_,
+          [this]() -> async_t<> {
+            spdlog::trace("receive.recovering...");
+            co_await async_raise_event(to_disconnected_state{});
+            co_await async_raise_event(to_recovering_or_stopped_state{});
+            co_await async_raise_event(to_connected_state{});
+          },
+          io::detached);
+    });
   }
 
   eventpp::CallbackList<void(const connected_context)> on_connected;
@@ -66,6 +78,7 @@ private:
   receive_t &receive_;
   const log &log_;
   state_t state_;
+  strand_t &strand_;
 };
 
 } // namespace detail

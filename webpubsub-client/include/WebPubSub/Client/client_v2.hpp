@@ -24,7 +24,8 @@ public:
             websocket_factory_t &websocket_factory,
             const std::string &logger_name)
       : log_(logger_name), lifetime_(strand, websocket_factory, options, log_),
-        receive_(strand, log_), transition_context_(lifetime_, receive_, log_),
+        receive_(strand, log_),
+        transition_context_(strand, lifetime_, receive_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
         on_group_data(transition_context_.on_group_data),
@@ -46,12 +47,10 @@ public:
     co_await transition_context_.async_raise_event(
         detail::to_connecting_state{});
     auto event = detail::to_connected_state{};
-    if (slot) {
-      event.start_slot = *slot;
-    } else {
-      event.start_slot = dummy_start_signal_.slot();
-    }
+    auto start_slot = slot ? *slot : dummy_start_signal_.slot();
     co_await transition_context_.async_raise_event(std::move(event));
+    // TODO: start sid loop
+    receive_.spawn_message_loop_coro(transition_context_, start_slot);
   }
 
   auto async_stop() -> async_t<> {

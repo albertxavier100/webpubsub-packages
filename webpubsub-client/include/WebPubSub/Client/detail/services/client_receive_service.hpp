@@ -27,6 +27,8 @@ public:
   client_receive_service(strand_t &strand, const log &log)
       : loop_svc_(strand, log), loop_tracker_(strand) {}
 
+  eventpp::CallbackList<void(const bool)> on_receive_failed;
+
   template <transition_context_c transition_context_t>
   auto spawn_message_loop_coro(transition_context_t &context,
                                io::cancellation_slot start_slot) {
@@ -55,7 +57,7 @@ public:
 
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
-    bool should_recover = false;
+    bool ok = true;
     try {
       for (;;) {
         auto cs = co_await io::this_coro::cancellation_state;
@@ -71,23 +73,19 @@ public:
       }
     } catch (const std::exception &ex) {
       spdlog::trace("message loop stopped with ex: {0}", ex.what());
-      should_recover = true;
+      ok = false;
       // TODO: handle unhandled ack entity
     }
 
-    if (should_recover) {
-      spdlog::trace("async_start_message_loop -- "
-                    "lifetime_->async_raise_event -- begin");
-      co_await context.async_raise_event(to_disconnected_state{});
-      // TODO: check auto reconnect
-      co_await context.async_raise_event(to_recovering_or_stopped_state{});
-      co_await context.async_raise_event(to_connected_state{});
+    if (!ok) {
+      on_receive_failed(true);
     }
     co_return;
   }
 
 private:
   client_loop_service loop_svc_;
+  // TODO: rename
   loop_tracker loop_tracker_;
 };
 } // namespace detail

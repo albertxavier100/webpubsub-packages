@@ -25,7 +25,7 @@ namespace detail {
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, stopped &stopped,
                     to_connecting_state &event) -> async_t<state_t> {
-  spdlog::trace("!!!Transition!!! stopped -> connecting: reset connection");
+  spdlog::trace(">>>Transition<<< stopped -> connecting: reset connection");
   // TODO: reset connection
   co_return connecting{};
 }
@@ -34,7 +34,7 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, stopped &stopped,
                     to_connected_state &event) -> async_t<state_t> {
   spdlog::trace(
-      "!!!Transition!!! stopped -> connected: give warning: do nothing");
+      ">>>Transition<<< stopped -> connected: give warning: do nothing");
   co_return connected{};
 }
 #pragma endregion
@@ -43,19 +43,15 @@ auto async_on_event(transition_context_t *context, stopped &stopped,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connecting &connecting,
                     to_connected_state &event) -> async_t<state_t> {
+  spdlog::trace(">>>Transition<<< connecting -> connected ");
   try {
-
     co_await context->lifetime().async_connect_websocket();
-    spdlog::trace("!!!Transition!!! connecting -> connected: "
-                  "rcv->spawn_message_loop_coro");
-    context->receive().spawn_message_loop_coro(*context,
-                                               std::move(event.start_slot));
-    // TODO: start sequence id loop
+    co_return connected{};
   } catch (const std::exception &ex) {
+    // TODO: reconnect
+    spdlog::trace("failed to connect to websocket");
     throw invalid_operation("failed to connect to websocket");
   }
-
-  co_return connected{};
 }
 #pragma endregion
 
@@ -64,14 +60,14 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
                     to_disconnected_state &event) -> async_t<state_t> {
   // TODO: reset connection
-  spdlog::trace("!!!Transition!!! connected -> disconnected");
+  spdlog::trace(">>>Transition<<< connected -> disconnected");
   try {
     context->on_disconnected(disconnected_context{
         .connection_id = std::move(event.connection_id),
         .reason = std::move(event.reason),
     });
   } catch (const std::exception &ex) {
-    spdlog::trace("!!!Transition!!! failed to invoke disconnected event: {0}",
+    spdlog::trace(">>>Transition<<< failed to invoke disconnected event: {0}",
                   ex.what());
   }
   co_return disconnected{};
@@ -80,7 +76,7 @@ auto async_on_event(transition_context_t *context, connected &connected,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
                     to_stopping_state &event) -> async_t<state_t> {
-  spdlog::trace("!!!Transition!!! connected -> stopping");
+  spdlog::trace(">>>Transition<<< connected -> stopping");
   co_return stopping{};
 }
 #pragma endregion
@@ -89,7 +85,7 @@ auto async_on_event(transition_context_t *context, connected &connected,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, disconnected &disconnected,
                     to_recovering_or_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace("!!!Transition!!! disconnected -> recovering / stopped");
+  spdlog::trace(">>>Transition<<< disconnected -> recovering / stopped");
 
   if (context->lifetime().auto_reconnect()) {
     co_return recovering{};
@@ -107,7 +103,7 @@ auto async_on_event(transition_context_t *context, disconnected &disconnected,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
                     to_connected_or_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace("!!!Transition!!! recovering -> connected / stopped");
+  spdlog::trace(">>>Transition<<< recovering -> connected / stopped");
   try {
     co_return connected{};
   } catch (...) {
@@ -121,7 +117,7 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, stopping &stopping,
                     to_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace("!!!Transition!!! stopping -> stopped");
+  spdlog::trace(">>>Transition<<< stopping -> stopped");
   // TODO: cancel receive loop
   co_await context->receive().async_cancel_message_loop_coro();
   // TODO: cancel sequence loop
@@ -133,7 +129,7 @@ auto async_on_event(transition_context_t *context, stopping &stopping,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, auto &state,
                     auto &event) -> async_t<state_t> {
-  throw std::logic_error{std::format("!!!Transition!!! Unsupported state and "
+  throw std::logic_error{std::format(">>>Transition<<< Unsupported state and "
                                      "transition: state: {}, transition: {}",
                                      typeid(state).name(),
                                      typeid(event).name())};

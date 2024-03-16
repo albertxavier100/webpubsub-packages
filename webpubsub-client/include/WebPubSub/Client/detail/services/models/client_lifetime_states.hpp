@@ -11,7 +11,6 @@
 
 #include "client_lifetime_events.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
-
 #include <variant>
 
 // TODO: add concept for states
