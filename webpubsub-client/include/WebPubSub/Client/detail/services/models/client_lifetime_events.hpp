@@ -17,7 +17,9 @@ namespace detail {
 // lifetime events
 struct to_connecting_state {};
 struct to_connected_state {};
-struct to_connected_or_stopped_state {};
+struct to_connected_or_stopped_state {
+  websocket_close_status close_state;
+};
 struct to_disconnected_state {
   std::string connection_id;
   std::string reason;

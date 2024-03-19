@@ -22,30 +22,32 @@
 namespace webpubsub {
 namespace detail {
 #pragma region STOPPED
+// stopped -> connecting
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, stopped &stopped,
                     to_connecting_state &event) -> async_t<state_t> {
-  spdlog::trace(">>>Transition<<< stopped -> connecting: reset connection");
+  spdlog::trace(":::Transition::: stopped -> connecting: reset connection");
   // TODO: reset connection
   co_return connecting{};
 }
 
+// enter stopped
 template <transition_context_c transition_context_t>
-auto async_on_event(transition_context_t *context, stopped &stopped,
-                    to_connected_state &event) -> async_t<state_t> {
-  spdlog::trace(
-      ">>>Transition<<< stopped -> connected: give warning: do nothing");
-  co_return connected{};
+auto async_on_enter(transition_context_t *context, stopped &stopped,
+                    to_stopped_state &event) -> async_t<> {
+  spdlog::trace(":::Transition::: enter stopped state");
+  spdlog::trace("notify stopped callback");
 }
+
 #pragma endregion
 
 #pragma region CONNECTING
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connecting &connecting,
                     to_connected_state &event) -> async_t<state_t> {
-  spdlog::trace(">>>Transition<<< connecting -> connected ");
+  spdlog::trace(":::Transition::: connecting -> connected ");
   try {
-    co_await context->lifetime().async_connect_websocket();
+    co_await context->lifetime().async_connect_new_websocket();
     co_return connected{};
   } catch (const std::exception &ex) {
     // TODO: reconnect
@@ -60,14 +62,14 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
                     to_disconnected_state &event) -> async_t<state_t> {
   // TODO: reset connection
-  spdlog::trace(">>>Transition<<< connected -> disconnected");
+  spdlog::trace(":::Transition::: connected -> disconnected");
   try {
     context->on_disconnected(disconnected_context{
         .connection_id = std::move(event.connection_id),
         .reason = std::move(event.reason),
     });
   } catch (const std::exception &ex) {
-    spdlog::trace(">>>Transition<<< failed to invoke disconnected event: {0}",
+    spdlog::trace(":::Transition::: failed to invoke disconnected event: {0}",
                   ex.what());
   }
   co_return disconnected{};
@@ -76,17 +78,19 @@ auto async_on_event(transition_context_t *context, connected &connected,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
                     to_stopping_state &event) -> async_t<state_t> {
-  spdlog::trace(">>>Transition<<< connected -> stopping");
+  spdlog::trace(":::Transition::: connected -> stopping");
   co_return stopping{};
 }
 #pragma endregion
 
 #pragma region DISCONNECTED
+// disconnected => recovering or stopped
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, disconnected &disconnected,
                     to_recovering_or_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace(">>>Transition<<< disconnected -> recovering / stopped");
+  spdlog::trace(":::Transition::: disconnected -> recovering / stopped");
 
+  // TODO: finish any awaiting ack entity
   if (context->lifetime().auto_reconnect()) {
     co_return recovering{};
   }
@@ -97,13 +101,53 @@ auto async_on_event(transition_context_t *context, disconnected &disconnected,
   }
   co_return stopped{};
 }
+
+// enter disconnected state
+template <transition_context_c transition_context_t>
+auto async_on_enter(transition_context_t *context, disconnected &disconnected,
+                    to_disconnected_state &event) -> async_t<state_t> {
+  try {
+    context->on_disconnected(disconnected_context{
+        .connection_id = event.connection_id, .reason = event.reason});
+  } catch (const std::exception &ex) {
+  }
+}
 #pragma endregion
 
 #pragma region RECOVERING
 template <transition_context_c transition_context_t>
+auto async_reconnect_final(transition_context_t *context) -> async_t<> {
+  using namespace std::chrono_literals;
+  io::steady_timer timer{context->strand(), 30s};
+  for (; timer.expiry() > std::chrono::steady_clock::now();
+       co_await async_delay_v2(context->strand(), 1s)) {
+    try {
+      co_await context->lifetime().async_connect_new_websocket();
+      co_return;
+    } catch (const std::exception &ex) {
+      spdlog::trace("failed to recover {0}", ex.what());
+    }
+  }
+}
+
+auto async_reconnect_with_policy() -> async_t<> {}
+
+template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
                     to_connected_or_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace(">>>Transition<<< recovering -> connected / stopped");
+  spdlog::trace(":::Transition::: recovering -> connected / stopped");
+
+  // TODO: reconnect with policy
+  // TODO: add other status check
+  if (event.close_state == websocket_close_status::policy_violation) {
+    spdlog::trace("stop recovery: close status: {0}", (int)event.close_state);
+    co_await async_reconnect_with_policy();
+  } else {
+    co_await async_reconnect_final(context);
+  }
+
+  // TODO: IMPL: reconnect internal
+
   try {
     co_return connected{};
   } catch (...) {
@@ -117,7 +161,7 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, stopping &stopping,
                     to_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace(">>>Transition<<< stopping -> stopped");
+  spdlog::trace(":::Transition::: stopping -> stopped");
   // TODO: cancel receive loop
   co_await context->receive().async_cancel_message_loop_coro();
   // TODO: cancel sequence loop
@@ -129,10 +173,18 @@ auto async_on_event(transition_context_t *context, stopping &stopping,
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, auto &state,
                     auto &event) -> async_t<state_t> {
-  throw std::logic_error{std::format(">>>Transition<<< Unsupported state and "
+  throw std::logic_error{std::format(":::Transition::: Unsupported state and "
                                      "transition: state: {}, transition: {}",
                                      typeid(state).name(),
                                      typeid(event).name())};
+}
+
+template <transition_context_c transition_context_t>
+auto async_on_enter(transition_context_t *context, auto &state,
+                    auto &event) -> async_t<state_t> {
+  spdlog::trace(
+      ":::Transition::: Unsupported init state on event: {0}, event: {1}",
+      typeid(state).name(), typeid(event).name());
 }
 #pragma endregion
 

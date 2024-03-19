@@ -20,11 +20,16 @@ class loop_tracker {
   using channel_t = io::experimental::channel<void(io::error_code, bool)>;
 
 public:
-  loop_tracker(strand_t &strand) : strand_(strand), channel_(strand, 1) {}
+  loop_tracker(strand_t &strand)
+      : strand_(strand), channel_(strand, 1), is_waiting_(false) {}
 
   auto finish() {
     if (!channel_.is_open()) {
       throw invalid_operation("loop channel is already closed");
+    }
+    if (!is_waiting_) {
+      spdlog::trace("loop is not being waited");
+      return;
     }
     auto ok = channel_.try_send(io::error_code{}, true);
   }
@@ -33,6 +38,7 @@ public:
     if (!channel_.is_open()) {
       co_return;
     }
+    is_waiting_ = true;
     co_await channel_.async_receive(io::use_awaitable);
     channel_.close();
   }
@@ -40,6 +46,7 @@ public:
 private:
   channel_t channel_;
   strand_t &strand_;
+  bool is_waiting_;
 };
 } // namespace detail
 } // namespace webpubsub

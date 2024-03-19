@@ -78,6 +78,7 @@ public:
     }
 
     if (!ok) {
+      spdlog::trace("on_receive_failed");
       on_receive_failed(true);
     }
     co_return;

@@ -29,7 +29,7 @@ public:
 
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
     io::co_spawn(strand_, std::move(async_run), token);
-    spdlog::trace("loop started");
+    spdlog::trace("loop spawned");
   }
 
   auto async_cancel_loop_coro() -> async_t<> {

@@ -69,7 +69,7 @@ public:
   }
 
   // TODO: IMPL
-  auto async_connect_websocket() -> async_t<> {
+  auto async_connect_new_websocket() -> async_t<> {
     spdlog::trace("async_connect_websocket -- begin");
     reset_websocket_connection();
     co_return;

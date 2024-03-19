@@ -35,10 +35,11 @@ public:
       io::co_spawn(
           strand_,
           [this]() -> async_t<> {
-            spdlog::trace("receive.recovering...");
+            spdlog::trace("receive.recovering... beg");
             co_await async_raise_event(to_disconnected_state{});
             co_await async_raise_event(to_recovering_or_stopped_state{});
             co_await async_raise_event(to_connected_state{});
+            spdlog::trace("receive.recovering... end");
           },
           io::detached);
     });
@@ -55,21 +56,29 @@ public:
   // TODO: remove
   auto test() {}
 
-  auto &lifetime() { return lifetime_; }
+  auto strand() -> strand_t & { return strand_; }
 
-  auto &receive() { return receive_; }
+  auto lifetime() -> lifetime_t & { return lifetime_; }
 
-  const auto &get_state() { return state_; }
+  auto receive() -> receive_t & { return receive_; }
+
+  auto get_state() -> const state_t & { return state_; }
 
   auto async_raise_event(event_t event) -> async_t<> {
-    state_ = co_await std::visit(overloaded{[this](auto &e) {
-                                   return std::visit(
-                                       overloaded{[this, &e](auto &s) {
-                                         return async_on_event(this, s, e);
-                                       }},
-                                       state_);
-                                 }},
-                                 event);
+    state_ = co_await std::visit(
+        overloaded{[this](auto &e) {
+          return std::visit(overloaded{[this, &e](auto &s) {
+                              return [this, &e, &s]() -> async_t<state_t> {
+                                // TODO: better naming
+                                auto state =
+                                    co_await async_on_event(this, s, e);
+                                co_await async_on_enter(this, s, e);
+                                co_return state;
+                              }();
+                            }},
+                            state_);
+        }},
+        event);
   }
 
 private:
