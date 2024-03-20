@@ -73,7 +73,14 @@ private:
 
 static_assert(retry_policy_c<exponential_retry_policy>);
 
-class disable_retry_policy {};
+class disable_retry_policy {
+public:
+  auto reset() {}
+  auto next_retry_delay() -> std::optional<std::chrono::milliseconds> {
+    return std::nullopt;
+  }
+};
+static_assert(retry_policy_c<disable_retry_policy>);
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_RETRY_POLICY_HPP

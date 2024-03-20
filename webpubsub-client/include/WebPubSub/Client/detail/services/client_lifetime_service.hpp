@@ -39,6 +39,9 @@ template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
 
 class client_lifetime_service {
   using strand_t = io::strand<io::io_context::executor_type>;
+  using retry_policy_t =
+      std::variant<fixed_retry_policy, exponential_retry_policy,
+                   disable_retry_policy>;
 
 public:
   client_lifetime_service(strand_t &strand,
@@ -72,6 +75,7 @@ public:
   auto async_connect_new_websocket() -> async_t<> {
     spdlog::trace("async_connect_websocket -- begin");
     reset_websocket_connection();
+    // TODO: actually connect
     co_return;
   }
 
@@ -134,6 +138,7 @@ public:
   auto test() {}
 
   auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
+  auto retry_policy() -> retry_policy_t & { return retry_policy_; };
 
 private:
   const log &log_;
@@ -142,9 +147,7 @@ private:
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
 
-  std::variant<fixed_retry_policy, exponential_retry_policy,
-               disable_retry_policy>
-      retry_policy_;
+  retry_policy_t retry_policy_;
   //  TODO: add connection lock?
 };
 

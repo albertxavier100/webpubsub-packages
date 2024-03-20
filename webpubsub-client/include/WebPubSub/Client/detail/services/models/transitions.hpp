@@ -115,22 +115,23 @@ auto async_on_enter(transition_context_t *context, disconnected &disconnected,
 #pragma endregion
 
 #pragma region RECOVERING
+
 template <transition_context_c transition_context_t>
-auto async_reconnect_final(transition_context_t *context) -> async_t<> {
-  using namespace std::chrono_literals;
-  io::steady_timer timer{context->strand(), 30s};
-  for (; timer.expiry() > std::chrono::steady_clock::now();
-       co_await async_delay_v2(context->strand(), 1s)) {
+auto async_reconnect(transition_context_t *context) -> async_t<> {
+  auto retry_policy = context->lifetime.retry_policy();
+  for (;;) {
     try {
       co_await context->lifetime().async_connect_new_websocket();
-      co_return;
     } catch (const std::exception &ex) {
-      spdlog::trace("failed to recover {0}", ex.what());
+      spdlog::trace("failed to reconnect. {0}", ex.what());
     }
+    auto delay = retry_policy.next_retry_delay();
+    if (!delay) {
+      co_return stopped{};
+    }
+    co_await async_delay_v2(context->strand(), *delay);
   }
 }
-
-auto async_reconnect_with_policy() -> async_t<> {}
 
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
@@ -139,16 +140,13 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
 
   // TODO: reconnect with policy
   // TODO: add other status check
+  // TODO: reset reconnect policy
   if (event.close_state == websocket_close_status::policy_violation) {
     spdlog::trace("stop recovery: close status: {0}", (int)event.close_state);
-    co_await async_reconnect_with_policy();
-  } else {
-    co_await async_reconnect_final(context);
   }
 
-  // TODO: IMPL: reconnect internal
-
   try {
+    co_await async_reconnect(context);
     co_return connected{};
   } catch (...) {
     co_return stopped{};
