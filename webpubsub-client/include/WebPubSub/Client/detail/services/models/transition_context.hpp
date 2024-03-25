@@ -35,11 +35,12 @@ public:
       io::co_spawn(
           strand_,
           [this]() -> async_t<> {
-            spdlog::trace("receive.recovering... beg");
-            co_await async_raise_event(to_disconnected_state{});
+            spdlog::trace("on_receive_failed.recovering... beg");
+            co_await async_raise_event(to_disconnected_state{
+                .connection_id = "TODO", .reason = "TODO"}); // TODO
             co_await async_raise_event(to_recovering_or_stopped_state{});
             co_await async_raise_event(to_connected_state{});
-            spdlog::trace("receive.recovering... end");
+            spdlog::trace("on_receive_failed.recovering... end");
           },
           io::detached);
     });
@@ -72,7 +73,11 @@ public:
                                 // TODO: better naming
                                 auto state =
                                     co_await async_on_event(this, s, e);
-                                co_await async_on_enter(this, s, e);
+                                co_await std::visit(
+                                    overloaded{[this, &e](auto &new_state) {
+                                      return async_on_enter(this, new_state, e);
+                                    }},
+                                    state);
                                 co_return state;
                               }();
                             }},

@@ -16,7 +16,11 @@ namespace webpubsub {
 namespace detail {
 // lifetime events
 struct to_connecting_state {};
-struct to_connected_state {};
+struct to_connected_state {
+  std::string connection_id;
+  std::optional<std::string> user_id;
+  std::optional<std::string> reconnection_token;
+};
 struct to_connected_or_stopped_state {
   websocket_close_status close_state;
 };
