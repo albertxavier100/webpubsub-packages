@@ -19,7 +19,7 @@ auto async_reconnect_with_retry(transition_context_t *context)
   for (;;) {
     try {
       co_await context->lifetime().async_connect_new_websocket();
-      spdlog::trace("reconnect ok.");
+      //      spdlog::trace("reconnect ok.");
       co_return connected{};
     } catch (const std::exception &ex) {
       spdlog::trace("failed to reconnect. {0}", ex.what());
@@ -44,7 +44,8 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
   if (event.close_state == websocket_close_status::policy_violation) {
     spdlog::trace("stop recovery: close status: {0}", (int)event.close_state);
   }
-  return async_reconnect_with_retry(context);
+  auto next_state = co_await async_reconnect_with_retry(context);
+  co_return next_state;
 }
 } // namespace detail
 } // namespace webpubsub

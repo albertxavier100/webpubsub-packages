@@ -42,10 +42,10 @@ auto async_on_enter(transition_context_t *context, connected &connected,
                     to_connected_state &event) -> async_t<> {
   spdlog::trace(":::Transition::: enter connected state");
   try {
-    context->on_connected(
-        connected_context{.connection_id = event.connection_id,
-                          .user_id = event.user_id,
-                          .reconnection_token = event.reconnection_token});
+    // TODO: use real string
+    context->on_connected(connected_context{.connection_id = "TODO",
+                                            .user_id = "TODO",
+                                            .reconnection_token = "TODO"});
   } catch (const std::exception &ex) {
   }
   co_return;
