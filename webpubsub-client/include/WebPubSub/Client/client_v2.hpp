@@ -23,8 +23,9 @@ public:
             const client_options<protocol_t> &options,
             websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), lifetime_(strand, websocket_factory, options, log_),
-        receive_(strand, log_),
+      : log_(logger_name), ack_cache_(),
+        lifetime_(strand, websocket_factory, options, log_),
+        receive_(strand, ack_cache_, log_),
         transition_context_(strand, lifetime_, receive_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
@@ -71,5 +72,6 @@ private:
       transition_context_;
   const detail::log log_;
   io::cancellation_signal dummy_start_signal_;
+  std::unordered_map<uint64_t, detail::ack_entity> ack_cache_;
 };
 } // namespace webpubsub

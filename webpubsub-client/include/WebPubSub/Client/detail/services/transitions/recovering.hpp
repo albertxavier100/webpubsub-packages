@@ -19,7 +19,7 @@ auto async_reconnect_with_retry(transition_context_t *context)
   for (;;) {
     try {
       co_await context->lifetime().async_connect_new_websocket();
-      //      spdlog::trace("reconnect ok.");
+      spdlog::trace("reconnect successfully.");
       co_return connected{};
     } catch (const std::exception &ex) {
       spdlog::trace("failed to reconnect. {0}", ex.what());
@@ -39,7 +39,6 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
                     to_connected_or_stopped_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: recovering -> connected / stopped");
 
-  // TODO: reconnect with policy
   // TODO: add other status check
   if (event.close_state == websocket_close_status::policy_violation) {
     spdlog::trace("stop recovery: close status: {0}", (int)event.close_state);

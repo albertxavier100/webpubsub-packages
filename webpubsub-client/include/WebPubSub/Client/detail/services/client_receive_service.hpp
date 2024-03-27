@@ -74,7 +74,11 @@ public:
     } catch (const std::exception &ex) {
       spdlog::trace("message loop stopped with ex: {0}", ex.what());
       ok = false;
-      // TODO: handle unhandled ack entity
+      for (auto &ack_pair : ack_cache_) {
+        auto &id = ack_pair.first;
+        auto &entity = ack_pair.second;
+        co_await entity.async_finish_with(ack_entity::result::cancelled);
+      }
     }
 
     if (!ok) {
@@ -88,6 +92,7 @@ private:
   client_loop_service loop_svc_;
   // TODO: rename
   loop_tracker loop_tracker_;
+  std::unordered_map<uint64_t, detail::ack_entity> &ack_cache_;
 };
 } // namespace detail
 } // namespace webpubsub
