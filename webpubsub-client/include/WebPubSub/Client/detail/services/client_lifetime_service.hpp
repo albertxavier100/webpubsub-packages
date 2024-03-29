@@ -80,49 +80,6 @@ public:
     co_return;
   }
 
-  /*
-//  auto async_auto_reconnect() -> async_t<> {
-//    bool ok = false;
-//
-//    struct exit_scope {
-//      ~exit_scope() {
-//        if (!ok) {
-//          // TODO: IMPL: handle client stop
-//        }
-//      }
-//    } _;
-//
-//    auto retry = 0;
-//
-//    for (;;) {
-//      auto cs = co_await io::this_coro::cancellation_state;
-//      if (cs.cancelled() != io::cancellation_type::none) {
-//        spdlog::trace("auto reconnect break;");
-//        break;
-//      }
-//      bool should_retry = false;
-//      try {
-//        co_await async_connect_websocket();
-//        ok = true;
-//        co_return;
-//      } catch (const std::exception &ex) {
-//        should_retry = true;
-//      }
-//      if (should_retry) {
-//        spdlog::trace("fail to reconnect");
-//        retry++;
-//        if (auto delay = std::visit(
-//                overloaded{[](auto &p) { return p.next_retry_delay(); }},
-//                retry_policy_)) {
-//          co_await async_delay_v2(*delay);
-//        } else {
-//          co_return;
-//        }
-//      }
-//    }
-//  }
-*/
-
   auto
   async_read_message(std::string &payload,
                      webpubsub::websocket_close_status &status) -> async_t<> {
