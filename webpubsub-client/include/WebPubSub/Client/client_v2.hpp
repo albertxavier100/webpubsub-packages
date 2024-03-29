@@ -68,48 +68,50 @@ private:
   auto
   setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
     // TODO: move callback to client_v2.hpp
-    receive_.on_receive_failed.append([this, &strand](const bool recover) {
-      io::co_spawn(
-          strand,
-          [this, recover]() -> async_t<> {
-            try {
-              if (recover) {
-                // TODO: impl
-                spdlog::trace("try.recovering... beg");
-                co_await transition_context_.async_raise_event(
-                    detail::to_recovering_state{});
-                co_await transition_context_.async_raise_event(
-                    detail::to_connected_or_disconnected_state{});
-                spdlog::trace("try.recovering... end");
-                auto &cur_state = transition_context_.get_state();
-                if (std::holds_alternative<detail::connected>(cur_state)) {
-                  spdlog::trace("try.recovering... success");
-                  co_return;
-                }
-              }
 
-              spdlog::trace("on_receive_failed.reconnecting... beg");
-              // stopped / connected
-              if (!recover) {
-                co_await transition_context_.async_raise_event(
-                    detail::to_disconnected_state{"TODO", "TODO"}); // TODO
-              }
-              spdlog::trace(
-                  "on_receive_failed.reconnecting... to reconnecting");
-              co_await transition_context_.async_raise_event(
-                  detail::to_reconnecting_state{});
-              spdlog::trace("on_receive_failed.reconnecting... to "
-                            "to_connected_or_disconnected_state");
-              co_await transition_context_.async_raise_event(
-                  detail::to_connected_or_disconnected_state{});
-              spdlog::trace("on_receive_failed.reconnecting... end");
-            } catch (const std::exception &ex) {
-              spdlog::trace("failed to recover, ex: {0}", ex.what());
-              throw;
-            }
-          },
-          io::detached);
-    });
+    auto &ctx = transition_context_;
+    auto op = [&ctx](const bool recover) -> async_t<> {
+      using to_recovering = detail::to_recovering_state;
+      using to_reconnecting = detail::to_reconnecting_state;
+      using to_connected_or_disconnected =
+          detail::to_connected_or_disconnected_state;
+      using to_disconnected = detail::to_disconnected_state;
+
+      try {
+        if (recover) {
+          // TODO: impl
+          spdlog::trace("try.recovering... beg");
+          co_await ctx.async_raise_event(to_recovering{});
+          co_await ctx.async_raise_event(to_connected_or_disconnected{});
+          spdlog::trace("try.recovering... end");
+          auto &cur_state = ctx.get_state();
+          if (std::holds_alternative<detail::connected>(cur_state)) {
+            spdlog::trace("try.recovering... success");
+            co_return;
+          }
+        }
+
+        spdlog::trace("on_receive_failed.reconnecting... beg");
+        // stopped / connected
+        if (!recover) {
+          co_await ctx.async_raise_event(
+              to_disconnected{"TODO", "TODO"}); // TODO
+        }
+        spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
+        co_await ctx.async_raise_event(to_reconnecting{});
+        spdlog::trace("on_receive_failed.reconnecting... to "
+                      "to_connected_or_disconnected_state");
+        co_await ctx.async_raise_event(to_connected_or_disconnected{});
+        spdlog::trace("on_receive_failed.reconnecting... end");
+      } catch (const std::exception &ex) {
+        spdlog::trace("failed to recover, ex: {0}", ex.what());
+        throw;
+      }
+    };
+    auto callback = [this, &strand, op = std::move(op)](const bool recover) {
+      io::co_spawn(strand, op(recover), io::detached);
+    };
+    receive_.on_receive_failed.append(callback);
   }
 
   detail::client_lifetime_service<protocol_t, websocket_factory_t, websocket_t>
