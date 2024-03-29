@@ -12,25 +12,25 @@
 namespace webpubsub {
 namespace detail {
 
+// TODO: need unit test
 template <transition_context_c transition_context_t>
-auto async_reconnect_with_retry(transition_context_t *context)
-    -> async_t<state_t> {
-  auto retry_policy = context->lifetime().retry_policy();
+auto async_recover_connection(transition_context_t *context) -> async_t<> {
+  using namespace std::chrono_literals;
+  io::steady_timer timeout_timer{context->strand(), 30s};
+  auto expiry = timeout_timer.expiry();
   for (;;) {
     try {
+      if (expiry < std::chrono::steady_clock::now()) {
+        spdlog::trace("Recovery attempts failed more than 30 seconds or the "
+                      "client is stopped");
+        co_return;
+      }
       co_await context->lifetime().async_connect_new_websocket();
-      spdlog::trace("reconnect successfully.");
-      co_return connected{};
+      co_return;
     } catch (const std::exception &ex) {
-      spdlog::trace("failed to reconnect. {0}", ex.what());
+      spdlog::trace("fail to recover connection. ex: {0}", ex.what());
     }
-    auto delay = std::visit(
-        overloaded{[](auto &policy) { return policy.next_retry_delay(); }},
-        retry_policy);
-    if (!delay) {
-      co_return stopped{};
-    }
-    co_await async_delay_v2(context->strand(), *delay);
+    co_await async_delay_v2(context->strand(), 1s);
   }
 }
 
@@ -38,13 +38,8 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
                     to_connected_or_stopped_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: recovering -> connected / stopped");
-
-  // TODO: add other status check
-  if (event.close_state == websocket_close_status::policy_violation) {
-    spdlog::trace("stop recovery: close status: {0}", (int)event.close_state);
-  }
-  auto next_state = co_await async_reconnect_with_retry(context);
-  co_return next_state;
+  // TODO: impl
+  co_await async_recover_connection(context);
 }
 } // namespace detail
 } // namespace webpubsub

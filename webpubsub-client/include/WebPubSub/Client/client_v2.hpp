@@ -7,6 +7,7 @@
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
+#include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/transition_context.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 #include "webpubsub/client/models/client_options.hpp"
@@ -32,7 +33,9 @@ public:
         on_group_data(transition_context_.on_group_data),
         on_server_data(transition_context_.on_server_data),
         on_rejoin_group_failed(transition_context_.on_rejoin_group_failed),
-        on_stopped(transition_context_.on_stopped) {}
+        on_stopped(transition_context_.on_stopped) {
+    setup_reconnect_callback(strand);
+  }
 
   eventpp::CallbackList<void(const connected_context)> &on_connected;
   eventpp::CallbackList<void(const disconnected_context)> &on_disconnected;
@@ -62,6 +65,48 @@ public:
   }
 
 private:
+  auto
+  setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
+    // TODO: move callback to client_v2.hpp
+    receive_.on_receive_failed.append([this, &strand](const bool recover) {
+      io::co_spawn(
+          strand,
+          [this, recover]() -> async_t<> {
+            try {
+
+              if (recover) {
+                // TODO: impl
+                spdlog::trace("try.recovering... beg");
+                co_await transition_context_.async_raise_event(
+                    detail::to_recovering_state{});
+                spdlog::trace("try.recovering... end");
+                // TODO: what's next, reconnect?
+                co_return;
+              }
+
+              spdlog::trace("on_receive_failed.reconnecting... beg");
+              // stopped / connected
+              co_await transition_context_.async_raise_event(
+                  detail::to_disconnected_state{.connection_id = "TODO",
+                                                .reason = "TODO"}); // TODO
+              spdlog::trace(
+                  "on_receive_failed.reconnecting... to reconnecting");
+              co_await transition_context_.async_raise_event(
+                  detail::to_reconnecting_state{});
+              spdlog::trace("on_receive_failed.reconnecting... to "
+                            "to_connected_or_stopped_state");
+              co_await transition_context_.async_raise_event(
+                  detail::to_connected_or_stopped_state{});
+              spdlog::trace("on_receive_failed.reconnecting... end");
+            } catch (const std::exception &ex) {
+              spdlog::trace("failed to recover, ex: {0}", ex.what());
+              throw;
+            }
+          },
+          io::detached);
+    });
+  }
+
   detail::client_lifetime_service<protocol_t, websocket_factory_t, websocket_t>
       lifetime_;
   detail::client_receive_service receive_;

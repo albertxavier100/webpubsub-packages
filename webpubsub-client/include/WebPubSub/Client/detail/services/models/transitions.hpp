@@ -23,6 +23,7 @@
 #include "webpubsub/client/detail/services/transitions/connected.hpp"
 #include "webpubsub/client/detail/services/transitions/connecting.hpp"
 #include "webpubsub/client/detail/services/transitions/disconnected.hpp"
+#include "webpubsub/client/detail/services/transitions/reconnecting.hpp"
 #include "webpubsub/client/detail/services/transitions/recovering.hpp"
 #include "webpubsub/client/detail/services/transitions/stopped.hpp"
 #include "webpubsub/client/detail/services/transitions/stopping.hpp"

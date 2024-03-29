@@ -14,14 +14,13 @@ namespace detail {
 // disconnected => recovering or stopped
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, disconnected &disconnected,
-                    to_recovering_or_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace(":::Transition::: disconnected -> recovering / stopped");
+                    to_reconnecting_state &event) -> async_t<state_t> {
+  spdlog::trace(":::Transition::: disconnected -> reconnecting");
 
   // TODO: finish any awaiting ack entity
   if (context->lifetime().auto_reconnect()) {
-
-    spdlog::trace(":::Transition::: -> recovering");
-    co_return recovering{};
+    spdlog::trace(":::Transition::: -> reconnecting");
+    co_return reconnecting{};
   }
   try {
     context->on_stopped(stopped_context{});

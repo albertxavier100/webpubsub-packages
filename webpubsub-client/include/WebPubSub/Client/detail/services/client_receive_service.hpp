@@ -24,8 +24,10 @@ namespace webpubsub {
 namespace detail {
 class client_receive_service {
 public:
-  client_receive_service(strand_t &strand, const log &log)
-      : loop_svc_(strand, log), loop_tracker_(strand) {}
+  client_receive_service(strand_t &strand,
+                         std::unordered_map<uint64_t, ack_entity> &ack_cache,
+                         const log &log)
+      : loop_svc_(strand, log), loop_tracker_(strand), ack_cache_(ack_cache) {}
 
   eventpp::CallbackList<void(const bool)> on_receive_failed;
 
@@ -74,16 +76,17 @@ public:
     } catch (const std::exception &ex) {
       spdlog::trace("message loop stopped with ex: {0}", ex.what());
       ok = false;
+    }
+
+    if (!ok) {
+      spdlog::trace("on_receive_failed");
       for (auto &ack_pair : ack_cache_) {
         auto &id = ack_pair.first;
         auto &entity = ack_pair.second;
         co_await entity.async_finish_with(ack_entity::result::cancelled);
       }
-    }
-
-    if (!ok) {
-      spdlog::trace("on_receive_failed");
-      on_receive_failed(true);
+      // TODO: decide should recover or reconnect, and log here
+      on_receive_failed(false);
     }
     co_return;
   }

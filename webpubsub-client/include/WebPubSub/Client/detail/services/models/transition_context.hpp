@@ -31,32 +31,6 @@ public:
         receive_(receive), log_(log) {
     static_assert(
         transition_context_c<transition_context<lifetime_t, receive_t>>);
-
-    // TODO: move callback to client_v2.hpp
-    receive_.on_receive_failed.append([this](const bool _) {
-      io::co_spawn(
-          strand_,
-          [this]() -> async_t<> {
-            try {
-
-              spdlog::trace("on_receive_failed.recovering... beg");
-              spdlog::trace("on_receive_failed.recovering... to disconnected");
-              co_await async_raise_event(to_disconnected_state{
-                  .connection_id = "TODO", .reason = "TODO"}); // TODO
-              spdlog::trace(
-                  "on_receive_failed.recovering... to recovering or stopped");
-              co_await async_raise_event(to_recovering_or_stopped_state{});
-              spdlog::trace("on_receive_failed.recovering... to "
-                            "to_connected_or_stopped_state");
-              co_await async_raise_event(to_connected_or_stopped_state{});
-              spdlog::trace("on_receive_failed.recovering... end");
-            } catch (const std::exception &ex) {
-              spdlog::trace("failed to recover, ex: {0}", ex.what());
-              throw;
-            }
-          },
-          io::detached);
-    });
   }
 
   eventpp::CallbackList<void(const connected_context)> on_connected;
