@@ -73,30 +73,35 @@ private:
           strand,
           [this, recover]() -> async_t<> {
             try {
-
               if (recover) {
                 // TODO: impl
                 spdlog::trace("try.recovering... beg");
                 co_await transition_context_.async_raise_event(
                     detail::to_recovering_state{});
+                co_await transition_context_.async_raise_event(
+                    detail::to_connected_or_disconnected_state{});
                 spdlog::trace("try.recovering... end");
-                // TODO: what's next, reconnect?
-                co_return;
+                auto &cur_state = transition_context_.get_state();
+                if (std::holds_alternative<detail::connected>(cur_state)) {
+                  spdlog::trace("try.recovering... success");
+                  co_return;
+                }
               }
 
               spdlog::trace("on_receive_failed.reconnecting... beg");
               // stopped / connected
-              co_await transition_context_.async_raise_event(
-                  detail::to_disconnected_state{.connection_id = "TODO",
-                                                .reason = "TODO"}); // TODO
+              if (!recover) {
+                co_await transition_context_.async_raise_event(
+                    detail::to_disconnected_state{"TODO", "TODO"}); // TODO
+              }
               spdlog::trace(
                   "on_receive_failed.reconnecting... to reconnecting");
               co_await transition_context_.async_raise_event(
                   detail::to_reconnecting_state{});
               spdlog::trace("on_receive_failed.reconnecting... to "
-                            "to_connected_or_stopped_state");
+                            "to_connected_or_disconnected_state");
               co_await transition_context_.async_raise_event(
-                  detail::to_connected_or_stopped_state{});
+                  detail::to_connected_or_disconnected_state{});
               spdlog::trace("on_receive_failed.reconnecting... end");
             } catch (const std::exception &ex) {
               spdlog::trace("failed to recover, ex: {0}", ex.what());

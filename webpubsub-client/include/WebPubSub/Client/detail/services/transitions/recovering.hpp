@@ -14,7 +14,8 @@ namespace detail {
 
 // TODO: need unit test
 template <transition_context_c transition_context_t>
-auto async_recover_connection(transition_context_t *context) -> async_t<> {
+auto async_recover_connection(transition_context_t *context)
+    -> async_t<state_t> {
   using namespace std::chrono_literals;
   io::steady_timer timeout_timer{context->strand(), 30s};
   auto expiry = timeout_timer.expiry();
@@ -22,11 +23,13 @@ auto async_recover_connection(transition_context_t *context) -> async_t<> {
     try {
       if (expiry < std::chrono::steady_clock::now()) {
         spdlog::trace("Recovery attempts failed more than 30 seconds or the "
-                      "client is stopped");
-        co_return;
+                      "client is disconnected");
+        spdlog::trace(":::Transition:::  -> disconnected");
+        co_return disconnected{};
       }
       co_await context->lifetime().async_connect_new_websocket();
-      co_return;
+      spdlog::trace(":::Transition:::  -> connected");
+      co_return connected{};
     } catch (const std::exception &ex) {
       spdlog::trace("fail to recover connection. ex: {0}", ex.what());
     }
@@ -36,10 +39,12 @@ auto async_recover_connection(transition_context_t *context) -> async_t<> {
 
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, recovering &recovering,
-                    to_connected_or_stopped_state &event) -> async_t<state_t> {
-  spdlog::trace(":::Transition::: recovering -> connected / stopped");
+                    to_connected_or_disconnected_state &event)
+    -> async_t<state_t> {
+  spdlog::trace(":::Transition::: recovering -> connected / disconnected");
   // TODO: impl
-  co_await async_recover_connection(context);
+  auto next_state = co_await async_recover_connection(context);
+  co_return next_state;
 }
 } // namespace detail
 } // namespace webpubsub

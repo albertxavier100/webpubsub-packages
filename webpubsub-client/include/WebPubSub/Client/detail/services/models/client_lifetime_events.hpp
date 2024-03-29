@@ -21,7 +21,7 @@ struct to_connected_state {
   std::optional<std::string> user_id;
   std::optional<std::string> reconnection_token;
 };
-struct to_connected_or_stopped_state {
+struct to_connected_or_disconnected_state {
   websocket_close_status close_state;
 };
 struct to_disconnected_state {
@@ -38,7 +38,7 @@ struct to_reconnecting_state {};
 using event_t =
     std::variant<to_stopped_state, to_connected_state, to_disconnected_state,
                  to_connecting_state, to_recovering_state, to_stopping_state,
-                 to_connected_or_stopped_state, to_reconnecting_state>;
+                 to_connected_or_disconnected_state, to_reconnecting_state>;
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_CLIENT_LIFETIME_EVENTS_HPP
