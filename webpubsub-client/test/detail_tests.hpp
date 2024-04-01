@@ -39,6 +39,10 @@ TEST(detail, ack_entity) {
   io::co_spawn(io_context, wait(), io::detached);
   io_context.run();
 }
+
+// TODO: impl
+TEST(detail, sequence_id) {}
+
 } // namespace detail
 } // namespace test
 

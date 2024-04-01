@@ -12,7 +12,6 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/ack_entity.hpp"
 #include "webpubsub/client/detail/client/loop_tracker.hpp"
-#include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"
@@ -40,9 +39,9 @@ public:
 
   auto async_cancel_message_loop_coro() -> async_t<> {
     co_await loop_svc_.async_cancel_loop_coro();
-    spdlog::trace("wait loop finish begin");
+    spdlog::trace("wait receive loop finish begin");
     co_await loop_tracker_.async_wait();
-    spdlog::trace("wait loop finish end");
+    spdlog::trace("wait receive loop finish end");
     co_return;
   }
 

@@ -67,8 +67,6 @@ public:
 private:
   auto
   setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
-    // TODO: move callback to client_v2.hpp
-
     auto &ctx = transition_context_;
     auto op = [&ctx](const bool recover) -> async_t<> {
       using to_recovering = detail::to_recovering_state;
@@ -79,7 +77,6 @@ private:
 
       try {
         if (recover) {
-          // TODO: impl
           spdlog::trace("try.recovering... beg");
           co_await ctx.async_raise_event(to_recovering{});
           co_await ctx.async_raise_event(to_connected_or_disconnected{});
@@ -92,10 +89,9 @@ private:
         }
 
         spdlog::trace("on_receive_failed.reconnecting... beg");
-        // stopped / connected
         if (!recover) {
-          co_await ctx.async_raise_event(
-              to_disconnected{"TODO", "TODO"}); // TODO
+          // TODO： use actual string
+          co_await ctx.async_raise_event(to_disconnected{"TODO", "TODO"});
         }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
         co_await ctx.async_raise_event(to_reconnecting{});

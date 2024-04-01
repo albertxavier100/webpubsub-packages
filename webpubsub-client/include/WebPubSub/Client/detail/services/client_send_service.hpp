@@ -10,7 +10,10 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/logging/log.hpp"
+#include "webpubsub/client/detail/services/client_loop_service.hpp"
 
 namespace webpubsub {
 namespace detail {
@@ -21,9 +24,6 @@ private:
 
 class client_send_service {
 public:
-  auto start_send_sequence_id_loop() -> async_t<> { co_return; }
-
-private:
 };
 } // namespace detail
 } // namespace webpubsub
