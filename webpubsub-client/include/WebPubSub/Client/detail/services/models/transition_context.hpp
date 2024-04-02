@@ -22,15 +22,16 @@ namespace webpubsub {
 namespace detail {
 
 // TODO: add concept for receive_t
-template <client_lifetime_service_c lifetime_t, typename receive_t>
+template <client_lifetime_service_c lifetime_t, typename receive_t,
+          typename send_t>
 class transition_context {
 public:
   transition_context(strand_t &strand, lifetime_t &lifetime, receive_t &receive,
-                     const log &log)
+                     send_t &send, const log &log)
       : strand_(strand), state_(stopped{}), lifetime_(lifetime),
-        receive_(receive), log_(log) {
-    static_assert(
-        transition_context_c<transition_context<lifetime_t, receive_t>>);
+        receive_(receive), send_(send), log_(log) {
+    static_assert(transition_context_c<
+                  transition_context<lifetime_t, receive_t, send_t>>);
   }
 
   eventpp::CallbackList<void(const connected_context)> on_connected;
@@ -50,8 +51,11 @@ public:
 
   auto receive() -> receive_t & { return receive_; }
 
+  auto send() -> send_t & { return send_; }
+
   auto get_state() -> const state_t & { return state_; }
 
+  // TODO: limit this function, only allow use in client_v2
   auto async_raise_event(event_t event) -> async_t<> {
     state_ = co_await std::visit(
         overloaded{[this](auto &e) {
@@ -77,9 +81,11 @@ private:
   // TODO: try to make const
   lifetime_t &lifetime_;
   receive_t &receive_;
+  send_t &send_;
   const log &log_;
   state_t state_;
   strand_t &strand_;
+  ;
 };
 
 } // namespace detail

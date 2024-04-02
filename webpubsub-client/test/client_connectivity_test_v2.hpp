@@ -224,5 +224,8 @@ TEST(connectivity, auto_reconnect) {
 
   io_context.run();
 }
+
+// TODO: add test that can be stop by cancel signal after reconnect or recover
+
 } // namespace connectivity
 } // namespace test

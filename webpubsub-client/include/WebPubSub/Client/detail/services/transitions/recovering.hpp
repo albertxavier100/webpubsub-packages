@@ -14,7 +14,8 @@ namespace detail {
 
 // TODO: need unit test
 template <transition_context_c transition_context_t>
-auto async_recover_connection(transition_context_t *context)
+auto async_recover_connection(transition_context_t *context,
+                              to_connected_or_disconnected_state &event)
     -> async_t<state_t> {
   using namespace std::chrono_literals;
   io::steady_timer timeout_timer{context->strand(), 30s};
@@ -27,7 +28,8 @@ auto async_recover_connection(transition_context_t *context)
         spdlog::trace(":::Transition:::  -> disconnected");
         co_return disconnected{};
       }
-      co_await context->lifetime().async_connect_new_websocket();
+      auto &lt = context->lifetime();
+      co_await lt.async_establish_new_websocket(context, event.start_slot);
       spdlog::trace(":::Transition:::  -> connected");
       co_return connected{};
     } catch (const std::exception &ex) {
@@ -43,7 +45,7 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
     -> async_t<state_t> {
   spdlog::trace(":::Transition::: recovering -> connected / disconnected");
   // TODO: impl
-  auto next_state = co_await async_recover_connection(context);
+  auto next_state = co_await async_recover_connection(context, event);
   co_return next_state;
 }
 } // namespace detail

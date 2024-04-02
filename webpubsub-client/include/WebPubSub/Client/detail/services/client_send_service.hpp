@@ -20,15 +20,13 @@ namespace detail {
 class client_send_service {
 public:
   // TODO: test this service
-  client_send_service(strand_t &strand,
-                      std::unordered_map<uint64_t, ack_entity> &ack_cache,
-                      const log &log)
+  client_send_service(strand_t &strand, const log &log)
       : loop_svc_(strand, log), sequence_id_(strand) {}
 
   template <transition_context_c transition_context_t>
-  auto spawn_sequence_ack_loop_coro(transition_context_t &context,
+  auto spawn_sequence_ack_loop_coro(transition_context_t *context,
                                     io::cancellation_slot start_slot) {
-    auto loop = [&context, &loop_svc = loop_svc_, &sid = sequence_id_]() {
+    auto loop = [&loop_svc = loop_svc_, &sid = sequence_id_]() -> async_t<> {
       using namespace std::chrono_literals;
       for (;;) {
         try {

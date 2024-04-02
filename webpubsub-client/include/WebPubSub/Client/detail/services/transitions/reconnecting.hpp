@@ -12,12 +12,13 @@
 namespace webpubsub {
 namespace detail {
 template <transition_context_c transition_context_t>
-auto async_reconnect_with_retry(transition_context_t *context)
+auto async_reconnect_with_retry(transition_context_t *context,
+                                to_connected_or_disconnected_state &event)
     -> async_t<state_t> {
   auto retry_policy = context->lifetime().retry_policy();
   for (;;) {
     try {
-      co_await context->lifetime().async_connect_new_websocket();
+      co_await context->lifetime().async_connect(context, event.start_slot);
       spdlog::trace("reconnect successfully.");
       spdlog::trace(":::Transition::: -> connected");
       co_return connected{};
@@ -41,7 +42,7 @@ auto async_on_event(transition_context_t *context, reconnecting &reconnecting,
     -> async_t<state_t> {
   spdlog::trace(":::Transition::: reconnecting -> connected / stopped");
 
-  auto next_state = co_await async_reconnect_with_retry(context);
+  auto next_state = co_await async_reconnect_with_retry(context, event);
   co_return next_state;
 }
 

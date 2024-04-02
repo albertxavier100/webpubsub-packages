@@ -28,12 +28,13 @@ public:
                          const log &log)
       : loop_svc_(strand, log), ack_cache_(ack_cache) {}
 
-  eventpp::CallbackList<void(const bool)> on_receive_failed;
+  eventpp::CallbackList<void(const bool, io::cancellation_slot slot)>
+      on_receive_failed;
 
   template <transition_context_c transition_context_t>
-  auto spawn_message_loop_coro(transition_context_t &context,
+  auto spawn_message_loop_coro(transition_context_t *context,
                                io::cancellation_slot start_slot) {
-    loop_svc_.spawn_loop_coro(async_start_message_loop(context),
+    loop_svc_.spawn_loop_coro(async_start_message_loop(context, start_slot),
                               std::move(start_slot));
   }
 
@@ -44,13 +45,16 @@ public:
 private:
   // TODO: refactor: remove
   template <transition_context_c transition_context_t>
-  auto async_start_message_loop(transition_context_t &context) -> async_t<> {
-    co_await loop_svc_.async_start_loop(async_start_message_loop_core(context));
+  auto async_start_message_loop(transition_context_t *context,
+                                io::cancellation_slot start_slot) -> async_t<> {
+    co_await loop_svc_.async_start_loop(
+        async_start_message_loop_core(context, std::move(start_slot)));
   }
 
   template <transition_context_c transition_context_t>
   auto
-  async_start_message_loop_core(transition_context_t &context) -> async_t<> {
+  async_start_message_loop_core(transition_context_t *context,
+                                io::cancellation_slot start_slot) -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
@@ -63,7 +67,7 @@ private:
         }
         std::string payload;
         websocket_close_status status;
-        co_await context.lifetime().async_read_message(payload, status);
+        co_await context->lifetime().async_read_message(payload, status);
         // TODO: handle message
         spdlog::trace("receiving...");
       }
@@ -80,7 +84,7 @@ private:
         co_await entity.async_finish_with(ack_entity::result::cancelled);
       }
       // TODO: decide should recover or reconnect, and log here
-      on_receive_failed(false);
+      on_receive_failed(false, std::move(start_slot));
     }
   }
 

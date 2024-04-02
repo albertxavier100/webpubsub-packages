@@ -72,11 +72,26 @@ public:
   }
 
   // TODO: IMPL
-  auto async_connect_new_websocket() -> async_t<> {
+  template <transition_context_c transition_context_t>
+  auto async_connect(transition_context_t *context,
+                     io::cancellation_slot start_slot) -> async_t<> {
+    reset_connection();
+    // TODO: get client url
+    co_await async_establish_new_websocket(context, std::move(start_slot));
+  }
+
+  // TODO: IMPL
+  template <transition_context_c transition_context_t>
+  auto
+  async_establish_new_websocket(transition_context_t *context,
+                                io::cancellation_slot start_slot) -> async_t<> {
     spdlog::trace("async_connect_websocket -- beg");
-    reset_websocket_connection();
+    // TODO: replace client
+    websocket_ = websocket_factory_.create("url", options_.protocol.get_name());
     // TODO: actually connect
     spdlog::trace("async_connect_websocket -- end");
+    context->send().spawn_sequence_ack_loop_coro(context, start_slot);
+    context->receive().spawn_message_loop_coro(context, start_slot);
     co_return;
   }
 
@@ -87,11 +102,6 @@ public:
     co_await websocket_->async_read(payload, status);
   }
 
-  // TODO: IMPL
-  auto reset_websocket_connection() {
-    websocket_ = websocket_factory_.create("url", options_.protocol.get_name());
-  }
-
   // TODO: dev
   auto test() {}
 
@@ -99,6 +109,9 @@ public:
   auto retry_policy() -> retry_policy_t & { return retry_policy_; };
 
 private:
+  // TODO: IMPL
+  auto reset_connection() {}
+
   const log &log_;
   strand_t &strand_;
   websocket_factory_t &websocket_factory_;
