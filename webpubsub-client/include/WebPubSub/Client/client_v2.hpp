@@ -7,6 +7,7 @@
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
+#include "webpubsub/client/detail/services/client_send_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/transition_context.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"

@@ -26,7 +26,7 @@ public:
   client_receive_service(strand_t &strand,
                          std::unordered_map<uint64_t, ack_entity> &ack_cache,
                          const log &log)
-      : loop_svc_(strand, log), loop_tracker_(strand), ack_cache_(ack_cache) {}
+      : loop_svc_(strand, log), ack_cache_(ack_cache) {}
 
   eventpp::CallbackList<void(const bool)> on_receive_failed;
 
@@ -84,8 +84,6 @@ public:
 
 private:
   client_loop_service loop_svc_;
-  // TODO: rename
-  loop_tracker loop_tracker_;
   std::unordered_map<uint64_t, detail::ack_entity> &ack_cache_;
 };
 } // namespace detail

@@ -17,11 +17,6 @@
 
 namespace webpubsub {
 namespace detail {
-class latest_sequence_id {
-public:
-private:
-};
-
 class client_send_service {
 public:
 };
