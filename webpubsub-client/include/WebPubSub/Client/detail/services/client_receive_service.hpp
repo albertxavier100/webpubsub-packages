@@ -39,23 +39,16 @@ public:
 
   auto async_cancel_message_loop_coro() -> async_t<> {
     co_await loop_svc_.async_cancel_loop_coro();
-    spdlog::trace("wait receive loop finish begin");
-    co_await loop_tracker_.async_wait();
-    spdlog::trace("wait receive loop finish end");
-    co_return;
   }
 
-  // TODO: use context pointer
   template <transition_context_c transition_context_t>
   auto async_start_message_loop(transition_context_t &context) -> async_t<> {
-    struct exit_scope {
-      ~exit_scope() {
-        spdlog::trace("receive loop finished beg");
-        lt_.finish();
-      }
-      loop_tracker &lt_;
-    } _{loop_tracker_};
+    co_await loop_svc_.async_start_loop(async_start_message_loop_core(context));
+  }
 
+  template <transition_context_c transition_context_t>
+  auto
+  async_start_message_loop_core(transition_context_t &context) -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
@@ -87,7 +80,6 @@ public:
       // TODO: decide should recover or reconnect, and log here
       on_receive_failed(false);
     }
-    co_return;
   }
 
 private:

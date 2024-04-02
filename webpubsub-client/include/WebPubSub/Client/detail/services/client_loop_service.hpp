@@ -21,7 +21,7 @@ namespace detail {
 class client_loop_service {
 public:
   client_loop_service(strand_t &strand, const log &log)
-      : strand_(strand), log_(log) {}
+      : strand_(strand), loop_tracker_(strand), log_(log) {}
 
   auto spawn_loop_coro(async_t<> async_run, io::cancellation_slot start_slot) {
     auto &signal = cancel_signal_;
@@ -32,9 +32,24 @@ public:
   }
 
   auto async_cancel_loop_coro() -> async_t<> {
-    cancel_signal_.emit(io::cancellation_type::terminal);
     spdlog::trace("cancel finished");
+    cancel_signal_.emit(io::cancellation_type::terminal);
+    spdlog::trace("wait receive loop finish begin");
+    co_await loop_tracker_.async_wait();
+    spdlog::trace("wait receive loop finish end");
     co_return;
+  }
+
+  auto async_start_loop(async_t<> start_loop_operation) -> async_t<> {
+    struct exit_scope {
+      ~exit_scope() {
+        spdlog::trace("receive loop finished beg");
+        lt_.finish();
+      }
+      loop_tracker &lt_;
+    } _{loop_tracker_};
+
+    co_await std::move(start_loop_operation);
   }
 
   auto &strand() { return strand_; }
@@ -45,6 +60,7 @@ private:
   strand_t &strand_;
   const detail::log &log_;
   io::cancellation_signal cancel_signal_;
+  loop_tracker loop_tracker_;
 };
 } // namespace detail
 } // namespace webpubsub
