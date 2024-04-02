@@ -121,6 +121,7 @@ private:
       transition_context_;
   const detail::log log_;
   io::cancellation_signal dummy_start_signal_;
+  // TODO: move to receive service
   std::unordered_map<uint64_t, detail::ack_entity> ack_cache_;
 };
 } // namespace webpubsub

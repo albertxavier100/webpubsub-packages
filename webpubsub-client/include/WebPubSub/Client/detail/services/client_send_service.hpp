@@ -19,6 +19,40 @@ namespace webpubsub {
 namespace detail {
 class client_send_service {
 public:
+  // TODO: test this service
+  client_send_service(strand_t &strand,
+                      std::unordered_map<uint64_t, ack_entity> &ack_cache,
+                      const log &log)
+      : loop_svc_(strand, log), sequence_id_(strand) {}
+
+  template <transition_context_c transition_context_t>
+  auto spawn_sequence_ack_loop_coro(transition_context_t &context,
+                                    io::cancellation_slot start_slot) {
+    auto loop = [&context, &loop_svc = loop_svc_, &sid = sequence_id_]() {
+      using namespace std::chrono_literals;
+      for (;;) {
+        try {
+          uint64_t id;
+          auto ok = co_await sid.async_try_get_sequence_id(id);
+          if (ok) {
+            // TODO: send sequence ack back to server
+          }
+        } catch (...) {
+        }
+        co_await async_delay_v2(loop_svc.strand(), 1s);
+      }
+    };
+
+    loop_svc_.spawn_loop_coro(loop(), std::move(start_slot));
+  }
+
+  auto async_cancel_sequence_id_loop_coro() -> async_t<> {
+    co_await loop_svc_.async_cancel_loop_coro();
+  }
+
+private:
+  client_loop_service loop_svc_;
+  detail::sequence_id sequence_id_;
 };
 } // namespace detail
 } // namespace webpubsub

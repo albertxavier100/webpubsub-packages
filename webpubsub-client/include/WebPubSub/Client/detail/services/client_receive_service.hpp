@@ -41,6 +41,8 @@ public:
     co_await loop_svc_.async_cancel_loop_coro();
   }
 
+private:
+  // TODO: refactor: remove
   template <transition_context_c transition_context_t>
   auto async_start_message_loop(transition_context_t &context) -> async_t<> {
     co_await loop_svc_.async_start_loop(async_start_message_loop_core(context));
@@ -82,7 +84,6 @@ public:
     }
   }
 
-private:
   client_loop_service loop_svc_;
   std::unordered_map<uint64_t, detail::ack_entity> &ack_cache_;
 };
