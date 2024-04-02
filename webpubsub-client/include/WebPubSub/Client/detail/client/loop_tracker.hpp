@@ -32,6 +32,7 @@ public:
       return;
     }
     auto ok = channel_.try_send(io::error_code{}, true);
+    spdlog::trace("try send finish");
   }
 
   auto async_wait() -> async_t<> {

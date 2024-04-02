@@ -43,7 +43,7 @@ public:
   auto async_start_loop(async_t<> start_loop_operation) -> async_t<> {
     struct exit_scope {
       ~exit_scope() {
-        spdlog::trace("receive loop finished beg");
+        spdlog::trace("loop finished beg");
         lt_.finish();
       }
       loop_tracker &lt_;

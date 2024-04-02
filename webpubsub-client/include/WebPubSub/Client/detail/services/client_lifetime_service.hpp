@@ -73,25 +73,21 @@ public:
 
   // TODO: IMPL
   template <transition_context_c transition_context_t>
-  auto async_connect(transition_context_t *context,
-                     io::cancellation_slot start_slot) -> async_t<> {
+  auto async_connect(transition_context_t *context) -> async_t<> {
     reset_connection();
     // TODO: get client url
-    co_await async_establish_new_websocket(context, std::move(start_slot));
+    co_await async_establish_new_websocket(context);
   }
 
   // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto
-  async_establish_new_websocket(transition_context_t *context,
-                                io::cancellation_slot start_slot) -> async_t<> {
+  async_establish_new_websocket(transition_context_t *context) -> async_t<> {
     spdlog::trace("async_connect_websocket -- beg");
     // TODO: replace client
     websocket_ = websocket_factory_.create("url", options_.protocol.get_name());
     // TODO: actually connect
     spdlog::trace("async_connect_websocket -- end");
-    context->send().spawn_sequence_ack_loop_coro(context, start_slot);
-    context->receive().spawn_message_loop_coro(context, start_slot);
     co_return;
   }
 

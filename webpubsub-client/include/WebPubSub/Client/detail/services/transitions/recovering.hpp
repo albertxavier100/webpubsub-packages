@@ -29,9 +29,9 @@ auto async_recover_connection(transition_context_t *context,
         co_return disconnected{};
       }
       auto &lt = context->lifetime();
-      co_await lt.async_establish_new_websocket(context, event.start_slot);
+      co_await lt.async_establish_new_websocket(context);
       spdlog::trace(":::Transition:::  -> connected");
-      co_return connected{};
+      co_return connected{std::move(event.start_slot)};
     } catch (const std::exception &ex) {
       spdlog::trace("fail to recover connection. ex: {0}", ex.what());
     }

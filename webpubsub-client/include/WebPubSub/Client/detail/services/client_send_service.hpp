@@ -15,6 +15,7 @@
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
 
+// TODO: fix bug
 namespace webpubsub {
 namespace detail {
 class client_send_service {
@@ -34,6 +35,7 @@ public:
           auto ok = co_await sid.async_try_get_sequence_id(id);
           if (ok) {
             // TODO: send sequence ack back to server
+            spdlog::trace("send sequence ack back to server");
           }
         } catch (...) {
         }
@@ -41,11 +43,12 @@ public:
       }
     };
 
-    loop_svc_.spawn_loop_coro(loop(), std::move(start_slot));
+    loop_svc_.spawn_loop_coro(loop(), start_slot);
   }
 
   auto async_cancel_sequence_id_loop_coro() -> async_t<> {
     co_await loop_svc_.async_cancel_loop_coro();
+    spdlog::trace("async_cancel_sequence_id_loop_coro end");
   }
 
 private:

@@ -90,9 +90,11 @@ private:
           }
         }
 
-        spdlog::trace("on_receive_failed.reconnecting... beg");
+        spdlog::trace(
+            "on_receive_failed.reconnecting... beg, current state = {0}",
+            ctx.get_state().index());
         if (!recover) {
-          // TODO： use actual string
+          // TODO: use actual string
           co_await ctx.async_raise_event(to_disconnected{"TODO", "TODO"});
         }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
@@ -100,7 +102,7 @@ private:
         spdlog::trace("on_receive_failed.reconnecting... to "
                       "to_connected_or_disconnected_state");
         co_await ctx.async_raise_event(
-            to_connected_or_disconnected{std::move(start_slot)});
+            to_connected_or_disconnected{start_slot});
         spdlog::trace("on_receive_failed.reconnecting... end");
       } catch (const std::exception &ex) {
         spdlog::trace("failed to recover, ex: {0}", ex.what());

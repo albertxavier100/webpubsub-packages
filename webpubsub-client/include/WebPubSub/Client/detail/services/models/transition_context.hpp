@@ -57,24 +57,24 @@ public:
 
   // TODO: limit this function, only allow use in client_v2
   auto async_raise_event(event_t event) -> async_t<> {
-    state_ = co_await std::visit(
-        overloaded{[this](auto &e) {
-          return std::visit(
-              overloaded{[this, &e](auto &s) {
-                return [this, &e, &s]() -> async_t<state_t> {
-                  // TODO: better naming
-                  auto state = co_await async_on_event(this, s, e);
-                  co_await std::visit(overloaded{[this, &e](auto &next_state) {
-                                        return async_on_enter(this, next_state,
-                                                              e);
-                                      }},
-                                      state);
-                  co_return state;
-                }();
-              }},
-              state_);
-        }},
-        event);
+    // TODO: improve it
+    state_ = co_await std::visit(overloaded{[this](auto &e) {
+                                   return std::visit(
+                                       overloaded{[this, &e](auto &s) {
+                                         // TODO: better naming
+                                         return async_on_event(this, s, e);
+                                       }},
+                                       state_);
+                                 }},
+                                 event);
+
+    co_await std::visit(overloaded{[this](auto &e) {
+                          return std::visit(overloaded{[this, &e](auto &s) {
+                                              return async_on_enter(this, s, e);
+                                            }},
+                                            state_);
+                        }},
+                        event);
   }
 
 private:

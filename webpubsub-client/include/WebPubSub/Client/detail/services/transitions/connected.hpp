@@ -43,13 +43,19 @@ auto async_on_enter(transition_context_t *context, connected &connected,
   spdlog::trace(":::Transition::: enter connected state");
   try {
     // TODO: use real string
-    context->on_connected(connected_context{.connection_id = "TODO",
-                                            .user_id = "TODO",
-                                            .reconnection_token = "TODO"});
+    /*   context->on_connected(connected_context{.connection_id = "TODO",
+                                               .user_id = "TODO",
+                                               .reconnection_token = "TODO"});
+    */
+    // TODO: bug
+    context->send().spawn_sequence_ack_loop_coro(context, connected.start_slot);
+    context->receive().spawn_message_loop_coro(context, connected.start_slot);
   } catch (const std::exception &ex) {
   }
   co_return;
 }
+
+// TODO: async_on_enter + to_connected_or_disconnected
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_FROM_CONNECTED_HPP

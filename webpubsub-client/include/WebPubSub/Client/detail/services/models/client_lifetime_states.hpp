@@ -16,7 +16,9 @@
 // TODO: add concept for states
 namespace webpubsub {
 namespace detail {
-struct connected {};
+struct connected {
+  io::cancellation_slot start_slot;
+};
 struct stopped {};
 struct disconnected {};
 struct stopping {};
