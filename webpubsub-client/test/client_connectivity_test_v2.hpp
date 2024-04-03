@@ -67,12 +67,19 @@ private:
 };
 static_assert(webpubsub::websocket_c<test_websocket_1>);
 
+bool thrown_exception = false;
 class test_websocket_reconnect : public test_websocket_1 {
 public:
   auto
   async_read(std::string &payload,
              webpubsub::websocket_close_status &status) -> async_t<> override {
-    throw std::exception("test reconnect");
+    using namespace std::chrono_literals;
+    spdlog::trace("thrown_exception = {0}", thrown_exception);
+    if (!thrown_exception) {
+      thrown_exception = true;
+      throw std::exception("test reconnect");
+    }
+    co_await webpubsub::detail::async_delay_v2(strand, 1s);
   };
 };
 static_assert(webpubsub::websocket_c<test_websocket_reconnect>);

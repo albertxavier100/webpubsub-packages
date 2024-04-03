@@ -21,17 +21,22 @@ public:
   void reset() {
     updated_ = false;
     id_ = 0;
+    lock_.reset();
   }
 
   auto async_try_get_sequence_id(uint64_t &id) -> async_t<bool> {
+    spdlog::trace("lock_.async_send beg");
     co_await lock_.async_send(io::error_code{}, true, io::use_awaitable);
+    spdlog::trace("lock_.async_send end");
     auto changed = false;
     if (updated_) {
       id = id_;
       updated_ = true;
       changed = true;
     }
+    spdlog::trace("lock_.async_receive beg");
     co_await lock_.async_receive(io::use_awaitable);
+    spdlog::trace("lock_.async_receive end");
     id = 0;
     co_return changed;
   }

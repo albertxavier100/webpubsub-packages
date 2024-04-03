@@ -15,6 +15,7 @@ template <transition_context_c transition_context_t>
 auto async_reconnect_with_retry(transition_context_t *context,
                                 to_connected_or_disconnected_state &event)
     -> async_t<state_t> {
+  using namespace std::chrono_literals;
   auto retry_policy = context->lifetime().retry_policy();
   for (;;) {
     try {

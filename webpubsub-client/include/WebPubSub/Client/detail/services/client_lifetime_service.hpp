@@ -74,7 +74,7 @@ public:
   // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto async_connect(transition_context_t *context) -> async_t<> {
-    reset_connection();
+    reset_connection(context);
     // TODO: get client url
     co_await async_establish_new_websocket(context);
   }
@@ -106,7 +106,10 @@ public:
 
 private:
   // TODO: IMPL
-  auto reset_connection() {}
+  template <transition_context_c transition_context_t>
+  auto reset_connection(transition_context_t *context) {
+    context->send().get_sequence_id().reset();
+  }
 
   const log &log_;
   strand_t &strand_;

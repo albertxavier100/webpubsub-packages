@@ -47,15 +47,31 @@ auto async_on_enter(transition_context_t *context, connected &connected,
                                                .user_id = "TODO",
                                                .reconnection_token = "TODO"});
     */
-    // TODO: bug
+    spdlog::trace("spawn_sequence_ack_loop_coro");
     context->send().spawn_sequence_ack_loop_coro(context, connected.start_slot);
+    spdlog::trace("spawn_message_loop_coro");
     context->receive().spawn_message_loop_coro(context, connected.start_slot);
   } catch (const std::exception &ex) {
+    spdlog::trace("get ex in on enter connected state, ex: {0}", ex.what());
   }
   co_return;
 }
 
-// TODO: async_on_enter + to_connected_or_disconnected
+template <transition_context_c transition_context_t>
+auto async_on_enter(transition_context_t *context, connected &connected,
+                    to_connected_or_disconnected_state &event) -> async_t<> {
+  spdlog::trace(":::Transition::: enter connected state");
+  try {
+    spdlog::trace("spawn_sequence_ack_loop_coro");
+    context->send().spawn_sequence_ack_loop_coro(context, connected.start_slot);
+    spdlog::trace("spawn_message_loop_coro");
+    context->receive().spawn_message_loop_coro(context, connected.start_slot);
+  } catch (const std::exception &ex) {
+    spdlog::trace("get ex in on enter connected state, ex: {0}", ex.what());
+  }
+  co_return;
+}
+
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_FROM_CONNECTED_HPP

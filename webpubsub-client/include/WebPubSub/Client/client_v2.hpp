@@ -67,8 +67,9 @@ private:
   auto
   setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
     auto &ctx = transition_context_;
-    auto op = [&ctx](const bool recover,
-                     io::cancellation_slot start_slot) -> async_t<> {
+    auto op = [&ctx, &send_ = this->send_](
+                  const bool recover,
+                  io::cancellation_slot start_slot) -> async_t<> {
       using to_recovering = detail::to_recovering_state;
       using to_reconnecting = detail::to_reconnecting_state;
       using to_connected_or_disconnected =
@@ -76,6 +77,10 @@ private:
       using to_disconnected = detail::to_disconnected_state;
 
       try {
+        spdlog::trace("async_cancel_sequence_id_loop_coro beg");
+        co_await send_.async_cancel_sequence_id_loop_coro();
+        spdlog::trace("async_cancel_sequence_id_loop_coro end");
+
         if (recover) {
           spdlog::trace("try.recovering... beg");
           co_await ctx.async_raise_event(to_recovering{});
