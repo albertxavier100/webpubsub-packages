@@ -36,6 +36,16 @@ auto async_on_event(transition_context_t *context, connected &connected,
   co_return stopping{};
 }
 
+template <transition_context_c transition_context_t>
+auto async_spawn_loops(transition_context_t context,
+                       io::cancellation_slot start_slot) -> async_t<> {
+  spdlog::trace("spawn_sequence_ack_loop_coro");
+  context->send().spawn_sequence_ack_loop_coro(context, start_slot);
+  spdlog::trace("spawn_message_loop_coro");
+  // TODO: cannot use the same slot
+  context->receive().spawn_message_loop_coro(context, start_slot);
+}
+
 // enter connected state
 template <transition_context_c transition_context_t>
 auto async_on_enter(transition_context_t *context, connected &connected,
@@ -48,9 +58,10 @@ auto async_on_enter(transition_context_t *context, connected &connected,
                                                .reconnection_token = "TODO"});
     */
     spdlog::trace("spawn_sequence_ack_loop_coro");
-    context->send().spawn_sequence_ack_loop_coro(context, connected.start_slot);
+    context->send().spawn_sequence_ack_loop_coro(context, context->start_signal.slot());
     spdlog::trace("spawn_message_loop_coro");
-    context->receive().spawn_message_loop_coro(context, connected.start_slot);
+    context->receive().spawn_message_loop_coro(context,
+                                               context->start_signal.slot());
   } catch (const std::exception &ex) {
     spdlog::trace("get ex in on enter connected state, ex: {0}", ex.what());
   }
@@ -63,9 +74,11 @@ auto async_on_enter(transition_context_t *context, connected &connected,
   spdlog::trace(":::Transition::: enter connected state");
   try {
     spdlog::trace("spawn_sequence_ack_loop_coro");
-    context->send().spawn_sequence_ack_loop_coro(context, connected.start_slot);
+    context->send().spawn_sequence_ack_loop_coro(context,
+                                                 context->start_signal.slot());
     spdlog::trace("spawn_message_loop_coro");
-    context->receive().spawn_message_loop_coro(context, connected.start_slot);
+    context->receive().spawn_message_loop_coro(context,
+                                               context->start_signal.slot());
   } catch (const std::exception &ex) {
     spdlog::trace("get ex in on enter connected state, ex: {0}", ex.what());
   }

@@ -17,13 +17,11 @@ namespace detail {
 // lifetime events
 struct to_connecting_state {};
 struct to_connected_state {
-  io::cancellation_slot start_slot;
   std::string connection_id;
   std::optional<std::string> user_id;
   std::optional<std::string> reconnection_token;
 };
 struct to_connected_or_disconnected_state {
-  io::cancellation_slot start_slot;
   websocket_close_status close_state;
 };
 struct to_disconnected_state {

@@ -22,7 +22,7 @@ auto async_reconnect_with_retry(transition_context_t *context,
       co_await context->lifetime().async_connect(context);
       spdlog::trace("reconnect successfully.");
       spdlog::trace(":::Transition::: -> connected");
-      co_return connected{std::move(event.start_slot)};
+      co_return connected{};
     } catch (const std::exception &ex) {
       spdlog::trace("failed to reconnect. {0}", ex.what());
     }

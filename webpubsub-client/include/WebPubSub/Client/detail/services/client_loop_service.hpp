@@ -28,7 +28,7 @@ public:
     start_slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
 
     auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
-    io::co_spawn(strand_, std::move(async_run), token);
+    io::co_spawn(strand_, std::move(async_run), std::move(token));
   }
 
   auto async_cancel_loop_coro() -> async_t<> {

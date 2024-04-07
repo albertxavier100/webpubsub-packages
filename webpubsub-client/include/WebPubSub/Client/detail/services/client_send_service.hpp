@@ -27,10 +27,9 @@ public:
   template <transition_context_c transition_context_t>
   auto spawn_sequence_ack_loop_coro(transition_context_t *context,
                                     io::cancellation_slot start_slot) {
-
     loop_svc_.spawn_loop_coro(
         loop_svc_.async_start_loop(async_start_sequence_ack_loop()),
-        start_slot);
+        std::move(start_slot));
   }
 
   auto async_cancel_sequence_id_loop_coro() -> async_t<> {

@@ -18,7 +18,7 @@ auto async_on_event(transition_context_t *context, connecting &connecting,
   try {
     auto &lt = context->lifetime();
     co_await lt.async_connect(context);
-    co_return connected{std::move(event.start_slot)};
+    co_return connected{};
   } catch (const std::exception &ex) {
     // TODO: reconnect
     spdlog::trace("failed to connect to websocket");

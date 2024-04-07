@@ -161,7 +161,7 @@ TEST(connectivity, start_stop_with_cancel) {
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
     try {
-      co_await client.async_start(std::move(cancel.slot()));
+      co_await client.async_start();
       spdlog::trace("client connected in test");
     } catch (...) {
       spdlog::trace("xxx");
@@ -176,7 +176,8 @@ TEST(connectivity, start_stop_with_cancel) {
     cancel.emit(io::cancellation_type::terminal);
   };
   try {
-    io::co_spawn(strand, async_test(), io::detached);
+    io::co_spawn(strand, async_test(),
+                 io::bind_cancellation_slot(cancel.slot(), io::detached));
     io::co_spawn(strand, async_cancel_2s(), io::detached);
   } catch (...) {
     spdlog::trace("ex in test body");
@@ -216,10 +217,12 @@ TEST(connectivity, auto_reconnect) {
   asio::cancellation_signal cancel_dummy;
 
   spdlog::trace("start test");
+
   auto async_test = [&]() -> async_t<> {
     try {
       co_await client.async_start();
       spdlog::trace("client started in test");
+      cancel.emit(webpubsub::io::cancellation_type::terminal);
     } catch (const std::exception &ex) {
       spdlog::trace("get exception in async_test: {0}", ex.what());
     };

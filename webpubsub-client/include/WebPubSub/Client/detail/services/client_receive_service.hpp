@@ -28,7 +28,7 @@ public:
                          const log &log)
       : loop_svc_(strand, log), ack_cache_(ack_cache) {}
 
-  eventpp::CallbackList<void(const bool, io::cancellation_slot start_slot)>
+  eventpp::CallbackList<void(const bool)>
       on_receive_failed;
 
   template <transition_context_c transition_context_t>
@@ -49,7 +49,7 @@ private:
   auto async_start_message_loop(transition_context_t *context,
                                 io::cancellation_slot start_slot) -> async_t<> {
     co_await loop_svc_.async_start_loop(
-        async_start_message_loop_core(context, start_slot));
+        async_start_message_loop_core(context, std::move(start_slot)));
   }
 
   template <transition_context_c transition_context_t>
@@ -85,7 +85,7 @@ private:
         co_await entity.async_finish_with(ack_entity::result::cancelled);
       }
       // TODO: decide should recover or reconnect, and log here
-      on_receive_failed(false, start_slot);
+      on_receive_failed(false);
     }
   }
 

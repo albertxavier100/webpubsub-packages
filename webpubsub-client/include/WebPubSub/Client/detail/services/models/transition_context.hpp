@@ -42,6 +42,8 @@ public:
       on_rejoin_group_failed;
   eventpp::CallbackList<void(const stopped_context)> on_stopped;
 
+  io::cancellation_signal start_signal;
+
   // TODO: remove
   auto test() {}
 
@@ -85,7 +87,6 @@ private:
   const log &log_;
   state_t state_;
   strand_t &strand_;
-  ;
 };
 
 } // namespace detail
