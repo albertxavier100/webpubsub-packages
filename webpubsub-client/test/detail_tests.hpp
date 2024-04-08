@@ -10,7 +10,9 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "spdlog/spdlog.h"
+#include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/client/ack_entity.hpp"
+#include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "gtest/gtest.h"
 
 using namespace webpubsub;
@@ -21,10 +23,10 @@ using strand_t = io::strand<io::io_context::executor_type>;
 namespace test {
 namespace detail {
 
-io::io_context io_context;
-strand_t strand{io_context.get_executor()};
-
 TEST(detail, ack_entity) {
+  io::io_context io_context;
+  strand_t strand{io_context.get_executor()};
+
   uint64_t id;
   ack_entity ack{strand, id};
 
@@ -43,6 +45,22 @@ TEST(detail, ack_entity) {
 // TODO: impl
 TEST(detail, sequence_id) {}
 
+// TODO: add test for simple std::string
+TEST(detail, credential) {
+  using namespace webpubsub;
+  io::io_context io_context;
+  std::string uri_1;
+  auto op = [&uri_1]() -> io::awaitable<void> {
+    client_credential cre_1{
+        []() -> io::awaitable<std::string> { co_return "abcd"; }};
+    uri_1 = co_await cre_1.async_get_client_access_uri();
+    co_return;
+  };
+  io::co_spawn(io_context, std::move(op()), io::detached);
+  io_context.run();
+
+   ASSERT_EQ(uri_1, "abcd");
+}
 } // namespace detail
 } // namespace test
 
