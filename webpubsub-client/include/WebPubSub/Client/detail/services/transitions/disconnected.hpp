@@ -37,8 +37,9 @@ auto async_on_enter(transition_context_t *context, disconnected &disconnected,
                     to_disconnected_state &event) -> async_t<> {
   spdlog::trace(":::Transition::: enter disconnected state");
   try {
-    context->on_disconnected(disconnected_context{
-        .connection_id = "TODO", .reason = "TODO"}); // TODO: get from event
+    context->on_disconnected(
+        disconnected_context{std::move(event.connection_id),
+                             std::move(event.reason)}); // TODO: get from event
   } catch (const std::exception &ex) {
     spdlog::trace("failed to invoke on_disconnected");
   }

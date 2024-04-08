@@ -25,8 +25,8 @@ struct to_connected_or_disconnected_state {
   websocket_close_status close_state;
 };
 struct to_disconnected_state {
-  std::string connection_id;
-  std::string reason;
+  std::optional<std::string> connection_id;
+  std::optional<std::string> reason;
 };
 struct to_stopped_state {};
 struct to_stopping_state {};

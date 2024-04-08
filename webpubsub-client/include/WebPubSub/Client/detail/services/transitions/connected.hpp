@@ -53,10 +53,10 @@ auto async_on_enter(transition_context_t *context, connected &connected,
   spdlog::trace(":::Transition::: enter connected state");
   try {
     // TODO: use real string
-    context->on_connected(connected_context{.connection_id = "TODO",
-                                            .user_id = "TODO",
-                                            .reconnection_token = "TODO"});
-    
+    context->on_connected(connected_context{
+        std::move(event.connection_id), std::move(event.user_id),
+        std::move(event.reconnection_token)});
+
     spdlog::trace("spawn_sequence_ack_loop_coro");
     context->send().spawn_sequence_ack_loop_coro(context->cancel_signal.slot());
     spdlog::trace("spawn_message_loop_coro");
