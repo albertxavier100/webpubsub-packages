@@ -24,13 +24,10 @@ public:
       : strand_(strand), loop_tracker_(strand), log_(log),
         name_(std::move(name)) {}
 
-  auto spawn_loop_coro(async_t<> async_run, io::cancellation_slot start_slot) {
-
+  auto spawn_loop_coro(async_t<> async_run) {
     auto token =
         io::bind_cancellation_slot(inner_cancel_signal_.slot(), io::detached);
-    io::co_spawn(strand_,
-                 std::move(async_start_loop(std::move(async_run),
-                                            std::move(start_slot))),
+    io::co_spawn(strand_, std::move(async_start_loop(std::move(async_run))),
                  std::move(token)
 
     );
@@ -47,8 +44,7 @@ public:
     co_return;
   }
 
-  auto async_start_loop(async_t<> start_loop_operation,
-                        io::cancellation_slot start_slot) -> async_t<> {
+  auto async_start_loop(async_t<> start_loop_operation) -> async_t<> {
     struct exit_scope {
       ~exit_scope() {
         spdlog::trace("{0} loop finished", name_);
@@ -57,8 +53,6 @@ public:
       loop_tracker &lt_;
       const std::string &name_;
     } _{loop_tracker_, name_};
-    start_slot.assign([&inner_sig = inner_cancel_signal_](
-                          io::cancellation_type ct) { inner_sig.emit(ct); });
     co_await std::move(start_loop_operation);
   }
 

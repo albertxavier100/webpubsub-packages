@@ -32,8 +32,7 @@ public:
 
   template <transition_context_c transition_context_t>
   auto spawn_message_loop_coro(transition_context_t *context) {
-    loop_svc_.spawn_loop_coro(async_start_message_loop_core(context),
-                              context->cancel_signal.slot());
+    loop_svc_.spawn_loop_coro(async_start_message_loop_core(context));
   }
 
   auto async_cancel_message_loop_coro() -> async_t<> {

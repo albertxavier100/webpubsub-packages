@@ -24,9 +24,8 @@ public:
   client_send_service(strand_t &strand, const log &log)
       : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand) {}
 
-  auto spawn_sequence_ack_loop_coro(io::cancellation_slot start_slot) {
-    loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop(),
-                              std::move(start_slot));
+  auto spawn_sequence_ack_loop_coro() {
+    loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop());
   }
 
   auto async_cancel_sequence_id_loop_coro() -> async_t<> {

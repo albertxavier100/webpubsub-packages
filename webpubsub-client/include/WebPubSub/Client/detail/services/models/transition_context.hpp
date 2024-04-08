@@ -43,9 +43,6 @@ public:
   eventpp::CallbackList<void(const stopped_context)> on_stopped;
 
   // TODO: remove
-  io::cancellation_signal cancel_signal;
-
-  // TODO: remove
   auto test() {}
 
   auto strand() -> strand_t & { return strand_; }
