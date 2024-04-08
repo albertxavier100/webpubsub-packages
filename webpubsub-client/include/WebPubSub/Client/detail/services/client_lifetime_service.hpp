@@ -108,7 +108,8 @@ private:
   // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto reset_connection(transition_context_t *context) {
-    context->send().get_sequence_id().reset();
+    context->send().reset();
+    context->receive().reset();
   }
 
   const log &log_;

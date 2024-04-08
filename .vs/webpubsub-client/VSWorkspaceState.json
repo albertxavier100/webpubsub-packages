@@ -1,0 +1,8 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "\u672C\u5730\u8BA1\u7B97\u673A": [
+      "webpubsub-client\\out\\build\\x64-Debug",
+      "webpubsub-client\\out\\install\\x64-Debug"
+    ]
+  }
+}

@@ -23,26 +23,30 @@ public:
   loop_tracker(strand_t &strand)
       : strand_(strand), channel_(strand, 1), is_waiting_(false) {}
 
-  auto finish() {
+  auto finish(const std::string &loop_name) {
     if (!channel_.is_open()) {
-      throw invalid_operation("loop channel is already closed");
+      throw invalid_operation(loop_name + " channel is already closed");
     }
     if (!is_waiting_) {
-      spdlog::trace("loop is not being waited");
+      spdlog::trace("{0} is not being waited", loop_name);
       return;
     }
     auto ok = channel_.try_send(io::error_code{}, true);
-    spdlog::trace("try send finish");
+    spdlog::trace("{0} try send finish", loop_name);
   }
 
   auto async_wait() -> async_t<> {
+    spdlog::trace("loop tracker.async_wait.is_waiting_ = {0}", is_waiting_);
     if (!channel_.is_open()) {
       co_return;
     }
     is_waiting_ = true;
     co_await channel_.async_receive(io::use_awaitable);
+    spdlog::trace("loop tracker.async_wait close channel");
     channel_.close();
   }
+
+  auto reset() -> void { channel_.reset(); }
 
 private:
   channel_t channel_;

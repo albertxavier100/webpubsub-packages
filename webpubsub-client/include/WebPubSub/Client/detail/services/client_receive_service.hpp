@@ -26,36 +26,28 @@ public:
   client_receive_service(strand_t &strand,
                          std::unordered_map<uint64_t, ack_entity> &ack_cache,
                          const log &log)
-      : loop_svc_(strand, log), ack_cache_(ack_cache) {}
+      : loop_svc_("RECEIVE LOOP", strand, log), ack_cache_(ack_cache) {}
 
-  eventpp::CallbackList<void(const bool)>
-      on_receive_failed;
+  eventpp::CallbackList<void(const bool)> on_receive_failed;
 
   template <transition_context_c transition_context_t>
-  auto spawn_message_loop_coro(transition_context_t *context,
-                               io::cancellation_slot start_slot) {
-    loop_svc_.spawn_loop_coro(async_start_message_loop(context, start_slot),
-                              start_slot);
+  auto spawn_message_loop_coro(transition_context_t *context) {
+    loop_svc_.spawn_loop_coro(async_start_message_loop_core(context),
+                              context->cancel_signal.slot());
   }
 
   auto async_cancel_message_loop_coro() -> async_t<> {
+    spdlog::trace("async_cancel_message_loop_coro begin");
     co_await loop_svc_.async_cancel_loop_coro();
     spdlog::trace("async_cancel_message_loop_coro end");
   }
 
-private:
-  // TODO: refactor: remove
-  template <transition_context_c transition_context_t>
-  auto async_start_message_loop(transition_context_t *context,
-                                io::cancellation_slot start_slot) -> async_t<> {
-    co_await loop_svc_.async_start_loop(
-        async_start_message_loop_core(context, std::move(start_slot)));
-  }
+  auto reset() -> void { loop_svc_.reset(); }
 
+private:
   template <transition_context_c transition_context_t>
   auto
-  async_start_message_loop_core(transition_context_t *context,
-                                io::cancellation_slot start_slot) -> async_t<> {
+  async_start_message_loop_core(transition_context_t *context) -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
@@ -72,6 +64,8 @@ private:
         // TODO: handle message
         spdlog::trace("receiving...");
       }
+    } catch (const io::system_error &err) {
+      spdlog::trace("message loop stopped with system error: {0}", err.what());
     } catch (const std::exception &ex) {
       spdlog::trace("message loop stopped with ex: {0}", ex.what());
       ok = false;
@@ -84,8 +78,10 @@ private:
         auto &entity = ack_pair.second;
         co_await entity.async_finish_with(ack_entity::result::cancelled);
       }
+      spdlog::trace("handle ack cache finished");
       // TODO: decide should recover or reconnect, and log here
       on_receive_failed(false);
+      spdlog::trace("fire on_receive_failed");
     }
   }
 

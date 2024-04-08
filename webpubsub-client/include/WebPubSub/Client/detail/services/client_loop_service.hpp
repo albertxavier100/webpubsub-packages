@@ -20,47 +20,57 @@ namespace webpubsub {
 namespace detail {
 class client_loop_service {
 public:
-  client_loop_service(strand_t &strand, const log &log)
-      : strand_(strand), loop_tracker_(strand), log_(log) {}
+  client_loop_service(const std::string name, strand_t &strand, const log &log)
+      : strand_(strand), loop_tracker_(strand), log_(log),
+        name_(std::move(name)) {}
 
   auto spawn_loop_coro(async_t<> async_run, io::cancellation_slot start_slot) {
-    auto &signal = cancel_signal_;
-    start_slot.assign([&](io::cancellation_type ct) { signal.emit(ct); });
 
-    auto token = io::bind_cancellation_slot(signal.slot(), io::detached);
-    io::co_spawn(strand_, std::move(async_run), std::move(token));
+    auto token =
+        io::bind_cancellation_slot(inner_cancel_signal_.slot(), io::detached);
+    io::co_spawn(strand_,
+                 std::move(async_start_loop(std::move(async_run),
+                                            std::move(start_slot))),
+                 std::move(token)
+
+    );
   }
 
+  auto reset() -> void { loop_tracker_.reset(); }
+
   auto async_cancel_loop_coro() -> async_t<> {
-    spdlog::trace("cancel finished");
-    cancel_signal_.emit(io::cancellation_type::terminal);
-    spdlog::trace("wait receive loop finish begin");
+    spdlog::trace("{0} cancel emit", name_);
+    inner_cancel_signal_.emit(io::cancellation_type::terminal);
+    spdlog::trace("{0} wait loop finish begin", name_);
     co_await loop_tracker_.async_wait();
-    spdlog::trace("wait receive loop finish end");
+    spdlog::trace("{0} wait loop finish end", name_);
     co_return;
   }
 
-  auto async_start_loop(async_t<> start_loop_operation) -> async_t<> {
+  auto async_start_loop(async_t<> start_loop_operation,
+                        io::cancellation_slot start_slot) -> async_t<> {
     struct exit_scope {
       ~exit_scope() {
-        spdlog::trace("loop finished beg");
-        lt_.finish();
+        spdlog::trace("{0} loop finished", name_);
+        lt_.finish(name_);
       }
       loop_tracker &lt_;
-    } _{loop_tracker_};
-
+      const std::string &name_;
+    } _{loop_tracker_, name_};
+    start_slot.assign([&inner_sig = inner_cancel_signal_](
+                          io::cancellation_type ct) { inner_sig.emit(ct); });
     co_await std::move(start_loop_operation);
   }
 
   auto &strand() { return strand_; }
   auto &log() { return log_; }
-  auto &cancel_signal() { return cancel_signal_; }
 
 private:
   strand_t &strand_;
   const detail::log &log_;
-  io::cancellation_signal cancel_signal_;
   loop_tracker loop_tracker_;
+  const std::string name_;
+  io::cancellation_signal inner_cancel_signal_;
 };
 } // namespace detail
 } // namespace webpubsub

@@ -74,7 +74,7 @@ public:
   async_read(std::string &payload,
              webpubsub::websocket_close_status &status) -> async_t<> override {
     using namespace std::chrono_literals;
-    spdlog::trace("thrown_exception = {0}", thrown_exception);
+    spdlog::trace("already thrown_exception = {0}", thrown_exception);
     if (!thrown_exception) {
       thrown_exception = true;
       throw std::exception("test reconnect");
@@ -114,9 +114,6 @@ TEST(connectivity, start_stop_basic) {
   options_t opts{p};
   client_t client(strand, opts, factory, "console");
 
-  asio::cancellation_signal cancel;
-  asio::cancellation_signal cancel_dummy;
-
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
     try {
@@ -124,15 +121,14 @@ TEST(connectivity, start_stop_basic) {
       spdlog::trace("client started in test");
       co_await client.async_stop();
       spdlog::trace("client stopped in test");
+      spdlog::trace("test finish");
     } catch (const std::exception &ex) {
       spdlog::trace("get exception in async_test: {0}", ex.what());
     };
     co_return;
   };
 
-  auto token = io::bind_cancellation_slot(cancel.slot(), io::detached);
-  io::co_spawn(strand, async_test(), token);
-
+  io::co_spawn(strand, async_test(), io::detached);
   io_context.run();
 }
 
@@ -156,8 +152,6 @@ TEST(connectivity, start_stop_with_cancel) {
   options_t opts{p};
   client_t client(strand, opts, factory, "console");
 
-  asio::cancellation_signal cancel;
-
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
     try {
@@ -173,11 +167,10 @@ TEST(connectivity, start_stop_with_cancel) {
     using namespace std::chrono_literals;
     co_await webpubsub::detail::async_delay_v2(strand, 3s);
     spdlog::trace("emit cancel");
-    cancel.emit(io::cancellation_type::terminal);
+    co_await client.async_cancel();
   };
   try {
-    io::co_spawn(strand, async_test(),
-                 io::bind_cancellation_slot(cancel.slot(), io::detached));
+    io::co_spawn(strand, async_test(), io::detached);
     io::co_spawn(strand, async_cancel_2s(), io::detached);
   } catch (...) {
     spdlog::trace("ex in test body");
@@ -213,24 +206,24 @@ TEST(connectivity, auto_reconnect) {
                                   .retry_mode = webpubsub::retry_mode::fixed}};
   client_t client(strand, opts, factory, "console");
 
-  asio::cancellation_signal cancel;
-  asio::cancellation_signal cancel_dummy;
-
   spdlog::trace("start test");
 
   auto async_test = [&]() -> async_t<> {
+    using namespace std::chrono_literals;
     try {
       co_await client.async_start();
       spdlog::trace("client started in test");
-      cancel.emit(webpubsub::io::cancellation_type::terminal);
+      // TODO: improve this test
+      co_await webpubsub::detail::async_delay_v2(strand, 2s);
+      co_await client.async_stop();
+      spdlog::trace("client stopped in test");
     } catch (const std::exception &ex) {
       spdlog::trace("get exception in async_test: {0}", ex.what());
     };
     co_return;
   };
 
-  auto token = io::bind_cancellation_slot(cancel.slot(), io::detached);
-  io::co_spawn(strand, async_test(), token);
+  io::co_spawn(strand, async_test(), io::detached);
 
   io_context.run();
 }

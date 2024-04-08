@@ -42,7 +42,8 @@ public:
       on_rejoin_group_failed;
   eventpp::CallbackList<void(const stopped_context)> on_stopped;
 
-  io::cancellation_signal start_signal;
+  // TODO: remove
+  io::cancellation_signal cancel_signal;
 
   // TODO: remove
   auto test() {}

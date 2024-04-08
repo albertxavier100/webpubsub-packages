@@ -46,20 +46,11 @@ public:
       &on_rejoin_group_failed;
   eventpp::CallbackList<void(const stopped_context)> &on_stopped;
 
-  auto async_start()
-      -> async_t<> {
-    
-    asio::cancellation_slot sl = (co_await asio::this_coro::cancellation_state).slot();
-    sl.assign([&](asio::cancellation_type ct) {
-      transition_context_.start_signal.emit(ct);
-    });
-
+  auto async_start() -> async_t<> {
     co_await transition_context_.async_raise_event(
         detail::to_connecting_state{});
     // TODO: use real string
-    auto event = detail::to_connected_state{
-         "TODO",
-                                            "TODO", "TODO"};
+    auto event = detail::to_connected_state{"TODO", "TODO", "TODO"};
     co_await transition_context_.async_raise_event(std::move(event));
   }
 
@@ -70,12 +61,18 @@ public:
     spdlog::trace("async_stop -- end");
   }
 
+  // TODO: test
+  auto async_cancel() -> async_t<> {
+    // transition_context_.cancel_signal.emit(cancel_type);
+    co_await send_.async_cancel_sequence_id_loop_coro();
+    co_await receive_.async_cancel_message_loop_coro();
+  }
+
 private:
   auto
   setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
     auto &ctx = transition_context_;
-    auto op = [&ctx, &send_ = this->send_](
-                  const bool recover) -> async_t<> {
+    auto op = [&ctx, &send_ = this->send_](const bool recover) -> async_t<> {
       using to_recovering = detail::to_recovering_state;
       using to_reconnecting = detail::to_reconnecting_state;
       using to_connected_or_disconnected =
@@ -91,8 +88,7 @@ private:
           spdlog::trace("try.recovering... beg");
           co_await ctx.async_raise_event(to_recovering{});
           // TODO: add close status
-          co_await ctx.async_raise_event(
-              to_connected_or_disconnected{});
+          co_await ctx.async_raise_event(to_connected_or_disconnected{});
           spdlog::trace("try.recovering... end");
           auto &cur_state = ctx.get_state();
           if (std::holds_alternative<detail::connected>(cur_state)) {
@@ -112,16 +108,14 @@ private:
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
                       "to_connected_or_disconnected_state");
-        co_await ctx.async_raise_event(
-            to_connected_or_disconnected{});
+        co_await ctx.async_raise_event(to_connected_or_disconnected{});
         spdlog::trace("on_receive_failed.reconnecting... end");
       } catch (const std::exception &ex) {
         spdlog::trace("failed to recover, ex: {0}", ex.what());
         throw;
       }
     };
-    auto callback = [this, &strand, op = std::move(op)](
-                        const bool recover) {
+    auto callback = [this, &strand, op = std::move(op)](const bool recover) {
       io::co_spawn(strand, op(recover), io::detached);
     };
     receive_.on_receive_failed.append(callback);
