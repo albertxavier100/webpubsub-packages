@@ -90,26 +90,31 @@ private:
   auto handle_payload(std::string payload) {
     // TODO: rename the inconsistent naming
     auto response = protocol_.read(std::move(payload));
+    if (!response) {
+      spdlog::trace("failed to parse payload");
+      return;
+    }
     std::visit(overloaded{
-        [&response](ConnectedResponse &res) {
+                   [&response](ConnectedResponse &res) {
 
-        },
-        [&response](DisconnectedResponse &res) {
+                   },
+                   [&response](DisconnectedResponse &res) {
 
-        },
-        [&response](ServerMessageResponse &res) {
+                   },
+                   [&response](ServerMessageResponse &res) {
 
-        },
-        [&response](GroupMessageResponseV2 &res) {
+                   },
+                   [&response](GroupMessageResponseV2 &res) {
 
-        },
-        [&response](AckResponse &res) {
+                   },
+                   [&response](AckResponse &res) {
 
-        },
-    });
+                   },
+               },
+               *response);
   }
 
-  protocol_t &protocol_;
+  const protocol_t &protocol_;
   client_loop_service loop_svc_;
   std::unordered_map<uint64_t, detail::ack_entity> &ack_cache_;
 };
