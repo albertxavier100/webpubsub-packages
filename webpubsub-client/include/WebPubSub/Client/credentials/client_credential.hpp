@@ -8,6 +8,7 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include <functional>
+#include <memory>
 #include <string>
 
 namespace webpubsub {
@@ -18,9 +19,9 @@ class client_credential {
 public:
   client_credential(const std::string uri)
       : client_access_uri_provider_(
-            [uri]() -> detail::async_t<std::string> { 
-          co_return uri; 
-        }) {}
+            [uri = std::move(uri)]() -> detail::async_t<std::string> {
+              co_return uri;
+            }) {}
 
   client_credential(
       const client_access_uri_provider_t &client_access_uri_provider)
@@ -32,7 +33,7 @@ public:
   }
 
 private:
-  const client_access_uri_provider_t client_access_uri_provider_;
+  client_access_uri_provider_t client_access_uri_provider_;
 };
 } // namespace webpubsub
 #endif //

@@ -50,16 +50,26 @@ TEST(detail, credential) {
   using namespace webpubsub;
   io::io_context io_context;
   std::string uri_1;
-  auto op = [&uri_1]() -> io::awaitable<void> {
-    client_credential cre_1{
+  auto op_1 = [&uri_1]() -> io::awaitable<void> {
+    client_credential cre{
         []() -> io::awaitable<std::string> { co_return "abcd"; }};
-    uri_1 = co_await cre_1.async_get_client_access_uri();
+    uri_1 = co_await cre.async_get_client_access_uri();
     co_return;
   };
-  io::co_spawn(io_context, std::move(op()), io::detached);
+
+  std::string uri_2;
+  auto op_2 = [&uri_2]() -> io::awaitable<void> {
+    client_credential cre{"xyzq"};
+    uri_2 = co_await cre.async_get_client_access_uri();
+    co_return;
+  };
+
+  io::co_spawn(io_context, std::move(op_1()), io::detached);
+  io::co_spawn(io_context, std::move(op_2()), io::detached);
   io_context.run();
 
-   ASSERT_EQ(uri_1, "abcd");
+  ASSERT_EQ(uri_1, "abcd");
+  ASSERT_EQ(uri_2, "xyzq");
 }
 } // namespace detail
 } // namespace test
