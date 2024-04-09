@@ -15,17 +15,8 @@ namespace detail {
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
                     to_disconnected_state &event) -> async_t<state_t> {
-  // TODO: reset connection
-  spdlog::trace(":::Transition::: connected -> disconnected");
-  try {
-    context->on_disconnected(disconnected_context{
-        .connection_id = std::move(event.connection_id),
-        .reason = std::move(event.reason),
-    });
-  } catch (const std::exception &ex) {
-    spdlog::trace(":::Transition::: failed to invoke disconnected event: {0}",
-                  ex.what());
-  }
+
+  // TODO: impl
   co_return disconnected{};
 }
 
@@ -37,17 +28,11 @@ auto async_on_event(transition_context_t *context, connected &connected,
 }
 
 // TODO: reuse spawn loop
-// enter connected state
+
 template <transition_context_c transition_context_t>
-auto async_on_enter(transition_context_t *context, connected &connected,
-                    to_connected_state &event) -> async_t<> {
+auto on_enter_core(transition_context_t *context) -> void {
   spdlog::trace(":::Transition::: enter connected state");
   try {
-    // TODO: use real string
-    context->on_connected(connected_context{
-        std::move(event.connection_id), std::move(event.user_id),
-        std::move(event.reconnection_token)});
-
     spdlog::trace("spawn_sequence_ack_loop_coro");
     context->send().spawn_sequence_ack_loop_coro();
     spdlog::trace("spawn_message_loop_coro");
@@ -55,21 +40,20 @@ auto async_on_enter(transition_context_t *context, connected &connected,
   } catch (const std::exception &ex) {
     spdlog::trace("get ex in on enter connected state, ex: {0}", ex.what());
   }
+}
+
+// enter connected state
+template <transition_context_c transition_context_t>
+auto async_on_enter(transition_context_t *context, connected &connected,
+                    to_connected_state &event) -> async_t<> {
+  on_enter_core(context);
   co_return;
 }
 
 template <transition_context_c transition_context_t>
 auto async_on_enter(transition_context_t *context, connected &connected,
                     to_connected_or_disconnected_state &event) -> async_t<> {
-  spdlog::trace(":::Transition::: enter connected state");
-  try {
-    spdlog::trace("spawn_sequence_ack_loop_coro - ");
-    context->send().spawn_sequence_ack_loop_coro();
-    spdlog::trace("spawn_message_loop_coro");
-    context->receive().spawn_message_loop_coro(context);
-  } catch (const std::exception &ex) {
-    spdlog::trace("get ex in on enter connected state, ex: {0}", ex.what());
-  }
+  on_enter_core(context);
   co_return;
 }
 

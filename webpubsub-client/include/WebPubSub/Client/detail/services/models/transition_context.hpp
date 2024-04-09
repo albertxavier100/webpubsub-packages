@@ -11,6 +11,7 @@
 
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/common/utils.hpp"
 #include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
 #include "webpubsub/client/detail/concepts/client_receive_service_c.hpp"
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"

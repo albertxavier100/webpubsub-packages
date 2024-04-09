@@ -102,6 +102,7 @@ TEST(connectivity, start_stop_basic) {
   using factory_t = test_websocket_factory_1<test_websocket_1>;
   using client_t =
       webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
+  using credential_t = webpubsub::client_credential;
   using namespace std::chrono_literals;
 
   if (!spdlog::get("console")) {
@@ -112,7 +113,8 @@ TEST(connectivity, start_stop_basic) {
   factory_t factory;
   protocol_t p;
   options_t opts{p};
-  client_t client(strand, opts, factory, "console");
+  credential_t cre{"abcd"};
+  client_t client(strand, cre, opts, factory, "console");
 
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
@@ -138,6 +140,7 @@ TEST(connectivity, start_stop_with_cancel) {
   using protocol_t = webpubsub::reliable_json_v1_protocol;
   using options_t = webpubsub::client_options<protocol_t>;
   using factory_t = test_websocket_factory_1<test_websocket_1>;
+  using credential_t = webpubsub::client_credential;
   using client_t =
       webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
   using namespace std::chrono_literals;
@@ -150,7 +153,8 @@ TEST(connectivity, start_stop_with_cancel) {
   factory_t factory;
   protocol_t p;
   options_t opts{p};
-  client_t client(strand, opts, factory, "console");
+  credential_t cre{"abcd"};
+  client_t client(strand, cre, opts, factory, "console");
 
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
@@ -188,6 +192,7 @@ TEST(connectivity, auto_reconnect) {
   using protocol_t = webpubsub::reliable_json_v1_protocol;
   using options_t = webpubsub::client_options<protocol_t>;
   using factory_t = test_websocket_factory_1<test_websocket_reconnect>;
+  using credential_t = webpubsub::client_credential;
   using client_t =
       webpubsub::client_v2<protocol_t, factory_t, test_websocket_reconnect>;
   using namespace std::chrono_literals;
@@ -204,7 +209,8 @@ TEST(connectivity, auto_reconnect) {
       .reconnect_retry_options = {.max_retry = 3,
                                   .delay = std::chrono::milliseconds(1000),
                                   .retry_mode = webpubsub::retry_mode::fixed}};
-  client_t client(strand, opts, factory, "console");
+  credential_t cre{"abcd"};
+  client_t client(strand, cre, opts, factory, "console");
 
   spdlog::trace("start test");
 

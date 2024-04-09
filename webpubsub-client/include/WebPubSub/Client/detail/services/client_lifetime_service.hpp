@@ -11,9 +11,11 @@
 
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
+#include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/client/retry_policy.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/common/utils.hpp"
 #include "webpubsub/client/detail/concepts/retry_policy_c.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
@@ -24,14 +26,6 @@
 
 namespace webpubsub {
 namespace detail {
-
-// TODO: move to new file
-template <class... Ts> struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
 // TODO: rename websocket_service
 template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
           typename websocket_t>
@@ -44,11 +38,11 @@ class client_lifetime_service {
                    disable_retry_policy>;
 
 public:
-  client_lifetime_service(strand_t &strand,
+  client_lifetime_service(strand_t &strand, const client_credential &credential,
                           websocket_factory_t &websocket_factory,
                           const client_options<protocol_t> &options,
                           const log &log)
-      : log_(log), strand_(strand), options_(options),
+      : log_(log), strand_(strand), options_(options), credential_(credential),
         websocket_factory_(websocket_factory), websocket_(nullptr),
         retry_policy_(disable_retry_policy()) {
     if (!options.auto_reconnect) {
@@ -75,17 +69,18 @@ public:
   template <transition_context_c transition_context_t>
   auto async_connect(transition_context_t *context) -> async_t<> {
     reset_connection(context);
-    // TODO: get client url
-    co_await async_establish_new_websocket(context);
+    auto uri = co_await credential_.async_get_client_access_uri();
+    co_await async_establish_new_websocket(std::move(uri), context);
   }
 
   // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto
-  async_establish_new_websocket(transition_context_t *context) -> async_t<> {
+  async_establish_new_websocket(std::string uri,
+                                transition_context_t *context) -> async_t<> {
     spdlog::trace("async_connect_websocket -- beg");
-    // TODO: replace client
-    websocket_ = websocket_factory_.create("url", options_.protocol.get_name());
+    websocket_ =
+        websocket_factory_.create(std::move(uri), options_.protocol.get_name());
     // TODO: actually connect
     spdlog::trace("async_connect_websocket -- end");
     co_return;
@@ -104,6 +99,17 @@ public:
   auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
   auto retry_policy() -> retry_policy_t & { return retry_policy_; };
 
+  auto update_connection_info(std::string connection_id,
+                              std::string reconnection_token) -> void {
+    connection_id_ = std::move(connection_id);
+    reconnection_token_ = std::move(reconnection_token);
+  }
+
+  auto connection_id() -> const std::string & { return connection_id_; }
+  auto reconnection_token() -> const std::string & {
+    return reconnection_token_;
+  }
+
 private:
   // TODO: IMPL
   template <transition_context_c transition_context_t>
@@ -115,10 +121,14 @@ private:
   const log &log_;
   strand_t &strand_;
   websocket_factory_t &websocket_factory_;
+  const client_credential &credential_;
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
 
   retry_policy_t retry_policy_;
+  std::string connection_id_;
+  std::string reconnection_token_;
+
   //  TODO: add connection lock?
 };
 

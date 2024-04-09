@@ -2,6 +2,7 @@
 
 #include "eventpp/callbacklist.h"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
+#include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
@@ -22,12 +23,14 @@ class client_v2 {
 
 public:
   client_v2(io::strand<io::io_context::executor_type> &strand,
+            const client_credential &credential,
             const client_options<protocol_t> &options,
             websocket_factory_t &websocket_factory,
             const std::string &logger_name)
       : log_(logger_name), ack_cache_(),
-        lifetime_(strand, websocket_factory, options, log_),
-        receive_(strand, ack_cache_, log_), send_(strand, log_),
+        lifetime_(strand, credential, websocket_factory, options, log_),
+        receive_(strand, options.protocol, ack_cache_, log_),
+        send_(strand, log_),
         transition_context_(strand, lifetime_, receive_, send_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
@@ -49,8 +52,7 @@ public:
   auto async_start() -> async_t<> {
     co_await transition_context_.async_raise_event(
         detail::to_connecting_state{});
-    // TODO: use real string
-    auto event = detail::to_connected_state{"TODO", "TODO", "TODO"};
+    auto event = detail::to_connected_state{};
     co_await transition_context_.async_raise_event(std::move(event));
   }
 
@@ -61,9 +63,7 @@ public:
     spdlog::trace("async_stop -- end");
   }
 
-  // TODO: test
   auto async_cancel() -> async_t<> {
-    // transition_context_.cancel_signal.emit(cancel_type);
     co_await send_.async_cancel_sequence_id_loop_coro();
     co_await receive_.async_cancel_message_loop_coro();
   }
@@ -123,12 +123,12 @@ private:
 
   detail::client_lifetime_service<protocol_t, websocket_factory_t, websocket_t>
       lifetime_;
-  detail::client_receive_service receive_;
+  detail::client_receive_service<protocol_t> receive_;
   detail::client_send_service send_;
 
   detail::transition_context<detail::client_lifetime_service<
                                  protocol_t, websocket_factory_t, websocket_t>,
-                             detail::client_receive_service,
+                             detail::client_receive_service<protocol_t>,
                              detail::client_send_service>
       transition_context_;
   const detail::log log_;
