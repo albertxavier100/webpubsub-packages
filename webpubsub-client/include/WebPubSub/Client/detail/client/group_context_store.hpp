@@ -4,6 +4,7 @@
 
 namespace webpubsub {
 namespace detail {
+// TODO: test
 class group_context_store {
 public:
   group_context &get_or_set(const std::string &group) {

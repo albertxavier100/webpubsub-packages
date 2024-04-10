@@ -21,6 +21,7 @@ include_directories(
         ../deps/spdlog/include
         ../deps/uri/include/fix8
         ../deps/eventpp/include
+        ../deps/uri-library
 )
 
 find_package(GTest CONFIG REQUIRED)

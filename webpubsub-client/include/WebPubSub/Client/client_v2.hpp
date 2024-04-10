@@ -29,8 +29,7 @@ public:
             const std::string &logger_name)
       : log_(logger_name), ack_cache_(),
         lifetime_(strand, credential, websocket_factory, options, log_),
-        receive_(strand, options.protocol, ack_cache_, log_),
-        send_(strand, log_),
+        receive_(strand, options, ack_cache_, log_), send_(strand, log_),
         transition_context_(strand, lifetime_, receive_, send_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
@@ -84,6 +83,7 @@ private:
         co_await send_.async_cancel_sequence_id_loop_coro();
         spdlog::trace("async_cancel_sequence_id_loop_coro end");
 
+        // TODO: refactor this part, dont use if else
         if (recover) {
           spdlog::trace("try.recovering... beg");
           co_await ctx.async_raise_event(to_recovering{});

@@ -13,6 +13,7 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
+#include "webpubsub/client/detail/client/group_context.hpp"
 #include "webpubsub/client/detail/client/retry_policy.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/common/utils.hpp"
@@ -44,7 +45,7 @@ public:
                           const log &log)
       : log_(log), strand_(strand), options_(options), credential_(credential),
         websocket_factory_(websocket_factory), websocket_(nullptr),
-        retry_policy_(disable_retry_policy()) {
+        retry_policy_(disable_retry_policy()), groups_() {
     if (!options.auto_reconnect) {
       return;
     }
@@ -65,12 +66,15 @@ public:
     }
   }
 
+  const char *RECOVER_CONNECTION_ID_QUERY = "awps_connection_id";
+  const char *RECOVER_RECONNECTION_TOKEN_QUERY = "awps_reconnection_token";
+
   // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto async_connect(transition_context_t *context) -> async_t<> {
     reset_connection(context);
-    auto uri = co_await credential_.async_get_client_access_uri();
-    co_await async_establish_new_websocket(std::move(uri), context);
+    client_access_uri_ = co_await credential_.async_get_client_access_uri();
+    co_await async_establish_new_websocket(client_access_uri_, context);
   }
 
   // TODO: IMPL
@@ -96,19 +100,23 @@ public:
   // TODO: dev
   auto test() {}
 
-  auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
-  auto retry_policy() -> retry_policy_t & { return retry_policy_; };
-
   auto update_connection_info(std::string connection_id,
-                              std::string reconnection_token) -> void {
+                              std::optional<std::string> reconnection_token)
+      -> void {
     connection_id_ = std::move(connection_id);
     reconnection_token_ = std::move(reconnection_token);
   }
 
+  auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
+  auto retry_policy() -> retry_policy_t & { return retry_policy_; };
   auto connection_id() -> const std::string & { return connection_id_; }
-  auto reconnection_token() -> const std::string & {
+  auto reconnection_token() -> const std::optional<std::string> & {
     return reconnection_token_;
   }
+  auto groups() -> const std::unordered_map<std::string, group_context> & {
+    return groups_;
+  }
+  auto client_access_uri() -> const std::string & { return client_access_uri_; }
 
 private:
   // TODO: IMPL
@@ -116,6 +124,9 @@ private:
   auto reset_connection(transition_context_t *context) {
     context->send().reset();
     context->receive().reset();
+    connection_id_.clear();
+    client_access_uri_.clear();
+    reconnection_token_ = std::nullopt;
   }
 
   const log &log_;
@@ -124,10 +135,11 @@ private:
   const client_credential &credential_;
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
-
   retry_policy_t retry_policy_;
   std::string connection_id_;
-  std::string reconnection_token_;
+  std::optional<std::string> reconnection_token_;
+  std::string client_access_uri_;
+  const std::unordered_map<std::string, group_context> groups_;
 
   //  TODO: add connection lock?
 };
