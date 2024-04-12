@@ -60,6 +60,9 @@ public:
     co_await transition_context_.async_raise_event(std::move(event));
   }
 
+  // TODO: reject: connecting --> stopping
+  // TODO: reject: recovering --> stopping
+  // TODO: reject: reconnecting --> stopping
   auto async_stop() -> async_t<> {
     spdlog::trace("async_stop -- beg");
     co_await transition_context_.async_raise_event(detail::to_stopping_state{});
@@ -146,8 +149,8 @@ private:
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
                       "to_connected_or_disconnected_state");
-        co_await ctx.async_raise_event(to_connected_or_disconnected{});
-        spdlog::trace("on_receive_failed.reconnecting... end");
+        co_await ctx.async_raise_event(detail::to_connected_or_stopped_state{});
+        spdlog::trace("on_receive_failed.reconnecting... end.");
       } catch (const std::exception &ex) {
         spdlog::trace("failed to recover, ex: {0}", ex.what());
         throw;

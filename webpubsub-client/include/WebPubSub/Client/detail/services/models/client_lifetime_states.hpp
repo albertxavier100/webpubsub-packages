@@ -13,7 +13,6 @@
 #include "webpubsub/client/exceptions/exception.hpp"
 #include <variant>
 
-// TODO: add concept for states
 namespace webpubsub {
 namespace detail {
 struct connected {};

@@ -19,42 +19,47 @@
 namespace webpubsub {
 namespace detail {
 class client_loop_service {
+  using channel_t = io::experimental::channel<void(io::error_code, bool)>;
+
 public:
   client_loop_service(const std::string name, strand_t &strand, const log &log)
-      : strand_(strand), loop_tracker_(strand), log_(log),
-        name_(std::move(name)) {}
+      : strand_(strand), loop_track_(strand, 1), log_(log),
+        name_(std::move(name)) {
+    loop_track_.close();
+  }
 
   auto spawn_loop_coro(async_t<> async_run) {
-    auto token =
-        io::bind_cancellation_slot(inner_cancel_signal_.slot(), io::detached);
-    io::co_spawn(strand_, std::move(async_start_loop(std::move(async_run))),
-                 std::move(token)
+    loop_track_.reset();
+    auto token = io::bind_cancellation_slot(
+        inner_cancel_signal_.slot(),
+        [&name_ = this->name_, &loop_track = this->loop_track_](auto ep) {
+          spdlog::trace("{0} coro finish", name_);
+          if (loop_track.is_open()) {
+            auto _ = loop_track.try_send(io::error_code{}, true);
+          }
+        });
+    io::co_spawn(strand_, std::move(async_run), std::move(token)
 
     );
   }
 
-  auto reset() -> void { loop_tracker_.reset(); }
+  auto reset() -> void {
+    loop_track_.cancel();
+    loop_track_.reset();
+    loop_track_.close();
+  }
 
   auto async_cancel_loop_coro() -> async_t<> {
     spdlog::trace("{0} cancel emit", name_);
     inner_cancel_signal_.emit(io::cancellation_type::terminal);
     spdlog::trace("{0} wait loop finish begin", name_);
-    co_await loop_tracker_.async_wait();
+    if (loop_track_.is_open()) {
+      co_await loop_track_.async_receive(io::use_awaitable);
+    } else {
+      spdlog::trace("{0} loop is already stopped before wait", name_);
+    }
     spdlog::trace("{0} wait loop finish end", name_);
     co_return;
-  }
-
-  // TODO: how to track state of the loop
-  auto async_start_loop(async_t<> start_loop_operation) -> async_t<> {
-    struct exit_scope {
-      ~exit_scope() {
-        spdlog::trace("{0} loop finished", name_);
-        lt_.finish(name_);
-      }
-      loop_tracker &lt_;
-      const std::string &name_;
-    } _{loop_tracker_, name_};
-    co_await std::move(start_loop_operation);
   }
 
   auto &strand() { return strand_; }
@@ -63,9 +68,9 @@ public:
 private:
   strand_t &strand_;
   const detail::log &log_;
-  loop_tracker loop_tracker_;
   const std::string name_;
   io::cancellation_signal inner_cancel_signal_;
+  channel_t loop_track_;
 };
 } // namespace detail
 } // namespace webpubsub

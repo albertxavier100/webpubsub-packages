@@ -173,6 +173,7 @@ TEST(connectivity, start_stop_with_cancel) {
     co_await webpubsub::detail::async_delay_v2(strand, 3s);
     spdlog::trace("emit cancel");
     co_await client.async_cancel();
+    spdlog::trace("finish cancel");
   };
   try {
     io::co_spawn(strand, async_test(), io::detached);

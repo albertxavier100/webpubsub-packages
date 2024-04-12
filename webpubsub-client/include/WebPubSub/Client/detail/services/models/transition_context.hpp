@@ -22,6 +22,36 @@
 namespace webpubsub {
 namespace detail {
 
+/*
+
+stateDiagram-v2
+  [*] --> stopped
+  stopped --> connecting: to_connecting_state
+  connecting --> connected: to_connected
+  state should_recover <<choice>>
+  connected --> should_recover: should recover?
+
+  should_recover --> recovering: YES to_recovering
+  should_recover --> disconnected: NO to_disconnected
+
+  state is_recovered <<choice>>
+  recovering --> is_recovered: to_connected_or_disconnected
+  is_recovered --> connected: YES
+  is_recovered --> disconnected: NO
+
+  disconnected --> reconnecting: to_reconnecting
+  state is_reconnected <<choice>>
+  reconnecting --> is_reconnected: to_connected_or_stopped
+  is_reconnected --> connected: YES
+  is_reconnected --> stopped: NO
+
+  connected --> stopping: to_stopping
+  disconnected --> stopping: to_stopping
+
+  stopping --> stopped: to_stopped
+
+ * */
+
 // TODO: add concept for receive_t
 template <client_lifetime_service_c lifetime_t, typename receive_t,
           typename send_t>
