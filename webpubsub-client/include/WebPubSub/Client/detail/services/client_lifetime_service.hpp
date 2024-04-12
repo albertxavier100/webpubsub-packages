@@ -49,6 +49,7 @@ public:
     if (!options.auto_reconnect) {
       return;
     }
+    // TODO: improve this
     const auto &max_retry = options.reconnect_retry_options.max_retry;
     const auto &max_delay = options.reconnect_retry_options.max_delay;
     const auto &delay = options.reconnect_retry_options.delay;
@@ -91,10 +92,15 @@ public:
   }
 
   auto
-  async_read_message(std::string &payload,
+  async_read_message(std::string &frame,
                      webpubsub::websocket_close_status &status) -> async_t<> {
     spdlog::trace("lifetime.async_read_message");
-    co_await websocket_->async_read(payload, status);
+    co_await websocket_->async_read(frame, status);
+  }
+
+  auto async_write_message(std::string frame) -> async_t<> {
+    spdlog::trace("lifetime.async_write_message");
+    co_await websocket_->async_write(frame);
   }
 
   // TODO: dev
@@ -126,6 +132,7 @@ private:
     context->receive().reset();
     connection_id_.clear();
     client_access_uri_.clear();
+    std::visit(overloaded{[](auto &p) { p.reset(); }}, retry_policy_);
     reconnection_token_ = std::nullopt;
   }
 

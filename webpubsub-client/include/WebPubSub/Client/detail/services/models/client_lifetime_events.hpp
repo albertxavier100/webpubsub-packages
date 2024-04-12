@@ -18,7 +18,7 @@ namespace detail {
 struct to_connecting_state {};
 struct to_connected_state {};
 struct to_connected_or_disconnected_state {
-  websocket_close_status close_state;
+  std::string reconnect_uri;
 };
 struct to_disconnected_state {
   std::optional<std::string> connection_id;

@@ -4,6 +4,7 @@
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
+#include "webpubsub/client/detail/client/failed_connection_context.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
@@ -29,7 +30,8 @@ public:
             const std::string &logger_name)
       : log_(logger_name), ack_cache_(),
         lifetime_(strand, credential, websocket_factory, options, log_),
-        receive_(strand, options, ack_cache_, log_), send_(strand, log_),
+        receive_(strand, options, ack_cache_, log_),
+        send_(strand, options, log_),
         transition_context_(strand, lifetime_, receive_, send_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
@@ -71,7 +73,9 @@ private:
   auto
   setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
     auto &ctx = transition_context_;
-    auto op = [&ctx, &send_ = this->send_](const bool recover) -> async_t<> {
+    auto op =
+        [&ctx, &send_ = this->send_](
+            const detail::failed_connection_context failed_ctx) -> async_t<> {
       using to_recovering = detail::to_recovering_state;
       using to_reconnecting = detail::to_reconnecting_state;
       using to_connected_or_disconnected =
@@ -84,11 +88,15 @@ private:
         spdlog::trace("async_cancel_sequence_id_loop_coro end");
 
         // TODO: refactor this part, dont use if else
-        if (recover) {
+        if (failed_ctx.should_recover) {
           spdlog::trace("try.recovering... beg");
+
           co_await ctx.async_raise_event(to_recovering{});
           // TODO: add close status
-          co_await ctx.async_raise_event(to_connected_or_disconnected{});
+          auto reconnect_url = std::move(*failed_ctx.reconnect_uri);
+          auto to_final_event =
+              to_connected_or_disconnected{std::move(reconnect_url)};
+          co_await ctx.async_raise_event(std::move(to_final_event));
           spdlog::trace("try.recovering... end");
           auto &cur_state = ctx.get_state();
           if (std::holds_alternative<detail::connected>(cur_state)) {
@@ -100,7 +108,7 @@ private:
         spdlog::trace(
             "on_receive_failed.reconnecting... beg, current state = {0}",
             ctx.get_state().index());
-        if (!recover) {
+        if (!failed_ctx.should_recover) {
           // TODO: use actual string
           co_await ctx.async_raise_event(to_disconnected{"TODO", "TODO"});
         }
@@ -115,8 +123,9 @@ private:
         throw;
       }
     };
-    auto callback = [this, &strand, op = std::move(op)](const bool recover) {
-      io::co_spawn(strand, op(recover), io::detached);
+    auto callback = [this, &strand, op = std::move(op)](
+                        const detail::failed_connection_context context) {
+      io::co_spawn(strand, op(context), io::detached);
     };
     receive_.on_receive_failed.append(callback);
   }
@@ -124,12 +133,12 @@ private:
   detail::client_lifetime_service<protocol_t, websocket_factory_t, websocket_t>
       lifetime_;
   detail::client_receive_service<protocol_t> receive_;
-  detail::client_send_service send_;
+  detail::client_send_service<protocol_t> send_;
 
   detail::transition_context<detail::client_lifetime_service<
                                  protocol_t, websocket_factory_t, websocket_t>,
                              detail::client_receive_service<protocol_t>,
-                             detail::client_send_service>
+                             detail::client_send_service<protocol_t>>
       transition_context_;
   const detail::log log_;
   // TODO: move to receive service

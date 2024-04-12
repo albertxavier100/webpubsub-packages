@@ -16,31 +16,45 @@
 
 namespace webpubsub {
 namespace detail {
+// TODO: re-impl
 class loop_tracker {
   using channel_t = io::experimental::channel<void(io::error_code, bool)>;
 
+  enum class loop_state {
+    before_waiting,
+    running,
+    waiting,
+    finished,
+  };
+
 public:
   loop_tracker(strand_t &strand)
-      : strand_(strand), channel_(strand, 1), is_waiting_(false) {}
+      : strand_(strand), channel_(strand, 1), is_waiting_(false),
+        state_(loop_state::before_waiting) {}
 
+  auto start() { state_ = loop_state::running; }
   auto finish(const std::string &loop_name) {
     if (!channel_.is_open()) {
       throw invalid_operation(loop_name + " channel is already closed");
     }
-    if (!is_waiting_) {
-      spdlog::trace("{0} is not being waited", loop_name);
-      return;
-    }
+
     auto ok = channel_.try_send(io::error_code{}, true);
     spdlog::trace("{0} try send finish", loop_name);
   }
 
   auto async_wait() -> async_t<> {
-    spdlog::trace("loop tracker.async_wait.is_waiting_ = {0}", is_waiting_);
-    if (!channel_.is_open()) {
+    spdlog::trace("loop tracker.async_wait.state = {0}", (int)state_);
+    if (state_ != loop_state::waiting) {
+      spdlog::trace("loop is not in waiting state. state = {0}", (int)state_);
       co_return;
     }
-    is_waiting_ = true;
+    if (!channel_.is_open()) {
+      spdlog::trace("loop is not open");
+      state_ = loop_state::finished;
+      co_return;
+    }
+    spdlog::trace("loop tracker channel_.async_receive");
+    // TODO: what if loop is already finish before waiting
     co_await channel_.async_receive(io::use_awaitable);
     spdlog::trace("loop tracker.async_wait close channel");
     channel_.close();
@@ -52,6 +66,7 @@ private:
   channel_t channel_;
   strand_t &strand_;
   bool is_waiting_;
+  loop_state state_;
 };
 } // namespace detail
 } // namespace webpubsub

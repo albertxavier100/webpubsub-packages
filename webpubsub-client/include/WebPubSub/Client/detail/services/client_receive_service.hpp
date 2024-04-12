@@ -9,8 +9,10 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "uri.hh"
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/ack_entity.hpp"
+#include "webpubsub/client/detail/client/failed_connection_context.hpp"
 #include "webpubsub/client/detail/client/loop_tracker.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/common/utils.hpp"
@@ -32,7 +34,8 @@ public:
       : loop_svc_("RECEIVE LOOP", strand, log), ack_cache_(ack_cache),
         options_(options) {}
 
-  eventpp::CallbackList<void(const bool)> on_receive_failed;
+  eventpp::CallbackList<void(const failed_connection_context)>
+      on_receive_failed;
 
   template <transition_context_c transition_context_t>
   auto spawn_message_loop_coro(transition_context_t *context) {
@@ -49,8 +52,8 @@ public:
 
 private:
   template <transition_context_c transition_context_t>
-  auto
-  async_start_message_loop_core(transition_context_t *context) -> async_t<> {
+  auto async_start_message_loop_core(transition_context_t *context)
+      -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
@@ -83,9 +86,11 @@ private:
         co_await entity.async_finish_with(ack_entity::result::cancelled);
       }
       spdlog::trace("handle ack cache finished");
-      // TODO: decide should recover or reconnect, and log here
-      // TODO: use different callback, do not use branch
-      on_receive_failed(false);
+      auto reconnect_url = build_reconnection_url(context);
+
+      // TODO: should also consider connection close reason
+      auto should_recover = reconnect_url.has_value();
+      on_receive_failed({should_recover, reconnect_url});
       spdlog::trace("fire on_receive_failed");
     }
   }
@@ -153,6 +158,40 @@ private:
                                       transition_context_t *context) {
     context->on_connected(connected_context{
         res.moveConnectionId(), res.moveUserId(), res.moveReconnectionToken()});
+  }
+
+  auto concat_query(const std::map<std::string, std::string> &query)
+      -> std::string {
+    bool first = true;
+    std::stringstream ss;
+    for (const auto &kv : query) {
+      auto de = first ? "" : "&";
+      first = false;
+      ss << de << kv.first << "=" << kv.second;
+    }
+    return ss.str();
+  }
+
+  template <transition_context_c transition_context_t>
+  auto build_reconnection_url(transition_context_t *context)
+      -> std::optional<std::string> {
+    auto &lifetime = context->lifetime();
+    const auto &id = lifetime.connection_id();
+    const auto &token = lifetime.reconnection_token();
+    if (id.empty() || !token) {
+      return std::nullopt;
+    }
+
+    uri client_access_uri(lifetime.client_access_uri());
+    auto query_map = client_access_uri.get_query_dictionary();
+    query_map[lifetime.RECOVER_CONNECTION_ID_QUERY] = id;
+    query_map[lifetime.RECOVER_RECONNECTION_TOKEN_QUERY] = *token;
+    auto query_str = concat_query(query_map);
+    std::map<uri::component, std::string> replacement{
+        {uri::component::Query, std::move(query_str)}};
+    uri client_reconnect_uri(client_access_uri, replacement);
+    auto uri_str = client_reconnect_uri.to_string();
+    return std::move(uri_str);
   }
 
   const client_options<protocol_t> &options_;

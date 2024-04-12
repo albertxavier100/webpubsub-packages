@@ -12,17 +12,42 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/concepts/transition_context_c.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
+#include "webpubsub/client/models/request_result.hpp"
 
-// TODO: fix bug
 namespace webpubsub {
 namespace detail {
-class client_send_service {
+
+template <webpubsub_protocol_t protocol_t> class client_send_service {
+  using retry_policy_t =
+      std::variant<fixed_retry_policy, exponential_retry_policy,
+                   disable_retry_policy>;
+
 public:
   // TODO: test this service
-  client_send_service(strand_t &strand, const log &log)
-      : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand) {}
+  client_send_service(strand_t &strand,
+                      const client_options<protocol_t> &options, const log &log)
+      : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand),
+        options_(options), retry_policy_(disable_retry_policy()) {
+    // TODO: improve this
+    const auto &max_retry = options.reconnect_retry_options.max_retry;
+    const auto &max_delay = options.reconnect_retry_options.max_delay;
+    const auto &delay = options.reconnect_retry_options.delay;
+    switch (options.reconnect_retry_options.retry_mode) {
+    case retry_mode::exponential: {
+      retry_policy_.emplace<exponential_retry_policy>(
+          exponential_retry_policy(max_retry, delay, max_delay));
+      return;
+    }
+    case retry_mode::fixed: {
+      retry_policy_.emplace<fixed_retry_policy>(
+          fixed_retry_policy(max_retry, delay));
+      return;
+    }
+    }
+  }
 
   auto spawn_sequence_ack_loop_coro() {
     loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop());
@@ -37,6 +62,42 @@ public:
   auto reset() -> void {
     sequence_id_.reset();
     loop_svc_.reset();
+    std::visit(overloaded{[](auto &p) { p.reset(); }}, retry_policy_);
+  }
+
+  template <typename message_t, transition_context_c transition_context_t>
+  auto async_send_message(const message_t message,
+                          transition_context_t context) {
+    const auto &protocol = options_.protocol;
+    try {
+      auto frame = protocol.write(message);
+      co_await context->lifetime().async_write_message(frame);
+    } catch (const std::exception &ex) {
+      spdlog::trace("Failed to send message. ex: {0}", ex.what());
+    }
+  }
+
+  template <typename message_t, transition_context_c transition_context_t>
+  auto async_send_with_retry(message_t message, transition_context_t context,
+                             bool wait_ack) -> async_t<request_result> {
+    for (auto attempt = 0;; attempt++) {
+      try {
+        co_await async_send_message(std::move(message), context);
+        // TODO: wait ack?
+        co_return;
+      } catch (const std::exception &ex) {
+        spdlog::trace("send message failed in {0} times", attempt);
+      }
+
+      auto delay = std::visit(
+          overloaded{[](auto &policy) { return policy.next_retry_delay(); }},
+          retry_policy_);
+      if (!delay) {
+        break;
+      }
+      co_await async_delay_v2(context->strand(), *delay);
+    }
+    spdlog::trace("send message retry failed");
   }
 
 private:
@@ -75,6 +136,8 @@ private:
 
   client_loop_service loop_svc_;
   detail::sequence_id sequence_id_;
+  const client_options<protocol_t> &options_;
+  retry_policy_t retry_policy_;
 };
 } // namespace detail
 } // namespace webpubsub

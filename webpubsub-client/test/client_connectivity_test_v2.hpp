@@ -2,6 +2,7 @@
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
+#include "test_classes/test_websocket_classes.hpp"
 #include "webpubsub/client/client_v2.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/models/retry_mode.hpp"

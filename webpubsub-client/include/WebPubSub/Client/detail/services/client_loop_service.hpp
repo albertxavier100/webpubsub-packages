@@ -44,6 +44,7 @@ public:
     co_return;
   }
 
+  // TODO: how to track state of the loop
   auto async_start_loop(async_t<> start_loop_operation) -> async_t<> {
     struct exit_scope {
       ~exit_scope() {
