@@ -78,13 +78,15 @@ public:
   }
 
   template <typename message_t, transition_context_c transition_context_t>
-  auto async_send_with_retry(message_t message, transition_context_t context,
-                             bool wait_ack) -> async_t<request_result> {
+  auto
+  async_retry_send(message_t message, transition_context_t context,
+                   bool fire_and_forget = false) -> async_t<request_result> {
     for (auto attempt = 0;; attempt++) {
       try {
         co_await async_send_message(std::move(message), context);
         // TODO: wait ack?
-        co_return;
+        // TODO: impl
+        co_return request_result{};
       } catch (const std::exception &ex) {
         spdlog::trace("send message failed in {0} times", attempt);
       }
@@ -98,6 +100,8 @@ public:
       co_await async_delay_v2(context->strand(), *delay);
     }
     spdlog::trace("send message retry failed");
+    // TODO: impl
+    co_return request_result{};
   }
 
 private:

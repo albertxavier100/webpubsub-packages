@@ -1,5 +1,8 @@
 #pragma once
 
+#include "nlohmann/json.hpp"
+
+#include "WebPubSub/Protocols/Requests/SendEventRequest.hpp"
 #include "eventpp/callbacklist.h"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/credentials/client_credential.hpp"
@@ -67,6 +70,33 @@ public:
   auto async_cancel() -> async_t<> {
     co_await send_.async_cancel_sequence_id_loop_coro();
     co_await receive_.async_cancel_message_loop_coro();
+  }
+
+  template <typename data_t>
+  auto async_send_to_group(const SendToGroupRequest<data_t> request,
+                           bool fire_and_forget = false) -> async_t<> {
+    co_await send_.async_retry_send(request, transition_context_,
+                                    fire_and_forget);
+  }
+
+  template <typename data_t>
+  auto async_send_event(const SendEventRequest<data_t> request,
+                        bool fire_and_forget = false) -> async_t<> {
+    co_await send_.async_retry_send(request, transition_context_,
+                                    fire_and_forget);
+  }
+
+  auto async_join_group(const JoinGroupRequest request,
+                        bool fire_and_forget = false) -> async_t<> {
+    // TODO: update group entities
+    co_await send_.async_retry_send(request, transition_context_,
+                                    fire_and_forget);
+  }
+
+  auto async_leave_group(const LeaveGroupRequest request,
+                         bool fire_and_forget = false) -> async_t<> {
+    co_await send_.async_retry_send(request, transition_context_,
+                                    fire_and_forget);
   }
 
 private:
