@@ -34,9 +34,6 @@ template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
 
 class client_lifetime_service {
   using strand_t = io::strand<io::io_context::executor_type>;
-  using retry_policy_t =
-      std::variant<fixed_retry_policy, exponential_retry_policy,
-                   disable_retry_policy>;
 
 public:
   client_lifetime_service(strand_t &strand, const client_credential &credential,
@@ -44,26 +41,9 @@ public:
                           const client_options<protocol_t> &options,
                           const log &log)
       : log_(log), strand_(strand), options_(options), credential_(credential),
-        websocket_factory_(websocket_factory), websocket_(nullptr),
-        retry_policy_(disable_retry_policy()), groups_() {
+        websocket_factory_(websocket_factory), websocket_(nullptr), groups_() {
     if (!options.auto_reconnect) {
       return;
-    }
-    // TODO: improve this
-    const auto &max_retry = options.reconnect_retry_options.max_retry;
-    const auto &max_delay = options.reconnect_retry_options.max_delay;
-    const auto &delay = options.reconnect_retry_options.delay;
-    switch (options.reconnect_retry_options.retry_mode) {
-    case retry_mode::exponential: {
-      retry_policy_.emplace<exponential_retry_policy>(
-          exponential_retry_policy(max_retry, delay, max_delay));
-      return;
-    }
-    case retry_mode::fixed: {
-      retry_policy_.emplace<fixed_retry_policy>(
-          fixed_retry_policy(max_retry, delay));
-      return;
-    }
     }
   }
 
@@ -113,8 +93,11 @@ public:
     reconnection_token_ = std::move(reconnection_token);
   }
 
+  auto make_retry_context() -> retry_context {
+    auto o = options_.reconnect_retry_options;
+    return {o.max_delay, o.max_retry, o.retry_mode, 0, o.delay};
+  }
   auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
-  auto retry_policy() -> retry_policy_t & { return retry_policy_; };
   auto connection_id() -> const std::string & { return connection_id_; }
   auto reconnection_token() -> const std::optional<std::string> & {
     return reconnection_token_;
@@ -125,14 +108,13 @@ public:
   auto client_access_uri() -> const std::string & { return client_access_uri_; }
 
 private:
-  // TODO: IMPL
+  // TODO: move to each on_leave_state
   template <transition_context_c transition_context_t>
   auto reset_connection(transition_context_t *context) {
     context->send().reset();
     context->receive().reset();
     connection_id_.clear();
     client_access_uri_.clear();
-    std::visit(overloaded{[](auto &p) { p.reset(); }}, retry_policy_);
     reconnection_token_ = std::nullopt;
   }
 
@@ -142,7 +124,7 @@ private:
   const client_credential &credential_;
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
-  retry_policy_t retry_policy_;
+  retry_context retry_context_;
   std::string connection_id_;
   std::optional<std::string> reconnection_token_;
   std::string client_access_uri_;

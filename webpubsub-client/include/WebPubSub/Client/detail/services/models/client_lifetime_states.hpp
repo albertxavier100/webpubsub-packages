@@ -21,7 +21,9 @@ struct disconnected {};
 struct stopping {};
 struct recovering {};
 struct connecting {};
-struct reconnecting {};
+struct reconnecting {
+  retry_context retry_context;
+};
 
 using state_t = std::variant<stopped, connecting, connected, recovering,
                              stopping, disconnected, reconnecting>;

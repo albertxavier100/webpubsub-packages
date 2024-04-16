@@ -10,6 +10,7 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/detail/client/retry_context.hpp"
 #include <variant>
 
 namespace webpubsub {

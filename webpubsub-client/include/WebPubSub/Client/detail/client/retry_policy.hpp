@@ -20,67 +20,40 @@ namespace detail {
 
 class fixed_retry_policy {
 public:
-  fixed_retry_policy(int max_retry, std::chrono::milliseconds delay)
-      : attempts_(0), max_retry_(std::move(max_retry)),
-        delay_(std::move(delay)) {}
+  fixed_retry_policy() {}
 
-  auto next_retry_delay() -> std::optional<std::chrono::milliseconds> {
-    if (attempts_ > max_retry_) {
-      return std::nullopt;
+  auto next_retry_delay(retry_context &retry_context) {
+    if (retry_context.attempts > retry_context.max_retry) {
+      retry_context.delay = std::nullopt;
     }
-    attempts_++;
-    return delay_;
+    retry_context.attempts++;
   }
-  auto reset() { attempts_ = 0; }
 
 private:
-  const int max_retry_;
-  const std::chrono::milliseconds delay_;
-  int attempts_;
 };
 static_assert(retry_policy_c<fixed_retry_policy>);
 
 class exponential_retry_policy {
 public:
-  exponential_retry_policy(int max_retry, std::chrono::milliseconds delay,
-                           std::chrono::milliseconds max_delay)
-      : attempts_(0), max_retry_(std::move(max_retry)),
-        delay_(std::move(delay)), max_delay_(std::move(max_delay)) {}
+  exponential_retry_policy() {}
 
-  auto next_retry_delay() -> std::optional<std::chrono::milliseconds> {
-    if (attempts_ > max_retry_) {
-      return std::nullopt;
+  auto next_retry_delay(retry_context &retry_context) {
+    if (retry_context.attempts > retry_context.max_retry) {
+      retry_context.delay = std::nullopt;
     }
-
-    if (delay_ >= max_delay_) {
-      attempts_++;
-      return max_delay_;
+    if (retry_context.delay >= retry_context.max_delay) {
+      retry_context.attempts++;
+      retry_context.delay = retry_context.max_delay;
     }
-
-    attempts_++;
-    delay_ = delay_ + delay_;
-    return delay_;
+    retry_context.attempts++;
+    retry_context.delay = *retry_context.delay + *retry_context.delay;
   }
-
-  auto reset() { attempts_ = 0; }
-
-private:
-  const int max_retry_;
-  std::chrono::milliseconds delay_;
-  const std::chrono::milliseconds max_delay_;
-  int attempts_;
 };
 
 static_assert(retry_policy_c<exponential_retry_policy>);
 
-class disable_retry_policy {
-public:
-  auto reset() {}
-  auto next_retry_delay() -> std::optional<std::chrono::milliseconds> {
-    return std::nullopt;
-  }
-};
-static_assert(retry_policy_c<disable_retry_policy>);
+using retry_policies_t =
+    std::variant<fixed_retry_policy, exponential_retry_policy>;
 } // namespace detail
 } // namespace webpubsub
 #endif // TEST_WEBPUBSUB_CLIENT_RETRY_POLICY_HPP

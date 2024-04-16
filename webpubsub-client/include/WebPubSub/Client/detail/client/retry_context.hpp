@@ -9,10 +9,16 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "webpubsub/client/models/retry_mode.hpp"
+
 namespace webpubsub {
 namespace detail {
 struct retry_context {
+  const std::chrono::milliseconds max_delay;
+  const int max_retry;
+  const retry_mode retry_mode;
   int attempts;
+  std::optional<std::chrono::milliseconds> delay;
 };
 } // namespace detail
 } // namespace webpubsub

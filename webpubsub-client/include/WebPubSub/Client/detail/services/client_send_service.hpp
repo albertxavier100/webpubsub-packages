@@ -21,16 +21,12 @@ namespace webpubsub {
 namespace detail {
 
 template <webpubsub_protocol_t protocol_t> class client_send_service {
-  using retry_policy_t =
-      std::variant<fixed_retry_policy, exponential_retry_policy,
-                   disable_retry_policy>;
-
 public:
   // TODO: test this service
   client_send_service(strand_t &strand,
                       const client_options<protocol_t> &options, const log &log)
       : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand),
-        options_(options), retry_policy_(disable_retry_policy()) {
+        options_(options) {
     // TODO: improve this
     const auto &max_retry = options.reconnect_retry_options.max_retry;
     const auto &max_delay = options.reconnect_retry_options.max_delay;
@@ -141,7 +137,6 @@ private:
   client_loop_service loop_svc_;
   detail::sequence_id sequence_id_;
   const client_options<protocol_t> &options_;
-  retry_policy_t retry_policy_;
 };
 } // namespace detail
 } // namespace webpubsub

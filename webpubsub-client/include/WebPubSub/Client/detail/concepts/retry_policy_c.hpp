@@ -15,11 +15,8 @@
 namespace webpubsub {
 namespace detail {
 template <typename policy_t>
-concept retry_policy_c = requires(policy_t p) {
-  {
-    p.next_retry_delay()
-  } -> std::same_as<std::optional<std::chrono::milliseconds>>;
-  { p.reset() } -> std::same_as<void>;
+concept retry_policy_c = requires(policy_t p, retry_context &retry_context) {
+  { p.next_retry_delay(retry_context) } -> std::same_as<void>;
 };
 } // namespace detail
 } // namespace webpubsub

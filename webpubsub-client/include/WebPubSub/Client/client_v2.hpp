@@ -8,6 +8,7 @@
 #include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/client/failed_connection_context.hpp"
+#include "webpubsub/client/detail/client/retry_context.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
@@ -31,7 +32,7 @@ public:
             const client_options<protocol_t> &options,
             websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), ack_cache_(),
+      : log_(logger_name), ack_cache_(), options_(options),
         lifetime_(strand, credential, websocket_factory, options, log_),
         receive_(strand, options, ack_cache_, log_),
         send_(strand, options, log_),
@@ -111,9 +112,8 @@ public:
 private:
   auto
   setup_reconnect_callback(io::strand<io::io_context::executor_type> &strand) {
-    auto &ctx = transition_context_;
     auto op =
-        [&ctx, &send_ = this->send_](
+        [&ctx = transition_context_, &send_ = send_, &opt = options_](
             const detail::failed_connection_context failed_ctx) -> async_t<> {
       using to_recovering = detail::to_recovering_state;
       using to_reconnecting = detail::to_reconnecting_state;
@@ -152,6 +152,9 @@ private:
           co_await ctx.async_raise_event(to_disconnected{"TODO", "TODO"});
         }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
+        auto &retry_opt = opt.reconnect_retry_options;
+        detail::retry_context retry_context{
+            retry_opt.max_delay, retry_opt.max_retry, 0, retry_opt.delay};
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
                       "to_connected_or_disconnected_state");
@@ -180,6 +183,7 @@ private:
                              detail::client_send_service<protocol_t>>
       transition_context_;
   const detail::log log_;
+  const client_options<protocol_t> &options_;
   // TODO: move to receive service
   std::unordered_map<uint64_t, detail::ack_entity> ack_cache_;
 };
