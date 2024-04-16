@@ -12,11 +12,9 @@
 namespace webpubsub {
 namespace detail {
 template <transition_context_c transition_context_t>
-auto async_reconnect_with_retry(transition_context_t *context,
-                                to_connected_or_stopped_state &event)
-    -> async_t<state_t> {
+auto async_reconnect(transition_context_t *context, reconnecting &reconnecting,
+                     to_connected_or_stopped_state &event) -> async_t<state_t> {
   using namespace std::chrono_literals;
-  auto retry_policy = context->lifetime().retry_policy();
   // TODO: split loop body
   for (;;) {
     try {
@@ -27,9 +25,7 @@ auto async_reconnect_with_retry(transition_context_t *context,
     } catch (const std::exception &ex) {
       spdlog::trace("failed to reconnect. {0}", ex.what());
     }
-    auto delay = std::visit(
-        overloaded{[](auto &policy) { return policy.next_retry_delay(); }},
-        retry_policy);
+    auto delay = reconnecting.retry_context.delay;
     if (!delay) {
       spdlog::trace(":::Transition::: -> stopped");
       co_return stopped{};
@@ -43,7 +39,7 @@ auto async_on_event(transition_context_t *context, reconnecting &reconnecting,
                     to_connected_or_stopped_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: reconnecting -> connected / stopped");
 
-  auto next_state = co_await async_reconnect_with_retry(context, event);
+  auto next_state = co_await async_reconnect(context, reconnecting, event);
   co_return next_state;
 }
 

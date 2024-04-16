@@ -95,7 +95,7 @@ public:
 
   auto make_retry_context() -> retry_context {
     auto o = options_.reconnect_retry_options;
-    return {o.max_delay, o.max_retry, o.retry_mode, 0, o.delay};
+    return retry_context{o.max_delay, o.max_retry, o.retry_mode, 0, o.delay};
   }
   auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
   auto connection_id() -> const std::string & { return connection_id_; }
@@ -124,7 +124,6 @@ private:
   const client_credential &credential_;
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
-  retry_context retry_context_;
   std::string connection_id_;
   std::optional<std::string> reconnection_token_;
   std::string client_access_uri_;

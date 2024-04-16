@@ -26,24 +26,7 @@ public:
   client_send_service(strand_t &strand,
                       const client_options<protocol_t> &options, const log &log)
       : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand),
-        options_(options) {
-    // TODO: improve this
-    const auto &max_retry = options.reconnect_retry_options.max_retry;
-    const auto &max_delay = options.reconnect_retry_options.max_delay;
-    const auto &delay = options.reconnect_retry_options.delay;
-    switch (options.reconnect_retry_options.retry_mode) {
-    case retry_mode::exponential: {
-      retry_policy_.emplace<exponential_retry_policy>(
-          exponential_retry_policy(max_retry, delay, max_delay));
-      return;
-    }
-    case retry_mode::fixed: {
-      retry_policy_.emplace<fixed_retry_policy>(
-          fixed_retry_policy(max_retry, delay));
-      return;
-    }
-    }
-  }
+        options_(options) {}
 
   auto spawn_sequence_ack_loop_coro() {
     loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop());
@@ -58,7 +41,6 @@ public:
   auto reset() -> void {
     sequence_id_.reset();
     loop_svc_.reset();
-    std::visit(overloaded{[](auto &p) { p.reset(); }}, retry_policy_);
   }
 
   template <typename message_t, transition_context_c transition_context_t>
@@ -87,9 +69,8 @@ public:
         spdlog::trace("send message failed in {0} times", attempt);
       }
 
-      auto delay = std::visit(
-          overloaded{[](auto &policy) { return policy.next_retry_delay(); }},
-          retry_policy_);
+      // TODO: use real delay
+      auto delay = std::optional<std::chrono::seconds>(1);
       if (!delay) {
         break;
       }

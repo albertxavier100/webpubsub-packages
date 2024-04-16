@@ -20,7 +20,7 @@ auto async_on_event(transition_context_t *context, disconnected &disconnected,
   // TODO: finish any awaiting ack entity
   if (context->lifetime().auto_reconnect()) {
     spdlog::trace(":::Transition::: -> reconnecting");
-    auto retry_context = context->lifetime.make_retry_context();
+    auto retry_context = context->lifetime().make_retry_context();
     co_return reconnecting{retry_context};
   }
   try {

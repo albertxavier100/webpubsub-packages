@@ -153,8 +153,6 @@ private:
         }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
         auto &retry_opt = opt.reconnect_retry_options;
-        detail::retry_context retry_context{
-            retry_opt.max_delay, retry_opt.max_retry, 0, retry_opt.delay};
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
                       "to_connected_or_disconnected_state");

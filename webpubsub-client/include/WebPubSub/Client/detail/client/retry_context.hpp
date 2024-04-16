@@ -14,9 +14,11 @@
 namespace webpubsub {
 namespace detail {
 struct retry_context {
-  const std::chrono::milliseconds max_delay;
-  const int max_retry;
-  const retry_mode retry_mode;
+  // TODO: make them const?
+  std::chrono::milliseconds max_delay;
+  uint64_t max_retry;
+  retry_mode retry_mode;
+  //
   int attempts;
   std::optional<std::chrono::milliseconds> delay;
 };
