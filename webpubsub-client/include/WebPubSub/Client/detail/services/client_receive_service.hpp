@@ -151,23 +151,23 @@ private:
         auto &group = pair.second;
         if (group.is_joined()) {
           auto request = JoinGroupRequest(name);
-          auto result = co_await context->send().async_retry_send(
-              request, context, false);
+          std::optional<std::exception> ex;
           try {
-          } catch (const std::exception &ex) {
+            auto result = co_await context->send().async_retry_send(
+                request, context, false);
+          } catch (const std::exception &e) {
+            ex = e;
+          }
+          if (ex) {
+            rejoin_group_failed_context callback_context{name, *ex};
+            context->safe_invoke_callback(std::move(callback_context));
           }
         }
       }
     }
-
-    safe_invoke_connected_callback(res, context);
-  }
-
-  template <transition_context_c transition_context_t>
-  auto safe_invoke_connected_callback(const ConnectedResponse &res,
-                                      transition_context_t *context) {
-    context->on_connected(connected_context{
-        res.moveConnectionId(), res.moveUserId(), res.moveReconnectionToken()});
+    connected_context callback_context{res.moveConnectionId(), res.moveUserId(),
+                                       res.moveReconnectionToken()};
+    context->safe_invoke_callback(std::move(callback_context));
   }
 
   auto

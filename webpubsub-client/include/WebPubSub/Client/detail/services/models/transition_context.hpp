@@ -73,6 +73,41 @@ public:
       on_rejoin_group_failed;
   eventpp::CallbackList<void(const stopped_context)> on_stopped;
 
+  template <typename callback_context_t>
+  auto safe_invoke_callback(const callback_context_t callback_context) {
+    try {
+      if constexpr (std::is_same_v<connected_context, callback_context_t>) {
+        on_connected(callback_context);
+        return;
+      } else if constexpr (std::is_same_v<disconnected_context,
+                                          callback_context_t>) {
+        on_disconnected(callback_context);
+        return;
+      } else if constexpr (std::is_same_v<group_data_context,
+                                          callback_context_t>) {
+        on_group_data(callback_context);
+        return;
+      } else if constexpr (std::is_same_v<server_data_context,
+                                          callback_context_t>) {
+        on_server_data(callback_context);
+        return;
+      } else if constexpr (std::is_same_v<rejoin_group_failed_context,
+                                          callback_context_t>) {
+        on_rejoin_group_failed(callback_context);
+        return;
+      } else if constexpr (std::is_same_v<stopped_context,
+                                          callback_context_t>) {
+        on_stopped(callback_context);
+        return;
+      }
+    } catch (const std::exception &ex) {
+      // TODO: print callback name
+      spdlog::trace("failed to invoke callback: {0}");
+    }
+    // TODO: print callback context name
+    spdlog::trace("not supported callback context");
+  }
+
   // TODO: remove
   auto test() {}
 
