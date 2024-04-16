@@ -17,6 +17,7 @@ auto async_reconnect_with_retry(transition_context_t *context,
     -> async_t<state_t> {
   using namespace std::chrono_literals;
   auto retry_policy = context->lifetime().retry_policy();
+  // TODO: split loop body
   for (;;) {
     try {
       co_await context->lifetime().async_connect(context);
