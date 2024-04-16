@@ -59,22 +59,27 @@ public:
   auto
   async_retry_send(message_t message, transition_context_t context,
                    bool fire_and_forget = false) -> async_t<request_result> {
-    for (auto attempt = 0;; attempt++) {
+    auto retry_options = options_.message_retry_options;
+    retry_context retry_context{
+        retry_options.max_delay, retry_options.max_retry,
+        retry_options.retry_mode, 0, retry_options.delay};
+    for (;;) {
       try {
         co_await async_send_message(std::move(message), context);
         // TODO: wait ack?
         // TODO: impl
         co_return request_result{};
       } catch (const std::exception &ex) {
-        spdlog::trace("send message failed in {0} times", attempt);
+        spdlog::trace("send message failed in {0} times",
+                      retry_context.attempts);
       }
 
       // TODO: use real delay
-      auto delay = std::optional<std::chrono::seconds>(1);
-      if (!delay) {
+      update_delay(retry_context);
+      if (!retry_context.delay) {
         break;
       }
-      co_await async_delay_v2(context->strand(), *delay);
+      co_await async_delay_v2(context->strand(), *retry_context.delay);
     }
     spdlog::trace("send message retry failed");
     // TODO: impl

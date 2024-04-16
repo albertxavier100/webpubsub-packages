@@ -45,18 +45,7 @@ auto async_on_event(transition_context_t *context, reconnecting &reconnecting,
 template <transition_context_c transition_context_t>
 auto async_on_enter(transition_context_t *context, reconnecting &reconnecting,
                     to_reconnecting_state &event) -> async_t<> {
-  switch (reconnecting.retry_context.retry_mode) {
-  case retry_mode::exponential: {
-    exponential_retry_policy policy;
-    policy.next_retry_delay(reconnecting.retry_context);
-  }
-  case retry_mode::fixed: {
-  default:
-    fixed_retry_policy policy;
-    policy.next_retry_delay(reconnecting.retry_context);
-    break;
-  }
-  }
+  update_delay(reconnecting.retry_context);
   co_return;
 }
 } // namespace detail
