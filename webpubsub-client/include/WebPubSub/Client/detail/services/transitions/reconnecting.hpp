@@ -15,7 +15,6 @@ template <transition_context_c transition_context_t>
 auto async_reconnect(transition_context_t *context, reconnecting &reconnecting,
                      to_connected_or_stopped_state &event) -> async_t<state_t> {
   using namespace std::chrono_literals;
-  // TODO: split loop body
   for (;;) {
     try {
       co_await context->lifetime().async_connect(context);

@@ -61,9 +61,6 @@ public:
     co_await transition_context_.async_raise_event(std::move(event));
   }
 
-  // TODO: reject: connecting --> stopping
-  // TODO: reject: recovering --> stopping
-  // TODO: allow: reconnecting --> stopping
   auto async_stop() -> async_t<> {
     spdlog::trace("async_stop -- beg");
     auto &state = transition_context_.get_state();
@@ -80,6 +77,7 @@ public:
   auto async_cancel() -> async_t<> {
     co_await send_.async_cancel_sequence_id_loop_coro();
     co_await receive_.async_cancel_message_loop_coro();
+    // TODO: also cancel connection
   }
 
   template <typename data_t>

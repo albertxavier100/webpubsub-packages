@@ -12,6 +12,7 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/credentials/client_credential.hpp"
+#include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/detail/client/group_context.hpp"
 #include "webpubsub/client/detail/client/retry_policy.hpp"
@@ -41,7 +42,8 @@ public:
                           const client_options<protocol_t> &options,
                           const log &log)
       : log_(log), strand_(strand), options_(options), credential_(credential),
-        websocket_factory_(websocket_factory), websocket_(nullptr), groups_() {
+        websocket_factory_(websocket_factory), websocket_(nullptr), groups_(),
+        lock_(strand) {
     if (!options.auto_reconnect) {
       return;
     }
@@ -53,9 +55,16 @@ public:
   // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto async_connect(transition_context_t *context) -> async_t<> {
-    reset_connection(context);
-    client_access_uri_ = co_await credential_.async_get_client_access_uri();
-    co_await async_establish_new_websocket(client_access_uri_, context);
+    co_await lock_.async_lock();
+    try {
+      reset_connection(context);
+      client_access_uri_ = co_await credential_.async_get_client_access_uri();
+      co_await async_establish_new_websocket(client_access_uri_, context);
+      co_await lock_.async_release();
+    } catch (...) {
+      lock_.release();
+      throw;
+    }
   }
 
   // TODO: IMPL
@@ -128,6 +137,7 @@ private:
   std::optional<std::string> reconnection_token_;
   std::string client_access_uri_;
   const std::unordered_map<std::string, group_context> groups_;
+  exclusion_lock lock_;
 
   //  TODO: add connection lock?
 };
