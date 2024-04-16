@@ -60,7 +60,7 @@ public:
   transition_context(strand_t &strand, lifetime_t &lifetime, receive_t &receive,
                      send_t &send, const log &log)
       : strand_(strand), state_(stopped{}), lifetime_(lifetime),
-        receive_(receive), send_(send), log_(log) {
+        receive_(receive), send_(send), log_(log), ack_id_(0) {
     static_assert(transition_context_c<
                   transition_context<lifetime_t, receive_t, send_t>>);
   }
@@ -83,6 +83,8 @@ public:
   auto receive() -> receive_t & { return receive_; }
 
   auto send() -> send_t & { return send_; }
+
+  auto next_ack_id() -> uint64_t { return ack_id_++; }
 
   auto get_state() -> const state_t & { return state_; }
 
@@ -116,6 +118,7 @@ private:
   const log &log_;
   state_t state_;
   strand_t &strand_;
+  uint64_t ack_id_;
 };
 
 } // namespace detail

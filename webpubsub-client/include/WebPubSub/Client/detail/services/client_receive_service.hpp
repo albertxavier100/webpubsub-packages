@@ -52,8 +52,8 @@ public:
 
 private:
   template <transition_context_c transition_context_t>
-  auto async_start_message_loop_core(transition_context_t *context)
-      -> async_t<> {
+  auto
+  async_start_message_loop_core(transition_context_t *context) -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
@@ -68,7 +68,7 @@ private:
         websocket_close_status status;
         co_await context->lifetime().async_read_message(payload, status);
 
-        handle_payload(std::move(payload), context);
+        async_handle_payload(std::move(payload), context);
         spdlog::trace("receiving...");
       }
     } catch (const io::system_error &err) {
@@ -96,53 +96,63 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto handle_payload(std::string payload, transition_context_t *context) {
+  auto async_handle_payload(std::string payload,
+                            transition_context_t *context) -> async_t<> {
     // TODO: rename the inconsistent naming
     auto response = options_.protocol.read(std::move(payload));
     if (!response) {
       spdlog::trace("failed to parse payload");
-      return;
+      co_return;
     }
-    std::visit(overloaded{
-                   [&context, this](const ConnectedResponse &res) {
-                     handle_connected_response(res, context);
-                   },
-                   [](const DisconnectedResponse &res) {
-                     // TODO: impl
-                   },
-                   [](const ServerMessageResponse &res) {
-                     // TODO: impl
-                   },
-                   [](const GroupMessageResponseV2 &res) {
-                     // TODO: impl
-                   },
-                   [](const AckResponse &res) {
-                     // TODO: impl
-                   },
-               },
-               *response);
+    co_await std::visit(
+        overloaded{
+            [&context, this](const ConnectedResponse &res) -> async_t<> {
+              return async_handle_connected_response(res, context);
+            },
+            [](const DisconnectedResponse &res) -> async_t<> {
+              // TODO: impl
+              return async_t<>();
+            },
+            [](const ServerMessageResponse &res) -> async_t<> {
+              // TODO: impl
+              return async_t<>();
+            },
+            [](const GroupMessageResponseV2 &res) -> async_t<> {
+              // TODO: impl
+              return async_t<>();
+            },
+            [](const AckResponse &res) -> async_t<> {
+              // TODO: impl
+              return async_t<>();
+            },
+        },
+        *response);
   }
 
   template <transition_context_c transition_context_t>
-  auto handle_connected_response(const ConnectedResponse &res,
-                                 transition_context_t *context) {
+  auto
+  async_handle_connected_response(const ConnectedResponse &res,
+                                  transition_context_t *context) -> async_t<> {
     context->lifetime().update_connection_info(res.moveConnectionId(),
                                                res.getReconnectionToken());
-    handle_connection_connected(res, context);
+    co_await async_handle_connection_connected(res, context);
   }
 
   // TODO: only display on the 1st connected
   // TODO: impl
   template <transition_context_c transition_context_t>
-  auto handle_connection_connected(const ConnectedResponse &res,
-                                   transition_context_t *context) {
+  auto async_handle_connection_connected(const ConnectedResponse &res,
+                                         transition_context_t *context)
+      -> async_t<> {
     // TODO: test auto rejoin group
     if (options_.auto_rejoin_groups) {
       for (auto &pair : context->lifetime().groups()) {
         auto &name = pair.first;
         auto &group = pair.second;
         if (group.is_joined()) {
-          /// TODO: try rejoin group
+          auto request = JoinGroupRequest(name);
+          auto result = co_await context->send().async_retry_send(
+              request, context, false);
           try {
           } catch (const std::exception &ex) {
           }
@@ -160,8 +170,8 @@ private:
         res.moveConnectionId(), res.moveUserId(), res.moveReconnectionToken()});
   }
 
-  auto concat_query(const std::map<std::string, std::string> &query)
-      -> std::string {
+  auto
+  concat_query(const std::map<std::string, std::string> &query) -> std::string {
     bool first = true;
     std::stringstream ss;
     for (const auto &kv : query) {

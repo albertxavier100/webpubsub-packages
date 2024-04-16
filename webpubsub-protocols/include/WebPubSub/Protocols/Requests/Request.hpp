@@ -18,6 +18,8 @@ public:
   Request(const RequestType type, const std::optional<uint64_t> &ackId)
       : type(type), ackId(ackId) {}
 
+  auto setAckId(std::optional<uint64_t> id) { ackId = id; }
+
 protected:
   template <typename TRequest>
   static void requestToJson(nlohmann::json &json, const TRequest &request) {

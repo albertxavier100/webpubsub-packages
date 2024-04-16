@@ -43,9 +43,10 @@ public:
     loop_svc_.reset();
   }
 
+  // TODO: add result
   template <typename message_t, transition_context_c transition_context_t>
-  auto async_send_message(const message_t message,
-                          transition_context_t context) {
+  auto async_send_request(message_t message,
+                          transition_context_t *context) -> async_t<> {
     const auto &protocol = options_.protocol;
     try {
       auto frame = protocol.write(message);
@@ -55,17 +56,19 @@ public:
     }
   }
 
-  template <typename message_t, transition_context_c transition_context_t>
+  template <typename request_t, transition_context_c transition_context_t>
   auto
-  async_retry_send(message_t message, transition_context_t context,
+  async_retry_send(request_t request, transition_context_t *context,
                    bool fire_and_forget = false) -> async_t<request_result> {
     auto retry_options = options_.message_retry_options;
+    auto ack_id = context->next_ack_id();
+    request.setAckId(ack_id);
     retry_context retry_context{
         retry_options.max_delay, retry_options.max_retry,
         retry_options.retry_mode, 0, retry_options.delay};
     for (;;) {
       try {
-        co_await async_send_message(std::move(message), context);
+        co_await async_send_request(std::move(request), context);
         // TODO: wait ack?
         // TODO: impl
         co_return request_result{};
