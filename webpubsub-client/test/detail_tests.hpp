@@ -11,7 +11,7 @@
 
 #include "spdlog/spdlog.h"
 #include "webpubsub/client/credentials/client_credential.hpp"
-#include "webpubsub/client/detail/client/ack_entity.hpp"
+#include "webpubsub/client/detail/client/ack_cache.hpp"
 #include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "gtest/gtest.h"
 
@@ -22,24 +22,19 @@ using strand_t = io::strand<io::io_context::executor_type>;
 
 namespace test {
 namespace detail {
-
-TEST(detail, ack_entity) {
+TEST(detail, ack_cache) {
+  using namespace webpubsub;
   io::io_context io_context;
-  strand_t strand{io_context.get_executor()};
-
-  uint64_t id;
-  ack_entity ack{strand, id};
-
-  auto finish = [&]() -> async_t<> {
-    co_await ack.async_finish_with(ack_entity::result::cancelled);
-  };
-  auto wait = [&]() -> async_t<> {
-    auto res = co_await ack.async_wait();
-    EXPECT_EQ(std::get<ack_entity::result>(res), ack_entity::result::cancelled);
-  };
-  io::co_spawn(io_context, finish(), io::detached);
+  auto strand = io::make_strand(io_context);
+  ack_cache cache;
+  auto &ref = cache;
+  ref.add_or_get(strand, 1);
+  std::variant<invalid_operation, ack_cache::result> res;
+  ref.finish_all(ack_cache::result::cancelled);
+  auto wait = [&ref, &res]() -> async_t<> { res = co_await ref.async_wait(1); };
   io::co_spawn(io_context, wait(), io::detached);
   io_context.run();
+  EXPECT_EQ(std::get<ack_cache::result>(res), ack_cache::result::cancelled);
 }
 
 // TODO: impl

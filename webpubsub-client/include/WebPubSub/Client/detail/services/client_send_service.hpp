@@ -61,15 +61,25 @@ public:
   async_retry_send(request_t request, transition_context_t *context,
                    bool fire_and_forget = false) -> async_t<request_result> {
     auto retry_options = options_.message_retry_options;
-    auto ack_id = context->next_ack_id();
-    request.setAckId(ack_id);
+    if (!request.hasAckId()) {
+      auto ack_id = context->next_ack_id();
+      request.setAckId(ack_id);
+    }
     retry_context retry_context{
         retry_options.max_delay, retry_options.max_retry,
         retry_options.retry_mode, 0, retry_options.delay};
     for (;;) {
       try {
-        co_await async_send_request(std::move(request), context);
-        // TODO: wait ack?
+        if (!fire_and_forget) {
+          co_await async_send_request(std::move(request), context);
+        } else {
+          auto &cache = context->ack_cache();
+          auto id = *request.getAckId();
+          cache.add_or_get(context->strand(), id);
+          co_await async_send_request(std::move(request), context);
+          co_await cache.async_wait(id);
+        }
+
         // TODO: impl
         co_return request_result{};
       } catch (const std::exception &ex) {
@@ -77,7 +87,6 @@ public:
                       retry_context.attempts);
       }
 
-      // TODO: use real delay
       update_delay(retry_context);
       if (!retry_context.delay) {
         break;

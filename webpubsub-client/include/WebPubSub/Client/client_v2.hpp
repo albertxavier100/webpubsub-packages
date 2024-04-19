@@ -32,10 +32,9 @@ public:
             const client_options<protocol_t> &options,
             websocket_factory_t &websocket_factory,
             const std::string &logger_name)
-      : log_(logger_name), ack_cache_(), options_(options),
+      : log_(logger_name), options_(options),
         lifetime_(strand, credential, websocket_factory, options, log_),
-        receive_(strand, options, ack_cache_, log_),
-        send_(strand, options, log_),
+        receive_(strand, options, log_), send_(strand, options, log_),
         transition_context_(strand, lifetime_, receive_, send_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
@@ -180,7 +179,5 @@ private:
       transition_context_;
   const detail::log log_;
   const client_options<protocol_t> &options_;
-  // TODO: move to receive service
-  std::unordered_map<uint64_t, detail::ack_entity> ack_cache_;
 };
 } // namespace webpubsub

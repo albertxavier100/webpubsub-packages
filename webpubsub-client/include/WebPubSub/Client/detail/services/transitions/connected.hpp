@@ -27,8 +27,6 @@ auto async_on_event(transition_context_t *context, connected &connected,
   co_return stopping{};
 }
 
-// TODO: reuse spawn loop
-
 template <transition_context_c transition_context_t>
 auto on_enter_core(transition_context_t *context) -> void {
   spdlog::trace(":::Transition::: enter connected state");

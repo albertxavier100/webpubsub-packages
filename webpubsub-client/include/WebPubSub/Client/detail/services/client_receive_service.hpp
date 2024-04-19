@@ -11,7 +11,7 @@
 
 #include "uri.hh"
 #include "webpubsub/client/common/asio.hpp"
-#include "webpubsub/client/detail/client/ack_entity.hpp"
+#include "webpubsub/client/detail/client/ack_cache.hpp"
 #include "webpubsub/client/detail/client/failed_connection_context.hpp"
 #include "webpubsub/client/detail/client/loop_tracker.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
@@ -26,13 +26,12 @@
 namespace webpubsub {
 namespace detail {
 template <webpubsub_protocol_t protocol_t> class client_receive_service {
+
 public:
   client_receive_service(strand_t &strand,
                          const client_options<protocol_t> &options,
-                         std::unordered_map<uint64_t, ack_entity> &ack_cache,
                          const log &log)
-      : loop_svc_("RECEIVE LOOP", strand, log), ack_cache_(ack_cache),
-        options_(options) {}
+      : loop_svc_("RECEIVE LOOP", strand, log), options_(options) {}
 
   eventpp::CallbackList<void(const failed_connection_context)>
       on_receive_failed;
@@ -80,11 +79,7 @@ private:
 
     if (!ok) {
       spdlog::trace("on_receive_failed");
-      for (auto &ack_pair : ack_cache_) {
-        auto &id = ack_pair.first;
-        auto &entity = ack_pair.second;
-        co_await entity.async_finish_with(ack_entity::result::cancelled);
-      }
+      context->ack_cache().finish_all(ack_cache::result::cancelled);
       spdlog::trace("handle ack cache finished");
       auto reconnect_url = build_reconnection_url(context);
 
@@ -107,22 +102,22 @@ private:
     co_await std::visit(
         overloaded{
             [&context, this](const ConnectedResponse &res) -> async_t<> {
-              return async_handle_connected_response(res, context);
+              return async_handle_connected_response(std::move(res), context);
             },
-            [](const DisconnectedResponse &res) -> async_t<> {
-              // TODO: impl
+            [&context](const DisconnectedResponse &res) -> async_t<> {
+              context->safe_invoke_callback(std::move(res));
               return async_t<>();
             },
-            [](const ServerMessageResponse &res) -> async_t<> {
-              // TODO: impl
+            [&context](const ServerMessageResponse &res) -> async_t<> {
+              context->safe_invoke_callback(std::move(res));
               return async_t<>();
             },
-            [](const GroupMessageResponseV2 &res) -> async_t<> {
-              // TODO: impl
+            [&context](const GroupMessageResponseV2 &res) -> async_t<> {
+              context->safe_invoke_callback(std::move(res));
               return async_t<>();
             },
-            [](const AckResponse &res) -> async_t<> {
-              // TODO: impl
+            [&context](const AckResponse &res) -> async_t<> {
+              context->safe_invoke_callback(std::move(res));
               return async_t<>();
             },
         },
@@ -133,7 +128,7 @@ private:
   auto
   async_handle_connected_response(const ConnectedResponse &res,
                                   transition_context_t *context) -> async_t<> {
-    context->lifetime().update_connection_info(res.moveConnectionId(),
+    context->lifetime().update_connection_info(res.getConnectionId(),
                                                res.getReconnectionToken());
     co_await async_handle_connection_connected(res, context);
   }
@@ -206,7 +201,6 @@ private:
 
   const client_options<protocol_t> &options_;
   client_loop_service loop_svc_;
-  std::unordered_map<uint64_t, detail::ack_entity> &ack_cache_;
 };
 } // namespace detail
 } // namespace webpubsub

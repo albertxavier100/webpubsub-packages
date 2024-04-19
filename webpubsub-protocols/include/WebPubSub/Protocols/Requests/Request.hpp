@@ -19,7 +19,9 @@ public:
       : type(type), ackId(ackId) {}
 
   auto setAckId(std::optional<uint64_t> id) { ackId = id; }
-
+  auto hasAckId() ->bool {return ackId.has_value();}
+  auto getAckId() -> std::optional<uint64_t> {return ackId;}
+  
 protected:
   template <typename TRequest>
   static void requestToJson(nlohmann::json &json, const TRequest &request) {

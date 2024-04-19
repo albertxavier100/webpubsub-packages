@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="detail.ack_cache" type="CMakeGoogleTestRunConfigurationType" factoryName="Google Test" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="test-webpubsub-client" TARGET_NAME="test-webpubsub-client" CONFIG_NAME="Debug-LLVM" RUN_TARGET_PROJECT_NAME="test-webpubsub-client" RUN_TARGET_NAME="test-webpubsub-client" TEST_CLASS="detail" TEST_METHOD="ack_cache" TEST_MODE="SUITE_TEST">
+    <method v="2">
+      <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      <option name="BeforeTestRunTask" enabled="true" />
+    </method>
+  </configuration>
+</component>

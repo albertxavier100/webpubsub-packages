@@ -10,6 +10,7 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/detail/client/ack_cache.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/common/utils.hpp"
 #include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
@@ -75,29 +76,30 @@ public:
 
   template <typename callback_context_t>
   auto safe_invoke_callback(const callback_context_t callback_context) {
+    // TODO: add log
     try {
       if constexpr (std::is_same_v<connected_context, callback_context_t>) {
-        on_connected(callback_context);
+        on_connected(std::move(callback_context));
         return;
       } else if constexpr (std::is_same_v<disconnected_context,
                                           callback_context_t>) {
-        on_disconnected(callback_context);
+        on_disconnected(std::move(callback_context));
         return;
       } else if constexpr (std::is_same_v<group_data_context,
                                           callback_context_t>) {
-        on_group_data(callback_context);
+        on_group_data(std::move(callback_context));
         return;
       } else if constexpr (std::is_same_v<server_data_context,
                                           callback_context_t>) {
-        on_server_data(callback_context);
+        on_server_data(std::move(callback_context));
         return;
       } else if constexpr (std::is_same_v<rejoin_group_failed_context,
                                           callback_context_t>) {
-        on_rejoin_group_failed(callback_context);
+        on_rejoin_group_failed(std::move(callback_context));
         return;
       } else if constexpr (std::is_same_v<stopped_context,
                                           callback_context_t>) {
-        on_stopped(callback_context);
+        on_stopped(std::move(callback_context));
         return;
       }
     } catch (const std::exception &ex) {
@@ -119,8 +121,11 @@ public:
 
   auto send() -> send_t & { return send_; }
 
+  auto ack_cache() -> ack_cache & { return ack_cache_; }
+
   auto next_ack_id() -> uint64_t { return ack_id_++; }
 
+  // TODO: rename
   auto get_state() -> const state_t & { return state_; }
 
   // TODO: limit this function, only allow use in client_v2
@@ -154,6 +159,7 @@ private:
   state_t state_;
   strand_t &strand_;
   uint64_t ack_id_;
+  detail::ack_cache ack_cache_;
 };
 
 } // namespace detail
