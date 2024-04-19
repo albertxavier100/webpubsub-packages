@@ -13,7 +13,6 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/ack_cache.hpp"
 #include "webpubsub/client/detail/client/failed_connection_context.hpp"
-#include "webpubsub/client/detail/client/loop_tracker.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/common/utils.hpp"
 #include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
@@ -134,7 +133,6 @@ private:
   }
 
   // TODO: only display on the 1st connected
-  // TODO: impl
   template <transition_context_c transition_context_t>
   auto async_handle_connection_connected(const ConnectedResponse &res,
                                          transition_context_t *context)

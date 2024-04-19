@@ -40,7 +40,6 @@ TEST(detail, ack_cache) {
 // TODO: impl
 TEST(detail, sequence_id) {}
 
-// TODO: add test for simple std::string
 TEST(detail, credential) {
   using namespace webpubsub;
   io::io_context io_context;

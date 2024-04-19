@@ -52,7 +52,6 @@ public:
   const char *RECOVER_CONNECTION_ID_QUERY = "awps_connection_id";
   const char *RECOVER_RECONNECTION_TOKEN_QUERY = "awps_reconnection_token";
 
-  // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto async_connect(transition_context_t *context) -> async_t<> {
     co_await lock_.async_lock();
@@ -138,8 +137,6 @@ private:
   std::string client_access_uri_;
   const std::unordered_map<std::string, group_context> groups_;
   exclusion_lock lock_;
-
-  //  TODO: add connection lock?
 };
 
 } // namespace detail

@@ -25,13 +25,6 @@ TEST(messaging, callbacks) {
   io::io_context ioc;
   strand_t strand(ioc.get_executor());
   client_options<protocol_t> options;
-  std::unordered_map<uint64_t, ack_entity> ack_cache;
-  log log("console");
-
-  client_receive_service<protocol_t> receive(strand, options, ack_cache, log);
-
-  io::co_spawn(ioc, []() -> async_t<> {}, [](auto e) {});
-  ioc.run();
 }
 } // namespace detail
 } // namespace webpubsub

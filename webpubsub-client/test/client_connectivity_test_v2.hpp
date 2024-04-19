@@ -36,7 +36,7 @@ public:
              webpubsub::websocket_close_status &status) -> async_t<> {
     using namespace std::chrono_literals;
 
-    co_await webpubsub::detail::async_delay(strand, 1s, cancel_.slot());
+    co_await webpubsub::detail::async_delay_v2(strand, 1s);
     if (!is_connected_) {
       co_await async_read_connected_message(payload, status);
       is_connected_ = true;

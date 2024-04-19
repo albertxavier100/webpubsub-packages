@@ -62,12 +62,6 @@ public:
 
   auto async_stop() -> async_t<> {
     spdlog::trace("async_stop -- beg");
-    auto &state = transition_context_.get_state();
-    if (std::holds_alternative<detail::connecting>(state) ||
-        std::holds_alternative<detail::recovering>(state) ||
-        std::holds_alternative<detail::reconnecting>(state)) {
-      // TODO: wait the state finish
-    }
     co_await transition_context_.async_raise_event(detail::to_stopping_state{});
     co_await transition_context_.async_raise_event(detail::to_stopped_state{});
     spdlog::trace("async_stop -- end");

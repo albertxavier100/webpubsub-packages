@@ -26,11 +26,11 @@ static_assert(false, "The minimum version of standalone Asio is 1.8.0");
 #include <asio/strand.hpp>
 #include <asio/use_awaitable.hpp>
 
-#else // Use boost
+#else
+// TODO: use boost
 
 #endif
 
-// TODO:
 #include "webpubsub/client/config/core.hpp"
 
 #endif // TEST_WEBPUBSUB_CLIENT_ASIO_HPP

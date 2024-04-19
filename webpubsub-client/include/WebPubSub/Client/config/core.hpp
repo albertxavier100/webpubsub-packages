@@ -12,7 +12,6 @@ namespace asio {}
 
 } // namespace boost
 
-// TODO: add boost asio
 namespace webpubsub {
 namespace io {
 #ifdef ASIO_STANDALONE
