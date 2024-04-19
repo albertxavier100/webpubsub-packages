@@ -31,9 +31,7 @@ public:
   ack_cache() {}
 
   auto add_or_get(strand_t &strand, uint64_t id) -> void {
-    if (!cache_.contains(id)) {
-      cache_.emplace(id, ack_channel_t{strand, 1});
-    }
+    cache_.try_emplace(id, ack_channel_t{strand, 1});
   }
 
   auto async_wait(uint64_t id) -> async_t<result_t> {

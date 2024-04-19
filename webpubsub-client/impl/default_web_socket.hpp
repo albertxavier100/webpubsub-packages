@@ -28,7 +28,7 @@ public:
                                     const bool as_text = true) {
     co_return;
   }
-  // TODO: change status to enum
+
   asio::awaitable<void> async_read(uint64_t *&start, uint64_t &size,
                                    web_socket_close_status &status) {
     co_return;

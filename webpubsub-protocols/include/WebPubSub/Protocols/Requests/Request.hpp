@@ -45,6 +45,7 @@ public:
                const std::optional<uint64_t> &ackId)
       : Request(type, ackId), group(group) {}
 
+  auto getGroup() const ->const std::string & {return group;}
 protected:
   template <typename TRequest>
   static void groupRequestToJson(nlohmann::json &json,

@@ -8,6 +8,7 @@
 #include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
 #include "webpubsub/client/detail/client/failed_connection_context.hpp"
+#include "webpubsub/client/detail/client/group_context.hpp"
 #include "webpubsub/client/detail/client/retry_context.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
@@ -89,9 +90,14 @@ public:
 
   auto async_join_group(const JoinGroupRequest request,
                         bool fire_and_forget = false) -> async_t<> {
-    // TODO: update group entities
-    co_await send_.async_retry_send(request, transition_context_,
-                                    fire_and_forget);
+    auto &groups = transition_context_.lifetime().groups();
+    const auto &group_name = request.getGroup();
+    groups.try_emplace(group_name, detail::group_context{});
+    auto &group_context = groups[group_name];
+    auto result = co_await send_.async_retry_send(request, transition_context_,
+                                                  fire_and_forget);
+    group_context.set_joined(true);
+    co_return result;
   }
 
   auto async_leave_group(const LeaveGroupRequest request,
@@ -140,10 +146,10 @@ private:
             ctx.get_state().index());
         if (!failed_ctx.should_recover) {
           // TODO: use actual string
-          co_await ctx.async_raise_event(to_disconnected{"TODO", "TODO"});
+          co_await ctx.async_raise_event(
+              to_disconnected{ctx.lifetime().connection_id(), "TODO"});
         }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
-        auto &retry_opt = opt.reconnect_retry_options;
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
                       "to_connected_or_disconnected_state");

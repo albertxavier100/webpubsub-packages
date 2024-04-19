@@ -44,6 +44,7 @@ auto on_enter_core(transition_context_t *context) -> void {
 template <transition_context_c transition_context_t>
 auto async_on_enter(transition_context_t *context, connected &connected,
                     to_connected_state &event) -> async_t<> {
+  connected.first_connected = true;
   on_enter_core(context);
   co_return;
 }
@@ -51,6 +52,7 @@ auto async_on_enter(transition_context_t *context, connected &connected,
 template <transition_context_c transition_context_t>
 auto async_on_enter(transition_context_t *context, connected &connected,
                     to_connected_or_disconnected_state &event) -> async_t<> {
+  connected.first_connected = false;
   on_enter_core(context);
   co_return;
 }

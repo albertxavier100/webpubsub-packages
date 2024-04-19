@@ -66,7 +66,6 @@ public:
     }
   }
 
-  // TODO: IMPL
   template <transition_context_c transition_context_t>
   auto
   async_establish_new_websocket(std::string uri,

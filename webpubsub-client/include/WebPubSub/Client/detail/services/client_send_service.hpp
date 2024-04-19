@@ -117,6 +117,7 @@ private:
         spdlog::trace("async_try_get_sequence_id end");
         if (ok) {
           // TODO: send sequence ack back to server
+          
           spdlog::trace("send sequence ack back to server...");
         }
         spdlog::trace("sequence ack in loop...");

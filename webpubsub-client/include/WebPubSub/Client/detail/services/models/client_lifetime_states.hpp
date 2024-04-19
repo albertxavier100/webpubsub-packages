@@ -15,7 +15,10 @@
 
 namespace webpubsub {
 namespace detail {
-struct connected {};
+struct connected {
+  bool first_connected = true;
+  std::string disconnected_message;
+};
 struct stopped {};
 struct disconnected {};
 struct stopping {};

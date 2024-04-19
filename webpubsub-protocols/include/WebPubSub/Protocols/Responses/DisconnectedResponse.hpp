@@ -10,6 +10,8 @@ public:
   const std::optional<std::string> &getMessage() const { return message; }
 #pragma endregion
 
+  auto moveMessage() const ->std::optional<std::string> {return message;}
+  
 private:
   NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(DisconnectedResponse, type, event,
                                               message)
