@@ -75,39 +75,40 @@ public:
   eventpp::CallbackList<void(const stopped_context)> on_stopped;
 
   template <typename callback_context_t>
-  auto safe_invoke_callback(const callback_context_t callback_context) {
+  auto safe_invoke_callback(callback_context_t && callback_context) {
     // TODO: add log
     try {
       if constexpr (std::is_same_v<connected_context, callback_context_t>) {
-        on_connected(std::move(callback_context));
+        on_connected(callback_context);
         return;
       } else if constexpr (std::is_same_v<disconnected_context,
                                           callback_context_t>) {
-        on_disconnected(std::move(callback_context));
+        on_disconnected(callback_context);
         return;
       } else if constexpr (std::is_same_v<group_data_context,
                                           callback_context_t>) {
-        on_group_data(std::move(callback_context));
+        on_group_data(callback_context);
         return;
       } else if constexpr (std::is_same_v<server_data_context,
                                           callback_context_t>) {
-        on_server_data(std::move(callback_context));
+        on_server_data(callback_context);
         return;
       } else if constexpr (std::is_same_v<rejoin_group_failed_context,
                                           callback_context_t>) {
-        on_rejoin_group_failed(std::move(callback_context));
+        on_rejoin_group_failed(callback_context);
         return;
       } else if constexpr (std::is_same_v<stopped_context,
                                           callback_context_t>) {
-        on_stopped(std::move(callback_context));
+        on_stopped(callback_context);
         return;
+      } else {
+        static_assert(false, "unsupported context");
+        spdlog::trace("unsupported context");
       }
     } catch (const std::exception &ex) {
       // TODO: print callback name
       spdlog::trace("failed to invoke callback: {0}");
     }
-    // TODO: print callback context name
-    spdlog::trace("not supported callback context");
   }
 
   // TODO: remove
@@ -126,7 +127,10 @@ public:
   auto next_ack_id() -> uint64_t { return ack_id_++; }
 
   // TODO: rename
-  auto get_state() -> const state_t & { return state_; }
+  auto get_state() -> state_t & { return state_; }
+
+  // TODO: ack cache reset
+  auto reset() {}
 
   // TODO: limit this function, only allow use in client_v2
   auto async_raise_event(event_t event) -> async_t<> {

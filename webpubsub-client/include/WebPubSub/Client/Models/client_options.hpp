@@ -12,5 +12,7 @@ template <webpubsub_protocol_t protocol_t> struct client_options {
   bool auto_rejoin_groups = true;
   retry_options message_retry_options;
   retry_options reconnect_retry_options;
+  // TODO: find a best one
+  size_t max_buffer_size = 10000;
 };
 } // namespace webpubsub

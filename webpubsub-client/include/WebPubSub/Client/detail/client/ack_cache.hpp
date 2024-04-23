@@ -33,15 +33,21 @@ public:
   auto add_or_get(strand_t &strand, uint64_t id) -> void {
     cache_.try_emplace(id, ack_channel_t{strand, 1});
   }
+  auto finish(uint64_t id, result_t &&result) -> void {
+    if (cache_.contains(id)) {
+      cache_.at(id).try_send(io::error_code{}, result);
+      cache_.erase(id);
+    }
+  }
 
   auto async_wait(uint64_t id) -> async_t<result_t> {
     auto result = co_await cache_.at(id).async_receive(io::use_awaitable);
     co_return result;
   }
 
-  auto finish_all(result_t result) {
+  auto finish_all(result_t &&result) {
     for (auto &kv : cache_) {
-      kv.second.try_send(io::error_code{}, std::move(result));
+      kv.second.try_send(io::error_code{}, result);
     }
   }
 

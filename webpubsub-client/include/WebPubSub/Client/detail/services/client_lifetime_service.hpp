@@ -120,6 +120,7 @@ private:
   auto reset_connection(transition_context_t *context) {
     context->send().reset();
     context->receive().reset();
+    context->reset();
     connection_id_.clear();
     client_access_uri_.clear();
     reconnection_token_ = std::nullopt;

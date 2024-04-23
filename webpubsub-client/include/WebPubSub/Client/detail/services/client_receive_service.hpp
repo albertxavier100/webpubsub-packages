@@ -24,13 +24,15 @@
 
 namespace webpubsub {
 namespace detail {
-template <webpubsub_protocol_t protocol_t> class client_receive_service {
 
+template <webpubsub_protocol_t protocol_t> class client_receive_service {
 public:
   client_receive_service(strand_t &strand,
                          const client_options<protocol_t> &options,
                          const log &log)
-      : loop_svc_("RECEIVE LOOP", strand, log), options_(options) {}
+      : loop_svc_("RECEIVE LOOP", strand, log), options_(options),
+        server_data_channel_(strand, options.max_buffer_size),
+        group_data_channel_(strand, options.max_buffer_size) {}
 
   eventpp::CallbackList<void(const failed_connection_context)>
       on_receive_failed;
@@ -50,8 +52,8 @@ public:
 
 private:
   template <transition_context_c transition_context_t>
-  auto
-  async_start_message_loop_core(transition_context_t *context) -> async_t<> {
+  auto async_start_message_loop_core(transition_context_t *context)
+      -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
@@ -90,33 +92,34 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_payload(std::string payload,
+  auto async_handle_payload(std::string &&payload,
                             transition_context_t *context) -> async_t<> {
     // TODO: rename the inconsistent naming in protocol
-    auto response = options_.protocol.read(std::move(payload));
+    auto response = options_.protocol.read(payload);
     if (!response) {
       spdlog::trace("failed to parse payload");
       co_return;
     }
+
     co_await std::visit(
-        overloaded{
-            [&context, this](const ConnectedResponse &res) -> async_t<> {
-              return async_handle_connected_response(std::move(res), context);
-            },
-            [&context, this](const DisconnectedResponse &res) -> async_t<> {
-              return async_t<>();
-            },
-            [&context, this](const ServerMessageResponse &res) -> async_t<> {
-              return async_t<>();
-            },
-            [&context, this](const GroupMessageResponseV2 &res) -> async_t<> {
-              return async_t<>();
-            },
-            [&context, this](const AckResponse &res) -> async_t<> {
-              return async_t<>();
-            },
+        [&context, this](auto &&res) -> async_t<> {
+          using T = std::decay_t<decltype(res)>;
+          if constexpr (std::is_same_v<T, ConnectedResponse>) {
+            return async_handle_connected_response(std::move(res), context);
+          } else if constexpr (std::is_same_v<T, DisconnectedResponse>) {
+            return async_handle_disconnected_response(std::move(res), context);
+          } else if constexpr (std::is_same_v<T, GroupMessageResponseV2>) {
+            return async_handle_group_data_response(std::move(res), context);
+          } else if constexpr (std::is_same_v<T, ServerMessageResponse>) {
+            return async_handle_server_data_response(std::move(res), context);
+          } else if constexpr (std::is_same_v<T, AckResponse>) {
+            return async_handle_ack_response(std::move(res), context);
+          } else {
+            static_assert(false, "unsupported response");
+          }
+          return async_t<>();
         },
-        *response);
+        std::move(*response));
   }
 
   template <transition_context_c transition_context_t>
@@ -131,19 +134,29 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_ack_response(connected *connected_state,
-                                 const AckResponse &res,
+  auto async_handle_ack_response(AckResponse &&res,
                                  transition_context_t *context) -> async_t<> {
-    // TODO: impl
+    ack_cache::result_t result;
+    // TODO: use a const string for error name
+    if (res.getSuccess() ||
+        res.getError() && res.getError().value().getName() == "Duplicate") {
+      result = ack_cache::result::completed;
+    } else {
+      result = invalid_operation(
+          "Received non-success acknowledge from the service");
+    }
+    // TODO: use wps result instead
+    context->ack_cache().finish(res.getAckId(), std::move(result));
+    return async_t<>();
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_disconnected_response(
-      connected *connected_state, const DisconnectedResponse &res,
-      transition_context_t *context) -> async_t<> {
+  auto async_handle_disconnected_response(DisconnectedResponse &&res,
+                                          transition_context_t *context)
+      -> async_t<> {
     if (auto connected_state =
             std::get_if<connected>(&(context->get_state()))) {
-      connected_state->disconnected_message = res.moveMessage();
+      connected_state->disconnected_message = *res.moveMessage();
     } else {
       spdlog::trace("client is not in connected state");
     }
@@ -151,24 +164,37 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_server_data_response(
-      connected *connected_state, const ServerMessageResponse &res,
-      transition_context_t *context) -> async_t<> {
-    // TODO: impl
+  auto async_handle_server_data_response(ServerMessageResponse &&res,
+                                         transition_context_t *context)
+      -> async_t<> {
+    if (res.getSequenceId()) {
+      auto &sid = context->send().sequence_id();
+      if (!(co_await sid.async_try_update(*res.getSequenceId()))) {
+        co_return;
+      }
+    }
+    co_await server_data_channel_.async_send(io::error_code{}, res,
+                                             io::use_awaitable);
   }
 
   template <transition_context_c transition_context_t>
-  auto
-  async_handle_group_data_response(connected *connected_state,
-                                   const GroupMessageResponseV2 &res,
-                                   transition_context_t *context) -> async_t<> {
-    // TODO: impl
+  auto async_handle_group_data_response(GroupMessageResponseV2 &&res,
+                                        transition_context_t *context)
+      -> async_t<> {
+    if (res.getSequenceId()) {
+      auto &sid = context->send().sequence_id();
+      if (!(co_await sid.async_try_update(*res.getSequenceId()))) {
+        co_return;
+      }
+    }
+    co_await group_data_channel_.async_send(io::error_code{}, res,
+                                            io::use_awaitable);
   }
 
   template <transition_context_c transition_context_t>
-  auto
-  async_handle_connected_response(const ConnectedResponse &res,
-                                  transition_context_t *context) -> async_t<> {
+  auto async_handle_connected_response(ConnectedResponse &&res,
+                                       transition_context_t *context)
+      -> async_t<> {
     const auto connected_state = check_state(context);
     if (connected_state) {
       context->lifetime().update_connection_info(res.getConnectionId(),
@@ -210,8 +236,10 @@ private:
     context->safe_invoke_callback(std::move(callback_context));
   }
 
-  auto
-  concat_query(const std::map<std::string, std::string> &query) -> std::string {
+  auto async_start_handle_group_data_response() -> async_t<> {}
+
+  auto concat_query(const std::map<std::string, std::string> &query)
+      -> std::string {
     bool first = true;
     std::stringstream ss;
     for (const auto &kv : query) {
@@ -244,8 +272,41 @@ private:
     return std::move(uri_str);
   }
 
+  template <transition_context_c transition_context_t>
+  auto async_start_group_data_response_handler(transition_context_t *context)
+      -> async_t<> {
+    for (;;) {
+      auto [ec, res] =
+          co_await group_data_channel_.async_receive(io::use_awaitable);
+      group_data_context callback_context{
+          res.getGroup(), res.getSequenceId(), res.getFromUseId(),
+          res.getDataType()
+          // TODO: data
+          // TODO: data type
+      };
+      context->safe_invoke_callback(callback_context);
+    }
+  }
+
+  template <transition_context_c transition_context_t>
+  auto async_start_server_data_response_handler(transition_context_t *context)
+      -> async_t<> {
+    for (;;) {
+      auto [ec, res] =
+          co_await server_data_channel_.async_receive(io::use_awaitable);
+      server_data_context callback_context{
+          res.getSequenceId(), res.getDataType(),
+          // TODO: data
+      };
+      context->safe_invoke_callback(callback_context);
+    }
+  }
   const client_options<protocol_t> &options_;
   client_loop_service loop_svc_;
+  io::experimental::channel<void(io::error_code, ServerMessageResponse)>
+      server_data_channel_;
+  io::experimental::channel<void(io::error_code, GroupMessageResponseV2)>
+      group_data_channel_;
 };
 } // namespace detail
 } // namespace webpubsub

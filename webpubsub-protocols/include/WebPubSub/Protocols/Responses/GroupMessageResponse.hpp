@@ -12,6 +12,8 @@ public:
     return fromUserId;
   }
 #pragma endregion
+  auto moveGroup() -> std::string { return std::move(group); }
+  auto moveFromUserId() -> std::optional<std::string> { return std::move(fromUserId); }
 
 private:
   NLOHMANN_DEFINE_TYPE_INTRUSIVE_WITH_DEFAULT(GroupMessageResponseV2,

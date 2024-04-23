@@ -2,6 +2,7 @@
 #include <WebPubSub/Protocols/Acks/SequenceAckSignal.hpp>
 #include <WebPubSub/Protocols/Requests/JoinGroupRequest.hpp>
 #include <WebPubSub/Protocols/Requests/LeaveGroupRequest.hpp>
+#include <WebPubSub/Protocols/Requests/SendEventRequest.hpp>
 #include <WebPubSub/Protocols/Requests/SendToGroupRequest.hpp>
 #include <WebPubSub/Protocols/Responses/AckResponse.hpp>
 #include <WebPubSub/Protocols/Responses/ConnectedResponse.hpp>
@@ -33,7 +34,7 @@ concept webpubsub_protocol_t = requires(T t) {
   {
     t.get_webpubsub_protocol_message_type()
   } -> std::same_as<WebPubSubProtocolMessageType>;
-  {t.is_reliable()}->std::same_as<bool>;
+  { t.is_reliable() } -> std::same_as<bool>;
 };
 
 class DummyWebPubSubProtocol {
@@ -49,7 +50,7 @@ public:
 
   std::string get_name() { return ""; }
 
-  bool is_reliable() {return false;}
+  bool is_reliable() { return false; }
   WebPubSubProtocolMessageType get_webpubsub_protocol_message_type() const {
     return WebPubSubProtocolMessageText;
   }

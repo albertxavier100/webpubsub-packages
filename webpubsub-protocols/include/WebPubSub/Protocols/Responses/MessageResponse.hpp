@@ -66,12 +66,13 @@ public:
   const std::optional<uint64_t> getSequenceId() const { return sequenceId; }
   const MessageSourceType getFrom() const { return from; }
   const std::optional<DataType> &getDataType() const { return dataType; }
+#pragma endregion
+
 #pragma region getData
   template <typename T> void getData(T &dataOut) const {
     details::getData(dataType, data, dataOut);
   }
 
-#pragma endregion
 #pragma endregion
 
 protected:

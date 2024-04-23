@@ -98,6 +98,8 @@ public:
     co_return request_result{};
   }
 
+  auto sequence_id() -> sequence_id & { return sequence_id_; }
+
 private:
   auto async_start_sequence_ack_loop() -> async_t<> {
     using namespace std::chrono_literals;
@@ -134,6 +136,7 @@ private:
   };
 
   client_loop_service loop_svc_;
+  // TODO: move to transition context
   detail::sequence_id sequence_id_;
   const client_options<protocol_t> &options_;
 };
