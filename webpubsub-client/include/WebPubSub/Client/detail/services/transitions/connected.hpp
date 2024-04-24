@@ -32,7 +32,7 @@ auto on_enter_core(transition_context_t *context) -> void {
   spdlog::trace(":::Transition::: enter connected state");
   try {
     spdlog::trace("spawn_sequence_ack_loop_coro");
-    context->send().spawn_sequence_ack_loop_coro();
+    context->send().spawn_sequence_ack_loop_coro(context);
     spdlog::trace("spawn_message_loop_coro");
     context->receive().spawn_message_loop_coro(context);
   } catch (const std::exception &ex) {

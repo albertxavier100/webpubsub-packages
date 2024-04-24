@@ -28,7 +28,6 @@
 
 namespace webpubsub {
 namespace detail {
-// TODO: rename websocket_service
 template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
           typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
@@ -73,7 +72,7 @@ public:
     spdlog::trace("async_connect_websocket -- beg");
     websocket_ =
         websocket_factory_.create(std::move(uri), options_.protocol.get_name());
-    // TODO: actually connect
+    co_await websocket_->async_connect();
     spdlog::trace("async_connect_websocket -- end");
     co_return;
   }
@@ -90,7 +89,7 @@ public:
     co_await websocket_->async_write(frame);
   }
 
-  // TODO: dev
+  // TODO: low: dev
   auto test() {}
 
   auto update_connection_info(std::string connection_id,
@@ -115,7 +114,7 @@ public:
   auto client_access_uri() -> const std::string & { return client_access_uri_; }
 
 private:
-  // TODO: move to each on_leave_state
+  // TODO: low: move to each on_leave_state
   template <transition_context_c transition_context_t>
   auto reset_connection(transition_context_t *context) {
     context->send().reset();

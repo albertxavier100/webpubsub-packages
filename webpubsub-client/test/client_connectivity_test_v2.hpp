@@ -2,7 +2,7 @@
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
-#include "webpubsub/client/client_v2.hpp"
+#include "webpubsub/client/client.hpp"
 #include "webpubsub/client/detail/async/utils.hpp"
 #include "webpubsub/client/models/retry_mode.hpp"
 #include "gtest/gtest.h"
@@ -101,7 +101,7 @@ TEST(connectivity, start_stop_basic) {
   using options_t = webpubsub::client_options<protocol_t>;
   using factory_t = test_websocket_factory_1<test_websocket_1>;
   using client_t =
-      webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
+      webpubsub::client<protocol_t, factory_t, test_websocket_1>;
   using credential_t = webpubsub::client_credential;
   using namespace std::chrono_literals;
 
@@ -142,7 +142,7 @@ TEST(connectivity, start_stop_with_cancel) {
   using factory_t = test_websocket_factory_1<test_websocket_1>;
   using credential_t = webpubsub::client_credential;
   using client_t =
-      webpubsub::client_v2<protocol_t, factory_t, test_websocket_1>;
+      webpubsub::client<protocol_t, factory_t, test_websocket_1>;
   using namespace std::chrono_literals;
 
   if (!spdlog::get("console")) {
@@ -195,7 +195,7 @@ TEST(connectivity, auto_reconnect) {
   using factory_t = test_websocket_factory_1<test_websocket_reconnect>;
   using credential_t = webpubsub::client_credential;
   using client_t =
-      webpubsub::client_v2<protocol_t, factory_t, test_websocket_reconnect>;
+      webpubsub::client<protocol_t, factory_t, test_websocket_reconnect>;
   using namespace std::chrono_literals;
 
   if (!spdlog::get("console")) {

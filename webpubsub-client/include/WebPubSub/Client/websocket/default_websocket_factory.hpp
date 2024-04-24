@@ -6,19 +6,15 @@
 
 namespace webpubsub {
 // TODO: dev for now
-class default_web_socket_factory {
+class default_websocket_factory {
 public:
-  default_web_socket_factory(asio::io_context &io_context)
-      : io_context_(io_context) {}
+  default_websocket_factory() {}
 
   default_web_socket create(std::string url, std::string protocol_name) {
     // TODO: dev for now
-    return default_web_socket(url, protocol_name, io_context_);
+    return default_web_socket(url, protocol_name);
   }
-
-private:
-  asio::io_context &io_context_;
 };
 
-static_assert(web_socket_factory_t<default_web_socket_factory>);
+static_assert(web_socket_factory_t<default_websocket_factory>);
 } // namespace webpubsub

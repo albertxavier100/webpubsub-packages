@@ -94,7 +94,7 @@ private:
   template <transition_context_c transition_context_t>
   auto async_handle_payload(std::string &&payload,
                             transition_context_t *context) -> async_t<> {
-    // TODO: rename the inconsistent naming in protocol
+    // TODO: low: rename the inconsistent naming in protocol
     auto response = options_.protocol.read(payload);
     if (!response) {
       spdlog::trace("failed to parse payload");
@@ -210,7 +210,7 @@ private:
   auto async_handle_connection_connected(const ConnectedResponse &res,
                                          transition_context_t *context)
       -> async_t<> {
-    // TODO: test auto rejoin group
+    // TODO: low: test auto rejoin group
     if (options_.auto_rejoin_groups) {
       for (auto &pair : context->lifetime().groups()) {
         auto &name = pair.first;
@@ -282,7 +282,6 @@ private:
           res.getGroup(), res.getSequenceId(), res.getFromUseId(),
           res.getDataType()
           // TODO: data
-          // TODO: data type
       };
       context->safe_invoke_callback(callback_context);
     }

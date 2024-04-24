@@ -8,14 +8,14 @@
 
 namespace webpubsub {
   // TODO: rename
-class default_web_socket {
+class default_websocket {
   using websocket_t = decltype(io::use_awaitable.as_default_on(io::beast::websocket::stream<io::beast::tcp_stream>()));
 public:
-  default_web_socket(std::string uri, std::string protocol_name)
+  default_websocket(std::string uri, std::string protocol_name)
       :  uri_(std::move(uri)),
         protocol_name_(std::move(protocol_name)) {}
 
-  default_web_socket &operator=(const default_web_socket &other) {
+  default_websocket &operator=(const default_websocket &other) {
     if (this != &other) {
       uri_ = other.uri_;
       protocol_name_ = other.protocol_name_;
@@ -33,7 +33,7 @@ public:
 
     uri client_access_uri(uri_);
     std::string host = client_access_uri.get_host();
-    auto port = "443";
+    auto port = std::format("{}", client_access_uri.get_port());
 
     auto resolver = net::use_awaitable.as_default_on(
         tcp::resolver(co_await net::this_coro::executor));
@@ -77,12 +77,10 @@ public:
   }
 
 private:
-
-private:
   std::string uri_;
   std::string protocol_name_;
   std::optional<websocket_t> websocket_;
 };
 
-static_assert(websocket_c<default_web_socket>);
+static_assert(websocket_c<default_websocket>);
 } // namespace webpubsub

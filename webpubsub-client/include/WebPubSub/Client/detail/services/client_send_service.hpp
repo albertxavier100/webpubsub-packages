@@ -22,14 +22,15 @@ namespace detail {
 
 template <webpubsub_protocol_t protocol_t> class client_send_service {
 public:
-  // TODO: test this service
+  // TODO: low: test this service
   client_send_service(strand_t &strand,
                       const client_options<protocol_t> &options, const log &log)
       : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand),
         options_(options) {}
 
-  auto spawn_sequence_ack_loop_coro() {
-    loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop());
+template <transition_context_c transition_context_t>
+  auto spawn_sequence_ack_loop_coro(transition_context_t *context) {
+    loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop(context));
   }
 
   auto async_cancel_sequence_id_loop_coro() -> async_t<> {
@@ -44,12 +45,12 @@ public:
   }
 
   // TODO: add result
-  template <typename message_t, transition_context_c transition_context_t>
-  auto async_send_request(message_t message,
+  template <typename request_t, transition_context_c transition_context_t>
+  auto async_send_request(request_t request,
                           transition_context_t *context) -> async_t<> {
     const auto &protocol = options_.protocol;
     try {
-      auto frame = protocol.write(message);
+      auto frame = protocol.write(request);
       co_await context->lifetime().async_write_message(frame);
     } catch (const std::exception &ex) {
       spdlog::trace("Failed to send message. ex: {0}", ex.what());
@@ -101,7 +102,9 @@ public:
   auto sequence_id() -> sequence_id & { return sequence_id_; }
 
 private:
-  auto async_start_sequence_ack_loop() -> async_t<> {
+  template <transition_context_c transition_context_t>
+  auto async_start_sequence_ack_loop(transition_context_t *context)
+      -> async_t<> {
     using namespace std::chrono_literals;
     spdlog::trace("async_start_sequence_ack_loop beg");
 
@@ -119,7 +122,7 @@ private:
         spdlog::trace("async_try_get_sequence_id end");
         if (ok) {
           // TODO: send sequence ack back to server
-          
+          co_await async_send_request(SequenceAckSignal{id}, context);
           spdlog::trace("send sequence ack back to server...");
         }
         spdlog::trace("sequence ack in loop...");
@@ -136,7 +139,7 @@ private:
   };
 
   client_loop_service loop_svc_;
-  // TODO: move to transition context
+  // TODO: low: move to transition context
   detail::sequence_id sequence_id_;
   const client_options<protocol_t> &options_;
 };

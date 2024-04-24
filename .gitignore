@@ -41,3 +41,5 @@ webpubsub-client/cmake-build-debug-llvm/
 webpubsub-client/cmake-build-debug-system/
 
 deps/boost/
+
+scripts/server/websocket_server/node_modules/
