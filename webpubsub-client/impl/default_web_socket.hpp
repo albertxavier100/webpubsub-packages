@@ -9,6 +9,7 @@
 namespace webpubsub {
   // TODO: rename
 class default_web_socket {
+  using websocket_t = decltype(io::use_awaitable.as_default_on(io::beast::websocket::stream<io::beast::tcp_stream>()));
 public:
   default_web_socket(std::string uri, std::string protocol_name)
       :  uri_(std::move(uri)),
@@ -36,34 +37,43 @@ public:
 
     auto resolver = net::use_awaitable.as_default_on(
         tcp::resolver(co_await net::this_coro::executor));
-    auto ws =
+    websocket_.emplace(
         net::use_awaitable.as_default_on(websocket::stream<beast::tcp_stream>(
-            co_await net::this_coro::executor));
+            co_await net::this_coro::executor)));
 
     auto const results = co_await resolver.async_resolve(host, port);
     // TODO: make timeout as a member
-    beast::get_lowest_layer(ws).expires_after(std::chrono::seconds(30));
-    auto ep = co_await beast::get_lowest_layer(ws).async_connect(results);
+    beast::get_lowest_layer(*websocket_).expires_after(std::chrono::seconds(30));
+    auto ep =
+        co_await beast::get_lowest_layer(*websocket_).async_connect(results);
     host += ':' + std::to_string(ep.port());
-    beast::get_lowest_layer(ws).expires_never();
-    ws.set_option(
+    beast::get_lowest_layer(*websocket_).expires_never();
+    (*websocket_).set_option(
         websocket::stream_base::timeout::suggested(beast::role_type::client));
-    ws.set_option(
+    (*websocket_)
+        .set_option(
         websocket::stream_base::decorator([](websocket::request_type &req) {
           req.set(http::field::user_agent,
                   std::string(BOOST_BEAST_VERSION_STRING) +
                       " websocket-client-coro");
         }));
-    co_await ws.async_handshake(host, "/");
+    co_await (*websocket_).async_handshake(host, "/");
   }
 
-  auto async_close() -> io::awaitable<void> { co_return; }
+  auto async_close() -> io::awaitable<void> {
+    co_await (*websocket_).async_close(io::beast::websocket::close_code::normal);
+  }
 
-  io::awaitable<void> async_write(std::string write_frame) { co_return; }
+  io::awaitable<void> async_write(std::string write_frame) { 
+        co_await (*websocket_).async_write(io::buffer(std::string(std::move(write_frame))));
+  }
 
   io::awaitable<void> async_read(std::string &read_frame,
                                  websocket_close_status &status) {
-    co_return;
+    io::beast::flat_buffer buffer;
+    co_await (*websocket_).async_read(buffer);
+    auto data = buffer.data();
+    read_frame.assign(io::buffers_begin(data), io::buffers_end(data));
   }
 
 private:
@@ -71,6 +81,7 @@ private:
 private:
   std::string uri_;
   std::string protocol_name_;
+  std::optional<websocket_t> websocket_;
 };
 
 static_assert(websocket_c<default_web_socket>);
