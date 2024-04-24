@@ -28,8 +28,7 @@ public:
       : client_access_uri_provider_(client_access_uri_provider) {}
 
   auto async_get_client_access_uri() const -> detail::async_t<std::string> {
-    auto uri = co_await client_access_uri_provider_();
-    co_return uri;
+    return client_access_uri_provider_();
   }
 
 private:

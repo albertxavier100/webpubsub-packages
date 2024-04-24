@@ -15,13 +15,14 @@ set(SOURCES
 )
 
 include_directories(
-        ../deps/asio/asio/include
+        # ../deps/asio/asio/include
         ../deps/json/include
         ../deps/cppcodec
         ../deps/spdlog/include
         ../deps/uri/include/fix8
         ../deps/eventpp/include
         ../deps/uri-library
+        ../deps/boost/include
 )
 
 find_package(GTest CONFIG REQUIRED)
@@ -33,9 +34,12 @@ if (WIN32 AND CMAKE_C_COMPILER_ID MATCHES "MSVC" OR CMAKE_C_COMPILER_ID MATCHES 
 endif ()
 
 target_compile_definitions(test-webpubsub-client PRIVATE ASIO_HAS_CO_AWAIT=1)
-target_compile_definitions(test-webpubsub-client PRIVATE ASIO_STANDALONE=1)
+# target_compile_definitions(test-webpubsub-client PRIVATE ASIO_STANDALONE=1)
 target_link_libraries(test-webpubsub-client PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
 target_include_directories(test-webpubsub-client PUBLIC
         include
         ../webpubsub-protocols/include
+)
+target_include_directories(test-webpubsub-client PUBLIC
+        impl
 )

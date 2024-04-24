@@ -41,8 +41,7 @@ public:
   }
 
   auto async_wait(uint64_t id) -> async_t<result_t> {
-    auto result = co_await cache_.at(id).async_receive(io::use_awaitable);
-    co_return result;
+    return cache_.at(id).async_receive(io::use_awaitable);
   }
 
   auto finish_all(result_t &&result) {

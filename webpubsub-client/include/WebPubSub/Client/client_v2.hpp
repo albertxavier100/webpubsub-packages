@@ -156,7 +156,8 @@ private:
         co_await ctx.async_raise_event(detail::to_connected_or_stopped_state{});
         spdlog::trace("on_receive_failed.reconnecting... end.");
       } catch (const std::exception &ex) {
-        spdlog::trace("failed to recover, ex: {0}", ex.what());
+        spdlog::trace("unhandled exception in recovering or reconnecting, ex: {0}", ex.what());
+        // TODO: handle ex later
         throw;
       }
     };

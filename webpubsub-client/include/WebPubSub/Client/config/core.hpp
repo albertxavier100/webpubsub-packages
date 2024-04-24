@@ -18,6 +18,9 @@ namespace io {
 using namespace ::asio;
 #else
 using namespace ::boost::asio;
+using namespace ::boost::system;
+using namespace ::boost;
+
 #endif
 } // namespace io
 } // namespace webpubsub

@@ -27,8 +27,20 @@ static_assert(false, "The minimum version of standalone Asio is 1.8.0");
 #include <asio/use_awaitable.hpp>
 
 #else
-// TODO: use boost
-
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/bind_cancellation_slot.hpp>
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
+#include <boost/asio/experimental/channel.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/strand.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/system/error_code.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/version.hpp>
+#include <boost/beast/websocket.hpp>
 #endif
 
 #include "webpubsub/client/config/core.hpp"

@@ -1,12 +1,6 @@
 #pragma once
 
-#include "asio/awaitable.hpp"
-#include "asio/bind_cancellation_slot.hpp"
-#include "asio/co_spawn.hpp"
-#include "asio/detached.hpp"
-#include "asio/steady_timer.hpp"
-#include "asio/system_error.hpp"
-#include "asio/use_awaitable.hpp"
+
 #include "webpubsub/client/common/asio.hpp"
 #include <iostream>
 

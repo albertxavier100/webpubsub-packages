@@ -6,7 +6,6 @@
 >
 > My plan is to make the coding style consistents to asio.
 
-
 ## Requirements
 
 - C++20
@@ -30,4 +29,4 @@ This package provides //TODO
   - deps/cppcodec
 - webpubsub-client
   - webpubsub-protocols
-  - deps/asio
+  - deps/boost

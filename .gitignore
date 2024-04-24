@@ -39,3 +39,5 @@ webpubsub-client/cmake-build-debug/
 webpubsub-client/cmake-build-debug-llvm/
 
 webpubsub-client/cmake-build-debug-system/
+
+deps/boost/
