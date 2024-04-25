@@ -76,21 +76,23 @@ public:
 
   template <typename data_t>
   auto async_send_to_group(const SendToGroupRequest<data_t> request,
-                           bool fire_and_forget = false) -> async_t<> {
-    co_await send_.async_retry_send(request, &transition_context_,
+                           bool fire_and_forget = false)
+      -> async_t<const request_result> {
+    return send_.async_retry_send(request, &transition_context_,
                                     fire_and_forget);
   }
 
   template <typename data_t>
   auto async_send_event(const SendEventRequest<data_t> request,
-                        bool fire_and_forget = false) -> async_t<> {
-    co_await send_.async_retry_send(request, &transition_context_,
+                        bool fire_and_forget = false)
+      -> async_t<const request_result> {
+    return send_.async_retry_send(request, &transition_context_,
                                     fire_and_forget);
   }
 
   auto async_join_group(const JoinGroupRequest request,
                         bool fire_and_forget = false)
-      -> async_t<request_result> {
+      -> async_t<const request_result> {
     auto &groups = transition_context_.lifetime().groups();
     auto const &group_name = request.getGroup();
     groups.try_emplace(group_name, detail::group_context{});
@@ -102,8 +104,9 @@ public:
   }
 
   auto async_leave_group(const LeaveGroupRequest request,
-                         bool fire_and_forget = false) -> async_t<> {
-    co_await send_.async_retry_send(request, &transition_context_,
+                         bool fire_and_forget = false)
+      -> async_t<const request_result> {
+    return send_.async_retry_send(request, &transition_context_,
                                     fire_and_forget);
   }
 

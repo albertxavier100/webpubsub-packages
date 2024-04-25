@@ -1,6 +1,9 @@
 #pragma once
+#include <optional>
 
 namespace webpubsub {
-// TODO: [HIGH] impl
-class request_result {};
+struct request_result {
+  std::optional<uint64_t> ack_id;
+  bool is_duplicated;
+};
 } // namespace webpubsub

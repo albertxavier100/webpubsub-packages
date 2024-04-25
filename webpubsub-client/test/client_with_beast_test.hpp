@@ -52,7 +52,7 @@ TEST(client, with_beast) {
     try {
       auto exe = co_await io::this_coro::executor;
       co_await client.async_start();
-      co_await client.async_join_group(JoinGroupRequest{group});
+      auto const join_res = co_await client.async_join_group(JoinGroupRequest{group});
       co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_send_to_group(
           SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});

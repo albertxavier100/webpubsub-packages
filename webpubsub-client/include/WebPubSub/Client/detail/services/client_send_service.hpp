@@ -60,7 +60,7 @@ template <transition_context_c transition_context_t>
   template <typename request_t, transition_context_c transition_context_t>
   auto
   async_retry_send(request_t request, transition_context_t *context,
-                   bool fire_and_forget = false) -> async_t<request_result> {
+                   bool fire_and_forget = false) -> async_t<const request_result> {
     auto retry_options = options_.message_retry_options;
     if (!request.hasAckId()) {
       auto ack_id = context->next_ack_id();
