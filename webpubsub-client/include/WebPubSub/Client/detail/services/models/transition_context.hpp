@@ -129,7 +129,7 @@ public:
   // TODO: rename
   auto get_state() -> state_t & { return state_; }
 
-  // TODO: ack cache reset
+  // TODO: [HIGH] ack cache reset
   auto reset() {}
 
   // TODO: limit this function, only allow use in client_v2

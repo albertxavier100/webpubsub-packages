@@ -34,7 +34,7 @@ auto async_recover_connection(transition_context_t *context,
         co_return disconnected{};
       }
       auto &lt = context->lifetime();
-      // TODO: make sure reconnect url is not null
+      // TODO: [HIGH] make sure reconnect url is not null
       co_await lt.async_establish_new_websocket(event.reconnect_uri, context);
       spdlog::trace(":::Transition:::  -> connected");
       co_return connected{};
@@ -50,7 +50,6 @@ auto async_on_event(transition_context_t *context, recovering &recovering,
                     to_connected_or_disconnected_state &event)
     -> async_t<state_t> {
   spdlog::trace(":::Transition::: recovering -> connected / disconnected");
-  // TODO: impl
   auto next_state = co_await async_recover_connection(context, event);
   co_return next_state;
 }

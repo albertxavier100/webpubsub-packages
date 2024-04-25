@@ -42,6 +42,7 @@ static_assert(false, "The minimum version of standalone Asio is 1.8.0");
 #include <boost/beast/version.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/buffers_iterator.hpp>
+#include <boost/beast/ssl.hpp>
 
 #endif
 

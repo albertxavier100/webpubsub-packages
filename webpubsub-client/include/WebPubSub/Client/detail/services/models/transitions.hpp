@@ -30,7 +30,6 @@
 
 namespace webpubsub {
 namespace detail {
-// TODO: careful about un-wired transitions
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, auto &state,
                     auto &event) -> async_t<state_t> {

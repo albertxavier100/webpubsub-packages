@@ -44,7 +44,7 @@ template <transition_context_c transition_context_t>
     loop_svc_.reset();
   }
 
-  // TODO: add result
+  // TODO: [HIGH] add result
   template <typename request_t, transition_context_c transition_context_t>
   auto async_send_request(request_t request,
                           transition_context_t *context) -> async_t<> {
@@ -81,7 +81,7 @@ template <transition_context_c transition_context_t>
           co_await cache.async_wait(id);
         }
 
-        // TODO: impl
+        // TODO: [HIGH] impl
         co_return request_result{};
       } catch (const std::exception &ex) {
         spdlog::trace("send message failed in {0} times",
@@ -95,7 +95,7 @@ template <transition_context_c transition_context_t>
       co_await async_delay_v2(context->strand(), *retry_context.delay);
     }
     spdlog::trace("send message retry failed");
-    // TODO: impl
+    // TODO: [HIGH] impl
     co_return request_result{};
   }
 
@@ -121,7 +121,6 @@ private:
         auto ok = co_await sequence_id_.async_try_get_sequence_id(id);
         spdlog::trace("async_try_get_sequence_id end");
         if (ok) {
-          // TODO: send sequence ack back to server
           co_await async_send_request(SequenceAckSignal{id}, context);
           spdlog::trace("send sequence ack back to server...");
         }

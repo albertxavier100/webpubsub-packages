@@ -18,20 +18,20 @@ struct disconnected_context {
   std::optional<std::string> reason;
 };
 
-// TODO: impl
+// TODO: [HIGH] impl
 struct group_data_context {
   std::string group;
   std::optional<uint64_t> sequence_id;
   std::optional<std::string> from_user_id;
   DataType data_type;
-  // TODO data
+  // TODO: [HIGH] data
 };
 
-// TODO: impl
+// TODO: [HIGH] impl
 struct server_data_context {
   std::optional<uint64_t> sequence_id;
   DataType data_type;
-  // TODO data
+  // TODO: [HIGH] data
 };
 
 struct rejoin_group_failed_context {

@@ -3,6 +3,10 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/config/core.hpp"
 #include "gtest/gtest.h"
+#include <cstdlib>
+#include <functional>
+#include <iostream>
+#include <string>
 
 namespace test {
 namespace beast {
@@ -12,32 +16,57 @@ TEST(test, beast_http) {
   namespace http = beast::http;     // from <boost/beast/http.hpp>
   namespace net = boost::asio;      // from <boost/asio.hpp>
   using tcp = boost::asio::ip::tcp; // from <boost/asio/ip/tcp.hpp>
+  namespace ssl = boost::asio::ssl; // from <boost/asio/ssl.hpp>
+
   io::io_context ioc;
+  
   io::co_spawn(
       ioc,
       []() -> io::awaitable<void> {
-        auto host = "127.0.0.1";
+        std::string host = "127.0.0.1";
         auto port = "5000";
         auto target = "/";
         int version = 11;
+
+        ssl::context ctx{ssl::context::tlsv12_client};
+
         // These objects perform our I/O
-        // They use an executor with a default completion token of
-        // use_awaitable This makes our code easy, but will use exceptions
-        // as the default error handling, i.e. if the connection drops, we
-        // might see an exception.
+        // They use an executor with a default completion token of use_awaitable
+        // This makes our code easy, but will use exceptions as the default
+        // error handling, i.e. if the connection drops, we might see an
+        // exception. See async_shutdown for error handling with an error_code.
         auto resolver = net::use_awaitable.as_default_on(
             tcp::resolver(co_await net::this_coro::executor));
-        auto stream = net::use_awaitable.as_default_on(
-            beast::tcp_stream(co_await net::this_coro::executor));
+        using executor_with_default =
+            net::use_awaitable_t<>::executor_with_default<net::any_io_executor>;
+        using tcp_stream = typename beast::tcp_stream::rebind_executor<
+            executor_with_default>::other;
+
+        // We construct the ssl stream from the already rebound tcp_stream.
+        beast::ssl_stream<tcp_stream> stream{
+            net::use_awaitable.as_default_on(
+                beast::tcp_stream(co_await net::this_coro::executor)),
+            ctx};
+
+        // Set SNI Hostname (many hosts need this to handshake successfully)
+        if (!SSL_set_tlsext_host_name(stream.native_handle(), host.c_str()))
+          throw boost::system::system_error(static_cast<int>(::ERR_get_error()),
+                                            net::error::get_ssl_category());
 
         // Look up the domain name
         auto const results = co_await resolver.async_resolve(host, port);
 
         // Set the timeout.
-        stream.expires_after(std::chrono::seconds(30));
+        beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(30));
 
         // Make the connection on the IP address we get from a lookup
-        co_await stream.async_connect(results);
+        co_await beast::get_lowest_layer(stream).async_connect(results);
+
+        // Set the timeout.
+        beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(30));
+
+        // Perform the SSL handshake
+        co_await stream.async_handshake(ssl::stream_base::client);
 
         // Set up an HTTP GET request message
         http::request<http::string_body> req{http::verb::get, target, version};
@@ -45,7 +74,7 @@ TEST(test, beast_http) {
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Set the timeout.
-        stream.expires_after(std::chrono::seconds(30));
+        beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(30));
 
         // Send the HTTP request to the remote host
         co_await http::async_write(stream, req);
@@ -62,15 +91,23 @@ TEST(test, beast_http) {
         // Write the message to standard out
         std::cout << res << std::endl;
 
-        // Gracefully close the socket
-        beast::error_code ec;
-        stream.socket().shutdown(tcp::socket::shutdown_both, ec);
+        // Set the timeout.
+        beast::get_lowest_layer(stream).expires_after(std::chrono::seconds(30));
 
-        // not_connected happens sometimes
-        // so don't bother reporting it.
-        //
-        if (ec && ec != beast::errc::not_connected)
+        // Gracefully close the stream - do not threat every error as an
+        // exception!
+        auto [ec] =
+            co_await stream.async_shutdown(net::as_tuple(net::use_awaitable));
+        if (ec == net::error::eof) {
+          // Rationale:
+          // http://stackoverflow.com/questions/25587403/boost-asio-ssl-async-shutdown-always-finishes-with-an-error
+          ec = {};
+        }
+        if (ec)
           throw boost::system::system_error(ec, "shutdown");
+
+        // If we get here then the connection is closed gracefully
+
       },
       io::detached);
   ioc.run();
@@ -84,6 +121,7 @@ TEST(test, beast_websocket) {
   namespace net = boost::asio;            // from <boost/asio.hpp>
   using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
   namespace io = webpubsub::io;
+  namespace ssl = boost::asio::ssl; // from <boost/asio/ssl.hpp>
 
   std::string host = "127.0.0.1";
   auto port = "8002";

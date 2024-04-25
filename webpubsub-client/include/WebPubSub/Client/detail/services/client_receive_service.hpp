@@ -84,7 +84,7 @@ private:
       spdlog::trace("handle ack cache finished");
       auto reconnect_url = build_reconnection_url(context);
 
-      // TODO: should also consider connection close reason
+      // TODO: [HIGH] should also consider connection close reason
       auto should_recover = reconnect_url.has_value();
       on_receive_failed({should_recover, reconnect_url});
       spdlog::trace("fire on_receive_failed");
@@ -145,7 +145,7 @@ private:
       result = invalid_operation(
           "Received non-success acknowledge from the service");
     }
-    // TODO: use wps result instead
+    // TODO: [HIGH] use wps result instead
     context->ack_cache().finish(res.getAckId(), std::move(result));
     return async_t<>();
   }
@@ -281,7 +281,7 @@ private:
       group_data_context callback_context{
           res.getGroup(), res.getSequenceId(), res.getFromUseId(),
           res.getDataType()
-          // TODO: data
+          // TODO: [HIGH] data
       };
       context->safe_invoke_callback(callback_context);
     }
@@ -295,7 +295,7 @@ private:
           co_await server_data_channel_.async_receive(io::use_awaitable);
       server_data_context callback_context{
           res.getSequenceId(), res.getDataType(),
-          // TODO: data
+          // TODO: [HIGH] data
       };
       context->safe_invoke_callback(callback_context);
     }

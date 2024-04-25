@@ -17,7 +17,7 @@ auto async_on_event(transition_context_t *context, disconnected &disconnected,
                     to_reconnecting_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: disconnected -> reconnecting");
 
-  // TODO: finish any awaiting ack entity
+  // TODO: [HIGH] finish any awaiting ack entity
   if (context->lifetime().auto_reconnect()) {
     spdlog::trace(":::Transition::: -> reconnecting");
     auto retry_context = context->lifetime().make_retry_context();
@@ -38,7 +38,7 @@ auto async_on_enter(transition_context_t *context, disconnected &disconnected,
                     to_disconnected_state &event) -> async_t<> {
   spdlog::trace(":::Transition::: enter disconnected state");
 
-  // TODO: impl
+  // TODO: [HIGH] impl
   try {
 
   } catch (const std::exception &ex) {

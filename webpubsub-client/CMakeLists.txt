@@ -26,6 +26,7 @@ include_directories(
 )
 
 find_package(GTest CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 add_executable(test-webpubsub-client ${SOURCES})
 if (WIN32 AND CMAKE_C_COMPILER_ID MATCHES "MSVC" OR CMAKE_C_COMPILER_ID MATCHES "Visual Studio")
@@ -36,6 +37,9 @@ endif ()
 target_compile_definitions(test-webpubsub-client PRIVATE ASIO_HAS_CO_AWAIT=1)
 # target_compile_definitions(test-webpubsub-client PRIVATE ASIO_STANDALONE=1)
 target_link_libraries(test-webpubsub-client PRIVATE GTest::gtest GTest::gtest_main GTest::gmock GTest::gmock_main)
+target_link_libraries(test-webpubsub-client PRIVATE OpenSSL::SSL)
+target_link_libraries(test-webpubsub-client PRIVATE OpenSSL::Crypto)
+
 target_include_directories(test-webpubsub-client PUBLIC
         include
         ../webpubsub-protocols/include

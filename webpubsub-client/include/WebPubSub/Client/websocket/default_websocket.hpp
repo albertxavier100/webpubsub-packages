@@ -7,7 +7,6 @@
 #include <webpubsub/client/concepts/websocket_c.hpp>
 
 namespace webpubsub {
-  // TODO: rename
 class default_websocket {
   using websocket_t = decltype(io::use_awaitable.as_default_on(io::beast::websocket::stream<io::beast::tcp_stream>()));
 public:

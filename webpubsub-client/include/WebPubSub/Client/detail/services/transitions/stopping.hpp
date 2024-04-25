@@ -18,9 +18,9 @@ auto async_on_event(transition_context_t *context, stopping &stopping,
   co_await context->receive().async_cancel_message_loop_coro();
   spdlog::trace("stopped message loop");
   co_await context->send().async_cancel_sequence_id_loop_coro();
-  // TODO: stop connection here.
-  // TODO: lock connection
+  exclusion_lock lock{context->strand()};
   spdlog::trace("stopped sid loop");
+  co_await context->lifetime()->async_close();
   co_return stopped{};
 }
 } // namespace detail

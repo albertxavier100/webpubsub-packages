@@ -19,7 +19,7 @@ auto async_on_event(transition_context_t *context, connecting &connecting,
     co_await context->lifetime().async_connect(context);
     co_return connected{};
   } catch (const std::exception &ex) {
-    // TODO: reconnect
+    // TODO: [HIGH] reconnect
     spdlog::trace("failed to connect to websocket");
     throw invalid_operation("failed to connect to websocket");
   }

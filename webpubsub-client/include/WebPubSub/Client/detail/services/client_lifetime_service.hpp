@@ -65,6 +65,17 @@ public:
     }
   }
 
+  auto async_close() ->async_t<> { 
+    co_await lock_.async_lock();
+    try {
+      co_await websocket_.async_close();
+      co_await lock_.async_release();
+    } catch (...) {
+      lock_.release();
+      throw;
+    }
+  }
+
   template <transition_context_c transition_context_t>
   auto
   async_establish_new_websocket(std::string uri,

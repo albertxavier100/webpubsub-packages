@@ -4,7 +4,6 @@
 #include <asio/strand.hpp>
 
 namespace webpubsub {
-// TODO: question: allow external io_context / io_strand?
 class io_service {
 public:
   io_service() : io_context_(), strand_(io_context_) {}
