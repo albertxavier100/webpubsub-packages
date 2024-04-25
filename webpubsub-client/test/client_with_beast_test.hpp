@@ -4,6 +4,8 @@
 #include "webpubsub/client/config/core.hpp"
 #include "webpubsub/client/websocket/default_websocket.hpp"
 #include "gtest/gtest.h"
+#include "webpubsub/client/websocket/default_websocket.hpp"
+#include "webpubsub/client/websocket/default_websocket_factory.hpp"
 
 namespace test {
 namespace client_with_beast {
@@ -12,8 +14,8 @@ TEST(client, with_beast) {
   using namespace io::experimental::awaitable_operators;
   using protocol_t = webpubsub::reliable_json_v1_protocol;
   using options_t = webpubsub::client_options<protocol_t>;
-  using factory_t = test_websocket_factory_1<test_websocket_1>;
-  using client_t = webpubsub::client<protocol_t, factory_t, test_websocket_1>;
+  using factory_t = webpubsub::default_websocket_factory;
+  using client_t = webpubsub::client<protocol_t, factory_t, webpubsub::default_websocket>;
   using credential_t = webpubsub::client_credential;
   using namespace std::chrono_literals;
   using strand_t =
@@ -26,6 +28,8 @@ TEST(client, with_beast) {
     spdlog::register_logger(console_logger);
     spdlog::set_level(spdlog::level::trace);
   }
+  webpubsub::io::io_context io_context;
+  strand_t strand{io_context.get_executor()};
 
   factory_t factory;
   protocol_t p;
@@ -35,10 +39,8 @@ TEST(client, with_beast) {
   client.on_connected.append([](webpubsub::connected_context context) {
     spdlog::trace("connection {0} connected.", context.connection_id);
     });
-
-  webpubsub::io::io_context io_context;
-  strand_t strand{io_context.get_executor()};
-  auto run = []() -> io::awaitable<void> {
+  
+  auto run = [&client]() -> io::awaitable<void> {
     try {
       co_await client.async_start();
       co_await client.async_stop();

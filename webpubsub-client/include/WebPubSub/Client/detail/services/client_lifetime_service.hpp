@@ -68,7 +68,7 @@ public:
   auto async_close() ->async_t<> { 
     co_await lock_.async_lock();
     try {
-      co_await websocket_.async_close();
+      co_await websocket_->async_close();
       co_await lock_.async_release();
     } catch (...) {
       lock_.release();

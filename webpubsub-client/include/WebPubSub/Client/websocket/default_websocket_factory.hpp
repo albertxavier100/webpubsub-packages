@@ -1,5 +1,5 @@
 #pragma once
-#include <../impl/default_web_socket.hpp>
+#include "webpubsub/client/websocket/default_websocket.hpp"
 #include <WebPubSub/Protocols/webpubsub_protocol_t.hpp>
 #include <optional>
 #include <webpubsub/client/concepts/websocket_factory_c.hpp>
@@ -9,10 +9,11 @@ class default_websocket_factory {
 public:
   default_websocket_factory() {}
 
-  default_web_socket create(std::string url, std::string protocol_name) {
-    return default_web_socket(url, protocol_name);
+  auto create(std::string url, std::string protocol_name) -> std::unique_ptr<default_websocket> {
+    return std::move(std::make_unique<default_websocket>(url, protocol_name));
   }
 };
 
-static_assert(web_socket_factory_t<default_websocket_factory>);
+static_assert(
+    websocket_factory_c<default_websocket_factory, default_websocket>);
 } // namespace webpubsub
