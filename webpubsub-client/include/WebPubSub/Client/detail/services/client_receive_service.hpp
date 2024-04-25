@@ -67,8 +67,8 @@ private:
         std::string payload;
         websocket_close_status status;
         co_await context->lifetime().async_read_message(payload, status);
-        // TODO: [HIGH] add back
-        //async_handle_payload(std::move(payload), context);
+        spdlog::trace("received payload: {0}", payload);
+        co_await async_handle_payload(std::move(payload), context);
         spdlog::trace("receiving...");
       }
     } catch (const io::system_error &err) {

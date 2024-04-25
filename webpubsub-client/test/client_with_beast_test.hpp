@@ -53,13 +53,13 @@ TEST(client, with_beast) {
       auto exe = co_await io::this_coro::executor;
       co_await client.async_start();
       co_await client.async_join_group(JoinGroupRequest{group});
-      io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
+      co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_send_to_group(
           SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
-      io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
+      co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_send_to_group(
           SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
-      io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
+      co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_stop();
       spdlog::trace("test finish");
     } catch (const std::exception &ex) {
