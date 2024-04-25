@@ -21,3 +21,6 @@
 	path = deps/uri-library
 	url = https://github.com/ben-zen/uri-library
 	tag = 0.1.0-beta
+[submodule "deps/vcpkg"]
+	path = deps/vcpkg
+	url = https://github.com/microsoft/vcpkg
