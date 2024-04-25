@@ -65,7 +65,7 @@ public:
     }
   }
 
-  auto async_close() ->async_t<> { 
+  auto async_close() -> async_t<> {
     co_await lock_.async_lock();
     try {
       co_await websocket_->async_close();
@@ -77,20 +77,23 @@ public:
   }
 
   template <transition_context_c transition_context_t>
-  auto
-  async_establish_new_websocket(std::string uri,
-                                transition_context_t *context) -> async_t<> {
+  auto async_establish_new_websocket(std::string uri,
+                                     transition_context_t *context)
+      -> async_t<> {
     spdlog::trace("async_connect_websocket -- beg");
-    websocket_ =
-        websocket_factory_.create(std::move(uri), options_.protocol.get_name());
+    spdlog::trace("uri={0}, protocol name={1}", uri,
+                  options_.protocol.get_name());
+    websocket_.reset();
+    websocket_ = std::move(websocket_factory_.create(
+        std::move(uri), options_.protocol.get_name()));
     co_await websocket_->async_connect();
     spdlog::trace("async_connect_websocket -- end");
     co_return;
   }
 
-  auto
-  async_read_message(std::string &frame,
-                     webpubsub::websocket_close_status &status) -> async_t<> {
+  auto async_read_message(std::string &frame,
+                          webpubsub::websocket_close_status &status)
+      -> async_t<> {
     spdlog::trace("lifetime.async_read_message");
     co_await websocket_->async_read(frame, status);
   }

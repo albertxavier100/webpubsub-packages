@@ -6,6 +6,7 @@
 #include "gtest/gtest.h"
 #include "webpubsub/client/websocket/default_websocket.hpp"
 #include "webpubsub/client/websocket/default_websocket_factory.hpp"
+#include <cstdlib>
 
 namespace test {
 namespace client_with_beast {
@@ -34,7 +35,9 @@ TEST(client, with_beast) {
   factory_t factory;
   protocol_t p;
   options_t opts{p};
-  credential_t cre{"abcd"};
+  const char *env_key = "WPS_CONN_STR";
+  char *env_value = std::getenv(env_key);
+  credential_t cre{env_value};
   client_t client(strand, cre, opts, factory, "console");
   client.on_connected.append([](webpubsub::connected_context context) {
     spdlog::trace("connection {0} connected.", context.connection_id);
