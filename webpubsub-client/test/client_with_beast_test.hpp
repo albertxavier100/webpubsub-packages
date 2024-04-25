@@ -3,9 +3,8 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/config/core.hpp"
 #include "webpubsub/client/websocket/default_websocket.hpp"
-#include "gtest/gtest.h"
-#include "webpubsub/client/websocket/default_websocket.hpp"
 #include "webpubsub/client/websocket/default_websocket_factory.hpp"
+#include "gtest/gtest.h"
 #include <cstdlib>
 
 namespace test {
@@ -16,7 +15,8 @@ TEST(client, with_beast) {
   using protocol_t = webpubsub::reliable_json_v1_protocol;
   using options_t = webpubsub::client_options<protocol_t>;
   using factory_t = webpubsub::default_websocket_factory;
-  using client_t = webpubsub::client<protocol_t, factory_t, webpubsub::default_websocket>;
+  using client_t =
+      webpubsub::client<protocol_t, factory_t, webpubsub::default_websocket>;
   using credential_t = webpubsub::client_credential;
   using namespace std::chrono_literals;
   using strand_t =
@@ -41,11 +41,25 @@ TEST(client, with_beast) {
   client_t client(strand, cre, opts, factory, "console");
   client.on_connected.append([](webpubsub::connected_context context) {
     spdlog::trace("connection {0} connected.", context.connection_id);
-    });
-  
+  });
+
   auto run = [&client]() -> io::awaitable<void> {
+    auto group = "ggg";
+    auto data = "ddd";
+    std::optional<bool> no_echo = false;
+    std::optional<DataType> dataType = DataType::Text;
+
     try {
+      auto exe = co_await io::this_coro::executor;
       co_await client.async_start();
+      co_await client.async_join_group(JoinGroupRequest{group});
+      io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
+      co_await client.async_send_to_group(
+          SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
+      io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
+      co_await client.async_send_to_group(
+          SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
+      io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_stop();
       spdlog::trace("test finish");
     } catch (const std::exception &ex) {

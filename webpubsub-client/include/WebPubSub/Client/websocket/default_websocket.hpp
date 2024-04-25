@@ -79,18 +79,17 @@ public:
   }
 
   auto async_close() -> io::awaitable<void> {
-    co_await (*websocket_)
-        .async_close(io::beast::websocket::close_code::normal,
-                     io::use_awaitable);
+    co_await websocket_->async_close(io::beast::websocket::close_code::normal,
+                                     io::use_awaitable);
   }
 
-  io::awaitable<void> async_write(std::string write_frame) {
+  auto async_write(std::string write_frame) -> io::awaitable<void> {
     co_await websocket_->async_write(
         io::buffer(std::string(std::move(write_frame))), io::use_awaitable);
   }
 
-  io::awaitable<void> async_read(std::string &read_frame,
-                                 websocket_close_status &status) {
+  auto async_read(std::string &read_frame, websocket_close_status &status)
+      -> io::awaitable<void> {
     io::beast::flat_buffer buffer;
     co_await websocket_->async_read(buffer, io::use_awaitable);
     auto data = buffer.data();

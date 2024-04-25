@@ -122,7 +122,7 @@ public:
   auto reconnection_token() -> const std::optional<std::string> & {
     return reconnection_token_;
   }
-  auto groups() -> const std::unordered_map<std::string, group_context> & {
+  auto groups() -> std::unordered_map<std::string, group_context> & {
     return groups_;
   }
   auto client_access_uri() -> const std::string & { return client_access_uri_; }
@@ -148,7 +148,7 @@ private:
   std::string connection_id_;
   std::optional<std::string> reconnection_token_;
   std::string client_access_uri_;
-  const std::unordered_map<std::string, group_context> groups_;
+  std::unordered_map<std::string, group_context> groups_;
   exclusion_lock lock_;
 };
 
