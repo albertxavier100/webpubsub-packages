@@ -35,6 +35,7 @@ public:
   }
   auto finish(uint64_t id, result_t &&result) -> void {
     if (cache_.contains(id)) {
+      spdlog::trace("finish ack {0}.", id);
       cache_.at(id).try_send(io::error_code{}, result);
       cache_.erase(id);
     }

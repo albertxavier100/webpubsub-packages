@@ -42,6 +42,9 @@ TEST(client, with_beast) {
   client.on_connected.append([](webpubsub::connected_context context) {
     spdlog::trace("connection {0} connected.", context.connection_id);
   });
+  client.on_group_data.append([](webpubsub::group_data_context context) {
+    spdlog::trace("received from group: {0}, user: {2}, sid: {1}.", context.group, *context.sequence_id, *context.from_user_id);
+  });
 
   auto run = [&client]() -> io::awaitable<void> {
     auto group = "ggg";

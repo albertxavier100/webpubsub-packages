@@ -29,10 +29,9 @@ class client {
 
 public:
   client(io::strand<io::io_context::executor_type> &strand,
-            const client_credential &credential,
-            const client_options<protocol_t> &options,
-            websocket_factory_t &websocket_factory,
-            const std::string &logger_name)
+         const client_credential &credential,
+         const client_options<protocol_t> &options,
+         websocket_factory_t &websocket_factory, const std::string &logger_name)
       : log_(logger_name), options_(options),
         lifetime_(strand, credential, websocket_factory, options, log_),
         receive_(strand, options, log_), send_(strand, options, log_),
@@ -44,6 +43,14 @@ public:
         on_rejoin_group_failed(transition_context_.on_rejoin_group_failed),
         on_stopped(transition_context_.on_stopped) {
     setup_reconnect_callback(strand);
+    io::co_spawn(
+        strand,
+        receive_.async_start_group_data_response_handler(&transition_context_),
+        io::detached);
+    io::co_spawn(
+        strand,
+        receive_.async_start_server_data_response_handler(&transition_context_),
+        io::detached);
   }
 
   eventpp::CallbackList<void(const connected_context)> &on_connected;
@@ -79,7 +86,7 @@ public:
                            bool fire_and_forget = false)
       -> async_t<const request_result> {
     return send_.async_retry_send(request, &transition_context_,
-                                    fire_and_forget);
+                                  fire_and_forget);
   }
 
   template <typename data_t>
@@ -87,7 +94,7 @@ public:
                         bool fire_and_forget = false)
       -> async_t<const request_result> {
     return send_.async_retry_send(request, &transition_context_,
-                                    fire_and_forget);
+                                  fire_and_forget);
   }
 
   auto async_join_group(const JoinGroupRequest request,
@@ -107,7 +114,7 @@ public:
                          bool fire_and_forget = false)
       -> async_t<const request_result> {
     return send_.async_retry_send(request, &transition_context_,
-                                    fire_and_forget);
+                                  fire_and_forget);
   }
 
 private:
@@ -160,7 +167,9 @@ private:
         co_await ctx.async_raise_event(detail::to_connected_or_stopped_state{});
         spdlog::trace("on_receive_failed.reconnecting... end.");
       } catch (const std::exception &ex) {
-        spdlog::trace("unhandled exception in recovering or reconnecting, ex: {0}", ex.what());
+        spdlog::trace(
+            "unhandled exception in recovering or reconnecting, ex: {0}",
+            ex.what());
         // TODO: handle ex later
         throw;
       }

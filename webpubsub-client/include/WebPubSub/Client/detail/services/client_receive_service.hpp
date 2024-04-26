@@ -32,7 +32,8 @@ public:
                          const log &log)
       : loop_svc_("RECEIVE LOOP", strand, log), options_(options),
         server_data_channel_(strand, options.max_buffer_size),
-        group_data_channel_(strand, options.max_buffer_size) {}
+        group_data_channel_(strand, options.max_buffer_size) {
+  }
 
   eventpp::CallbackList<void(const failed_connection_context)>
       on_receive_failed;
@@ -46,6 +47,35 @@ public:
     spdlog::trace("async_cancel_message_loop_coro begin");
     co_await loop_svc_.async_cancel_loop_coro();
     spdlog::trace("async_cancel_message_loop_coro end");
+  }
+  
+  template <transition_context_c transition_context_t>
+  auto async_start_group_data_response_handler(transition_context_t *context)
+      -> async_t<> {
+    for (;;) {
+      auto [ec, res] =
+          co_await group_data_channel_.async_receive(io::use_awaitable);
+      group_data_context callback_context{
+          res.getGroup(), res.getSequenceId(), res.getFromUseId(),
+          res.getDataType()
+          // TODO: [HIGH] data
+      };
+      context->safe_invoke_callback(callback_context);
+    }
+  }
+
+  template <transition_context_c transition_context_t>
+  auto async_start_server_data_response_handler(transition_context_t *context)
+      -> async_t<> {
+    for (;;) {
+      auto [ec, res] =
+          co_await server_data_channel_.async_receive(io::use_awaitable);
+      server_data_context callback_context{
+          res.getSequenceId(), res.getDataType(),
+          // TODO: [HIGH] data
+      };
+      context->safe_invoke_callback(callback_context);
+    }
   }
 
   auto reset() -> void { loop_svc_.reset(); }
@@ -92,10 +122,10 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_payload(std::string &&payload,
+  auto async_handle_payload(std::string payload,
                             transition_context_t *context) -> async_t<> {
     // TODO: low: rename the inconsistent naming in protocol
-    auto response = options_.protocol.read(payload);
+    auto response = options_.protocol.read(std::move(payload));
     if (!response) {
       spdlog::trace("failed to parse payload");
       co_return;
@@ -275,34 +305,6 @@ private:
     return std::move(uri_str);
   }
 
-  template <transition_context_c transition_context_t>
-  auto async_start_group_data_response_handler(transition_context_t *context)
-      -> async_t<> {
-    for (;;) {
-      auto [ec, res] =
-          co_await group_data_channel_.async_receive(io::use_awaitable);
-      group_data_context callback_context{
-          res.getGroup(), res.getSequenceId(), res.getFromUseId(),
-          res.getDataType()
-          // TODO: [HIGH] data
-      };
-      context->safe_invoke_callback(callback_context);
-    }
-  }
-
-  template <transition_context_c transition_context_t>
-  auto async_start_server_data_response_handler(transition_context_t *context)
-      -> async_t<> {
-    for (;;) {
-      auto [ec, res] =
-          co_await server_data_channel_.async_receive(io::use_awaitable);
-      server_data_context callback_context{
-          res.getSequenceId(), res.getDataType(),
-          // TODO: [HIGH] data
-      };
-      context->safe_invoke_callback(callback_context);
-    }
-  }
   const client_options<protocol_t> &options_;
   client_loop_service loop_svc_;
   io::experimental::channel<void(io::error_code, ServerMessageResponse)>

@@ -71,7 +71,7 @@ template <transition_context_c transition_context_t>
         retry_options.retry_mode, 0, retry_options.delay};
     for (;;) {
       try {
-        if (!fire_and_forget) {
+        if (fire_and_forget) {
           co_await async_send_request(std::move(request), context);
         } else {
           auto &cache = context->ack_cache();
@@ -121,8 +121,7 @@ private:
         auto ok = co_await sequence_id_.async_try_get_sequence_id(id);
         spdlog::trace("async_try_get_sequence_id end");
         if (ok) {
-          // TODO: [DEBUG]
-          //co_await async_send_request(SequenceAckSignal{id}, context);
+          co_await async_send_request(SequenceAckSignal{id}, context);
           spdlog::trace("send sequence ack back to server...");
         }
         spdlog::trace("sequence ack in loop...");
