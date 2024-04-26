@@ -102,24 +102,25 @@ private:
     }
 
     co_await std::visit(
-        [&context, this](auto &&res) -> async_t<> {
-          using T = std::decay_t<decltype(res)>;
-          if constexpr (std::is_same_v<T, ConnectedResponse>) {
-            return async_handle_connected_response(std::move(res), context);
-          } else if constexpr (std::is_same_v<T, DisconnectedResponse>) {
-            return async_handle_disconnected_response(std::move(res), context);
-          } else if constexpr (std::is_same_v<T, GroupMessageResponseV2>) {
-            return async_handle_group_data_response(std::move(res), context);
-          } else if constexpr (std::is_same_v<T, ServerMessageResponse>) {
-            return async_handle_server_data_response(std::move(res), context);
-          } else if constexpr (std::is_same_v<T, AckResponse>) {
-            return async_handle_ack_response(std::move(res), context);
-          } else {
-            static_assert(false, "unsupported response");
-          }
-          return async_t<>();
+        overloaded{
+            [this, &context](AckResponse res) -> async_t<> {
+              return async_handle_ack_response(std::move(res), context);
+            },
+            [this, &context](ConnectedResponse res) -> async_t<> {
+              return async_handle_connected_response(std::move(res), context);
+            },
+            [this, &context](DisconnectedResponse res) -> async_t<> {
+              return async_handle_disconnected_response(std::move(res),
+                                                        context);
+            },
+            [this, &context](GroupMessageResponseV2 res) -> async_t<> {
+              return async_handle_group_data_response(std::move(res), context);
+            },
+            [this, &context](ServerMessageResponse res) -> async_t<> {
+              return async_handle_server_data_response(std::move(res), context);
+            },
         },
-        std::move(*response));
+      std::move( *response));
   }
 
   template <transition_context_c transition_context_t>
@@ -134,7 +135,7 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_ack_response(AckResponse &&res,
+  auto async_handle_ack_response(AckResponse res,
                                  transition_context_t *context) -> async_t<> {
     ack_cache::result_t result;
     // TODO: use a const string for error name
@@ -147,11 +148,11 @@ private:
     }
     // TODO: [HIGH] use wps result instead
     context->ack_cache().finish(res.getAckId(), std::move(result));
-    return async_t<>();
+    co_return;
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_disconnected_response(DisconnectedResponse &&res,
+  auto async_handle_disconnected_response(DisconnectedResponse res,
                                           transition_context_t *context)
       -> async_t<> {
     if (auto connected_state =
@@ -164,7 +165,7 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_server_data_response(ServerMessageResponse &&res,
+  auto async_handle_server_data_response(ServerMessageResponse res,
                                          transition_context_t *context)
       -> async_t<> {
     if (res.getSequenceId()) {
@@ -173,26 +174,27 @@ private:
         co_return;
       }
     }
-    co_await server_data_channel_.async_send(io::error_code{}, res,
+    co_await server_data_channel_.async_send(io::error_code{}, std::move(res),
                                              io::use_awaitable);
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_group_data_response(GroupMessageResponseV2 &&res,
+  auto async_handle_group_data_response(GroupMessageResponseV2 res,
                                         transition_context_t *context)
       -> async_t<> {
+    spdlog::trace("async_handle_group_data_response -- beg");
     if (res.getSequenceId()) {
       auto &sid = context->send().sequence_id();
       if (!(co_await sid.async_try_update(*res.getSequenceId()))) {
         co_return;
       }
     }
-    co_await group_data_channel_.async_send(io::error_code{}, res,
+    co_await group_data_channel_.async_send(io::error_code{}, std::move(res),
                                             io::use_awaitable);
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_connected_response(ConnectedResponse &&res,
+  auto async_handle_connected_response(ConnectedResponse res,
                                        transition_context_t *context)
       -> async_t<> {
     const auto connected_state = check_state(context);
@@ -200,14 +202,14 @@ private:
       context->lifetime().update_connection_info(res.getConnectionId(),
                                                  res.getReconnectionToken());
       if ((*connected_state)->first_connected) {
-        return async_handle_connection_connected(res, context);
+        co_await async_handle_connection_connected(std::move(res), context);
       }
     }
-    return async_t<>();
+    co_return;
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_connection_connected(const ConnectedResponse &res,
+  auto async_handle_connection_connected(ConnectedResponse res,
                                          transition_context_t *context)
       -> async_t<> {
     // TODO: low: test auto rejoin group
@@ -231,8 +233,9 @@ private:
         }
       }
     }
-    connected_context callback_context{res.moveConnectionId(), res.moveUserId(),
-                                       res.moveReconnectionToken()};
+
+    connected_context callback_context{res.moveConnectionId(),
+    res.moveUserId(), res.moveReconnectionToken()};
     context->safe_invoke_callback(std::move(callback_context));
   }
 

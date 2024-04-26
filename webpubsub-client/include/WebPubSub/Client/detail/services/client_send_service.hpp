@@ -121,7 +121,8 @@ private:
         auto ok = co_await sequence_id_.async_try_get_sequence_id(id);
         spdlog::trace("async_try_get_sequence_id end");
         if (ok) {
-          co_await async_send_request(SequenceAckSignal{id}, context);
+          // TODO: [DEBUG]
+          //co_await async_send_request(SequenceAckSignal{id}, context);
           spdlog::trace("send sequence ack back to server...");
         }
         spdlog::trace("sequence ack in loop...");
