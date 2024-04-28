@@ -58,15 +58,27 @@ public:
       -> async_t<const request_result> {
     auto &cache = context->ack_cache();
     auto id = *request.getAckId();
-    cache.add_or_get(context->strand(), id);
+    co_await cache.async_add_or_get(id);
+    auto should_cancel = false;
     try {
       co_await async_send_request(std::move(request), context);
-      auto result = co_await cache.async_wait(id);
+      auto ack_result = co_await cache.async_wait(id);
+      request_result result;
+      std::visit(overloaded{
+                     [](ack_cache::result res) {},
+                     [](invalid_operation ex) { throw ex; },
+                     [&result](request_result res) { result = res; },
+                 },
+                 ack_result);
       co_return std::move(result);
     } catch (const std::exception &ex) {
-      spdlog::trace("send message failed in {0} times");
-      cache.finish(id, ack_cache::result::cancelled);
+      spdlog::trace("send message failed");
+      should_cancel = true;
     }
+    if (should_cancel) {
+      co_await cache.async_finish(id, ack_cache::result::cancelled);
+    }
+    co_return request_result{std::nullopt, false};
   }
 
   template <typename request_t, transition_context_c transition_context_t>
@@ -74,10 +86,10 @@ public:
       -> async_t<const request_result> {
     try {
       co_await async_send_request(std::move(request), context);
-      co_return request_result{};
     } catch (const std::exception &ex) {
       spdlog::trace("Failed to send message.");
     }
+    co_return request_result{std::nullopt, false};
   }
 
   template <typename request_t, transition_context_c transition_context_t>
@@ -100,10 +112,9 @@ public:
       }
       std::exception_ptr eptr;
       try {
-        auto result = co_await (fire_and_forget
+        co_return co_await (fire_and_forget
                                 ? async_send_without_ack(request, context)
                                 : async_send_with_ack(request, context));
-        co_return std::move(result);
       } catch (...) {
         eptr = std::current_exception();
       }
@@ -116,7 +127,7 @@ public:
       co_await async_delay_v2(context->strand(), *retry_context.delay);
     }
     spdlog::trace("send message retry failed");
-    co_return request_result{};
+    co_return request_result{std::nullopt, false};
   }
 
   auto sequence_id() -> sequence_id & { return sequence_id_; }

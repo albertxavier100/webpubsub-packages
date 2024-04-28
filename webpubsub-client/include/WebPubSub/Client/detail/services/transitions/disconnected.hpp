@@ -11,13 +11,11 @@
 
 namespace webpubsub {
 namespace detail {
-// disconnected => recovering or stopped
 template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, disconnected &disconnected,
                     to_reconnecting_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: disconnected -> reconnecting");
 
-  // TODO: [HIGH] finish any awaiting ack entity
   if (context->lifetime().auto_reconnect()) {
     spdlog::trace(":::Transition::: -> reconnecting");
     auto retry_context = context->lifetime().make_retry_context();

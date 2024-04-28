@@ -43,7 +43,11 @@ TEST(client, with_beast) {
     spdlog::trace("connection {0} connected.", context.connection_id);
   });
   client.on_group_data.append([](webpubsub::group_data_context context) {
-    spdlog::trace("received from group: {0}, user: {2}, sid: {1}.", context.group, *context.sequence_id, *context.from_user_id);
+    std::string data;
+    context.message.getData<std::string>(data);
+    spdlog::trace("received from group: {0}, user: {2}, sid: {1}, data: {3}.",
+                  context.message.getGroup(), *context.message.getSequenceId(),
+                  *context.message.getFromUserId(), data);
   });
 
   auto run = [&client]() -> io::awaitable<void> {

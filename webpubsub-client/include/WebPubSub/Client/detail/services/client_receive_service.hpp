@@ -52,13 +52,7 @@ public:
       try {
         auto res =
             co_await group_data_channel_.async_receive(io::use_awaitable);
-
-        group_data_context callback_context{
-            res.getGroup(), res.getSequenceId(), res.getFromUserId(),
-            res.getDataType()
-            // TODO: [HIGH] data
-        };
-        context->safe_invoke_callback(std::move(callback_context));
+        context->safe_invoke_callback(group_data_context{res});
       } catch (const std::exception &ex) {
         spdlog::trace("failed to receive group data from channel. {0}",
                       ex.what());
@@ -73,11 +67,7 @@ public:
       try {
         auto res =
             co_await server_data_channel_.async_receive(io::use_awaitable);
-        server_data_context callback_context{
-            res.getSequenceId(), res.getDataType(),
-            // TODO: [HIGH] data
-        };
-        context->safe_invoke_callback(std::move(callback_context));
+        context->safe_invoke_callback(server_data_context{res});
       } catch (const std::exception &ex) {
         spdlog::trace("failed to receive group data from channel. {0}",
                       ex.what());
@@ -94,6 +84,7 @@ private:
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
+    websocket_close_status status;
     try {
       for (;;) {
         auto cs = co_await io::this_coro::cancellation_state;
@@ -102,7 +93,6 @@ private:
           break;
         }
         std::string payload;
-        websocket_close_status status;
         co_await context->lifetime().async_read_message(payload, status);
         spdlog::trace("received payload: {0}", payload);
         co_await async_handle_payload(std::move(payload), context);
@@ -117,12 +107,12 @@ private:
 
     if (!ok) {
       spdlog::trace("on_receive_failed");
-      context->ack_cache().finish_all(ack_cache::result::cancelled);
+      co_await context->ack_cache().async_finish_all(ack_cache::result::cancelled);
       spdlog::trace("handle ack cache finished");
       auto reconnect_url = build_reconnection_url(context);
 
-      // TODO: [HIGH] should also consider connection close reason
-      auto should_recover = reconnect_url.has_value();
+      // TODO: consider more close status
+      auto should_recover = reconnect_url && status != websocket_close_status::policy_violation;
       on_receive_failed({should_recover, reconnect_url});
       spdlog::trace("fire on_receive_failed");
     }
@@ -179,14 +169,13 @@ private:
     bool is_duplicate =
         res.getError() && res.getError().value().getName() == "Duplicate";
     if (res.getSuccess() || is_duplicate) {
-      result.emplace(request_result{res.getAckId(), is_duplicate});
+      result = request_result{res.getAckId(), is_duplicate};
     } else {
       // TODO: use designed exception
-      result.emplace(invalid_operation(
-          "Received non-success acknowledge from the service"));
+      result = invalid_operation(
+          "Received non-success acknowledge from the service");
     }
-    context->ack_cache().finish(res.getAckId(), std::move(result));
-    co_return;
+    co_await context->ack_cache().async_finish(res.getAckId(), std::move(result));
   }
 
   template <transition_context_c transition_context_t>

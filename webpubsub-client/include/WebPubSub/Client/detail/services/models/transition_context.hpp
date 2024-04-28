@@ -61,7 +61,7 @@ public:
   transition_context(strand_t &strand, lifetime_t &lifetime, receive_t &receive,
                      send_t &send, const log &log)
       : strand_(strand), state_(stopped{}), lifetime_(lifetime),
-        receive_(receive), send_(send), log_(log), ack_id_(0) {
+        receive_(receive), send_(send), log_(log), ack_id_(0), ack_cache_(strand) {
     static_assert(transition_context_c<
                   transition_context<lifetime_t, receive_t, send_t>>);
   }
@@ -129,8 +129,7 @@ public:
   // TODO: rename
   auto get_state() -> state_t & { return state_; }
 
-  // TODO: [HIGH] ack cache reset
-  auto reset() {}
+  auto async_reset() -> async_t<> { co_await ack_cache_.async_reset(); }
 
   // TODO: limit this function, only allow use in client_v2
   auto async_raise_event(event_t event) -> async_t<> {

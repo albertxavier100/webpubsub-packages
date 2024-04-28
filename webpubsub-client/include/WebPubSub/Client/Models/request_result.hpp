@@ -3,7 +3,7 @@
 
 namespace webpubsub {
 struct request_result {
-  std::optional<uint64_t> ack_id;
-  bool is_duplicated;
+  std::optional<uint64_t> ack_id = std::nullopt;
+  bool is_duplicated = false;
 };
 } // namespace webpubsub

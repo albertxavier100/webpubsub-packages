@@ -56,7 +56,7 @@ public:
   auto async_connect(transition_context_t *context) -> async_t<> {
     co_await lock_.async_lock();
     try {
-      reset_connection(context);
+      co_await async_reset_connection(context);
       client_access_uri_ = co_await credential_.async_get_client_access_uri();
       co_await async_establish_new_websocket(client_access_uri_, context);
       co_await lock_.async_release();
@@ -131,10 +131,10 @@ public:
 private:
   // TODO: low: move to each on_leave_state
   template <transition_context_c transition_context_t>
-  auto reset_connection(transition_context_t *context) {
+  auto async_reset_connection(transition_context_t *context) -> async_t<> {
     context->send().reset();
     context->receive().reset();
-    context->reset();
+    co_await context->async_reset();
     connection_id_.clear();
     client_access_uri_.clear();
     reconnection_token_ = std::nullopt;
