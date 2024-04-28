@@ -107,7 +107,7 @@ private:
 
     if (!ok) {
       spdlog::trace("on_receive_failed");
-      co_await context->ack_cache().async_finish_all(ack_cache::result::cancelled);
+      context->ack_cache().finish_all(ack_cache::result::cancelled);
       spdlog::trace("handle ack cache finished");
       auto reconnect_url = build_reconnection_url(context);
 
@@ -175,18 +175,17 @@ private:
       result = invalid_operation(
           "Received non-success acknowledge from the service");
     }
-    co_await context->ack_cache().async_finish(res.getAckId(), std::move(result));
+    context->ack_cache().finish(res.getAckId(), std::move(result));
+    co_return;
   }
 
   template <transition_context_c transition_context_t>
   auto async_handle_disconnected_response(DisconnectedResponse res,
                                           transition_context_t *context)
       -> async_t<> {
-    if (auto connected_state =
-            std::get_if<connected>(&(context->get_state()))) {
-      connected_state->disconnected_message = *res.moveMessage();
-    } else {
-      spdlog::trace("client is not in connected state");
+    const auto connected_state = check_state(context);
+    if (connected_state) {
+      context->lifetime().update_disconnected_reason(res.moveMessage());
     }
     return async_t<>();
   }

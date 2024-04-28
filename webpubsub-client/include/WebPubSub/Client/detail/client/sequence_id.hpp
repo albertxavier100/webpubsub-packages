@@ -16,7 +16,7 @@ namespace webpubsub {
 namespace detail {
 class sequence_id {
 public:
-  sequence_id(strand_t &strand) : updated_(false), id_(0), lock_(strand, 1) {}
+  sequence_id(strand_t &strand) : updated_(false), id_(0), lock_(strand) {}
 
   void reset() {
     updated_ = false;
@@ -26,23 +26,23 @@ public:
 
   auto async_try_get_sequence_id(uint64_t &id) -> async_t<bool> {
     spdlog::trace("lock_.async_send beg");
-    co_await lock_.async_send(io::error_code{}, true, io::use_awaitable);
+    co_await lock_.async_lock();
     spdlog::trace("lock_.async_send end");
     if (updated_) {
       id = id_;
       updated_ = true;
-      co_await lock_.async_receive(io::use_awaitable);
+      co_await lock_.async_release();
       co_return true;
     }
     spdlog::trace("lock_.async_receive beg");
-    co_await lock_.async_receive(io::use_awaitable);
+    co_await lock_.async_release();
     spdlog::trace("lock_.async_receive end");
     id = 0;
     co_return false;
   }
 
   auto async_try_update(uint64_t id) -> async_t<bool> {
-    co_await lock_.async_send(io::error_code{}, true, io::use_awaitable);
+    co_await lock_.async_lock();
     updated_ = true;
     auto changed = false;
     if (id > id_) {
@@ -50,14 +50,14 @@ public:
       changed = true;
     }
     spdlog::trace("update sid to {0}", id_);
-    co_await lock_.async_receive(io::use_awaitable);
+    co_await lock_.async_release();
     co_return changed;
   }
 
 private:
   bool updated_;
   uint64_t id_;
-  lock_t lock_;
+  exclusion_lock lock_;
 };
 } // namespace detail
 } // namespace webpubsub

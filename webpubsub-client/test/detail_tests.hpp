@@ -26,13 +26,12 @@ TEST(detail, ack_cache) {
   using namespace webpubsub;
   io::io_context io_context;
   auto strand = io::make_strand(io_context);
-  ack_cache cache{strand};
+  ack_cache cache;
   auto &ref = cache;
+  ref.add_or_get(strand, 1);
   ack_cache::result_t res;
-  auto wait = [&ref, &res]() -> async_t<> { 
-    co_await ref.async_add_or_get(1);
-    co_await ref.async_finish_all(ack_cache::result::cancelled);
-    res = co_await ref.async_wait(1); };
+  ref.finish_all(ack_cache::result::cancelled);
+  auto wait = [&ref, &res]() -> async_t<> { res = co_await ref.async_wait(1); };
   io::co_spawn(io_context, wait(), io::detached);
   io_context.run();
   EXPECT_EQ(std::get<ack_cache::result>(res), ack_cache::result::cancelled);

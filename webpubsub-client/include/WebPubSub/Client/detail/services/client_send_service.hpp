@@ -58,8 +58,7 @@ public:
       -> async_t<const request_result> {
     auto &cache = context->ack_cache();
     auto id = *request.getAckId();
-    co_await cache.async_add_or_get(id);
-    auto should_cancel = false;
+    cache.add_or_get(context->strand(), id);
     try {
       co_await async_send_request(std::move(request), context);
       auto ack_result = co_await cache.async_wait(id);
@@ -73,10 +72,7 @@ public:
       co_return std::move(result);
     } catch (const std::exception &ex) {
       spdlog::trace("send message failed");
-      should_cancel = true;
-    }
-    if (should_cancel) {
-      co_await cache.async_finish(id, ack_cache::result::cancelled);
+      cache.finish(id, ack_cache::result::cancelled);
     }
     co_return request_result{std::nullopt, false};
   }

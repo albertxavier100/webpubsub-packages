@@ -16,7 +16,6 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, connected &connected,
                     to_disconnected_state &event) -> async_t<state_t> {
 
-  // TODO: impl
   co_return disconnected{};
 }
 

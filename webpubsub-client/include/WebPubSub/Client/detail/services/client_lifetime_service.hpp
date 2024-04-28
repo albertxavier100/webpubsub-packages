@@ -56,7 +56,7 @@ public:
   auto async_connect(transition_context_t *context) -> async_t<> {
     co_await lock_.async_lock();
     try {
-      co_await async_reset_connection(context);
+      reset_connection(context);
       client_access_uri_ = co_await credential_.async_get_client_access_uri();
       co_await async_establish_new_websocket(client_access_uri_, context);
       co_await lock_.async_release();
@@ -113,6 +113,9 @@ public:
     connection_id_ = std::move(connection_id);
     reconnection_token_ = std::move(reconnection_token);
   }
+  auto update_disconnected_reason(std::optional<std::string> reason) {
+    latest_disconnect_reason_ = std::move(reason);
+  }
 
   auto make_retry_context() -> retry_context {
     auto o = options_.reconnect_retry_options;
@@ -120,6 +123,9 @@ public:
   }
   auto auto_reconnect() -> const bool & { return options_.auto_reconnect; }
   auto connection_id() -> const std::string & { return connection_id_; }
+  auto latest_disconnect_reason() -> const std::optional<std::string> & {
+    return latest_disconnect_reason_;
+  }
   auto reconnection_token() -> const std::optional<std::string> & {
     return reconnection_token_;
   }
@@ -131,10 +137,10 @@ public:
 private:
   // TODO: low: move to each on_leave_state
   template <transition_context_c transition_context_t>
-  auto async_reset_connection(transition_context_t *context) -> async_t<> {
+  auto reset_connection(transition_context_t *context) {
     context->send().reset();
     context->receive().reset();
-    co_await context->async_reset();
+    context->reset();
     connection_id_.clear();
     client_access_uri_.clear();
     reconnection_token_ = std::nullopt;
@@ -146,9 +152,12 @@ private:
   const client_credential &credential_;
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
+  // TODO: store in connected state
   std::string connection_id_;
   std::optional<std::string> reconnection_token_;
+  std::optional<std::string> latest_disconnect_reason_;
   std::string client_access_uri_;
+  //
   std::unordered_map<std::string, group_context> groups_;
   exclusion_lock lock_;
 };

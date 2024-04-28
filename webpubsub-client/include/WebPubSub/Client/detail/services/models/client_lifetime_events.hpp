@@ -22,10 +22,7 @@ struct to_connected_or_disconnected_state {
   std::string reconnect_uri;
 };
 struct to_connected_or_stopped_state {};
-struct to_disconnected_state {
-  std::optional<std::string> connection_id;
-  std::optional<std::string> reason;
-};
+struct to_disconnected_state {};
 struct to_stopped_state {};
 struct to_stopping_state {};
 struct to_recovering_state {};

@@ -25,6 +25,8 @@ public:
     channel_.try_receive([](auto ec, auto a) {});
   }
 
+  auto reset() { channel_.reset(); }
+
 private:
   io::experimental::channel<void(io::error_code, bool)> channel_;
 };

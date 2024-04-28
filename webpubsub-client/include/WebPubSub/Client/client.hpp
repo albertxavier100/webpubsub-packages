@@ -78,7 +78,7 @@ public:
   auto async_cancel() -> async_t<> {
     co_await send_.async_cancel_sequence_id_loop_coro();
     co_await receive_.async_cancel_message_loop_coro();
-    // TODO: [HIGH] also cancel connection
+    co_await lifetime_.async_close();
   }
 
   template <typename data_t>
@@ -139,7 +139,6 @@ private:
           spdlog::trace("try.recovering... beg");
 
           co_await ctx.async_raise_event(to_recovering{});
-          // TODO: [HIGH] add close status
           auto reconnect_url = std::move(*failed_ctx.reconnect_uri);
           auto to_final_event =
               to_connected_or_disconnected{std::move(reconnect_url)};
@@ -156,10 +155,8 @@ private:
             "on_receive_failed.reconnecting... beg, current state = {0}",
             ctx.get_state().index());
         if (!failed_ctx.should_recover) {
-          // TODO: [HIGH] use actual string
-          co_await ctx.async_raise_event(
-              to_disconnected{ctx.lifetime().connection_id(), "TODO"});
-        }
+            co_await ctx.async_raise_event(to_disconnected{});
+         }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
