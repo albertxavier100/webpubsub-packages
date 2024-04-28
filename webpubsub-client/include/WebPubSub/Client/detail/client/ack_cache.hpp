@@ -52,6 +52,7 @@ public:
   }
 
 private:
+  // TODO: [HIGH] add lock
   std::unordered_map<uint64_t, ack_channel_t> cache_;
 };
 } // namespace detail

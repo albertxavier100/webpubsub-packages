@@ -9,15 +9,12 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "uri.hh"
-#include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/ack_cache.hpp"
-#include "webpubsub/client/detail/client/failed_connection_context.hpp"
-#include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/detail/common/utils.hpp"
 #include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"
-#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_states.hpp"
 #include "webpubsub/client/models/client_options.hpp"
@@ -32,8 +29,7 @@ public:
                          const log &log)
       : loop_svc_("RECEIVE LOOP", strand, log), options_(options),
         server_data_channel_(strand, options.max_buffer_size),
-        group_data_channel_(strand, options.max_buffer_size) {
-  }
+        group_data_channel_(strand, options.max_buffer_size) {}
 
   eventpp::CallbackList<void(const failed_connection_context)>
       on_receive_failed;
@@ -48,19 +44,25 @@ public:
     co_await loop_svc_.async_cancel_loop_coro();
     spdlog::trace("async_cancel_message_loop_coro end");
   }
-  
+
   template <transition_context_c transition_context_t>
   auto async_start_group_data_response_handler(transition_context_t *context)
       -> async_t<> {
     for (;;) {
-      auto [ec, res] =
-          co_await group_data_channel_.async_receive(io::use_awaitable);
-      group_data_context callback_context{
-          res.getGroup(), res.getSequenceId(), res.getFromUseId(),
-          res.getDataType()
-          // TODO: [HIGH] data
-      };
-      context->safe_invoke_callback(callback_context);
+      try {
+        auto res =
+            co_await group_data_channel_.async_receive(io::use_awaitable);
+
+        group_data_context callback_context{
+            res.getGroup(), res.getSequenceId(), res.getFromUserId(),
+            res.getDataType()
+            // TODO: [HIGH] data
+        };
+        context->safe_invoke_callback(std::move(callback_context));
+      } catch (const std::exception &ex) {
+        spdlog::trace("failed to receive group data from channel. {0}",
+                      ex.what());
+      }
     }
   }
 
@@ -68,13 +70,18 @@ public:
   auto async_start_server_data_response_handler(transition_context_t *context)
       -> async_t<> {
     for (;;) {
-      auto [ec, res] =
-          co_await server_data_channel_.async_receive(io::use_awaitable);
-      server_data_context callback_context{
-          res.getSequenceId(), res.getDataType(),
-          // TODO: [HIGH] data
-      };
-      context->safe_invoke_callback(callback_context);
+      try {
+        auto res =
+            co_await server_data_channel_.async_receive(io::use_awaitable);
+        server_data_context callback_context{
+            res.getSequenceId(), res.getDataType(),
+            // TODO: [HIGH] data
+        };
+        context->safe_invoke_callback(std::move(callback_context));
+      } catch (const std::exception &ex) {
+        spdlog::trace("failed to receive group data from channel. {0}",
+                      ex.what());
+      }
     }
   }
 
@@ -122,8 +129,8 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_payload(std::string payload,
-                            transition_context_t *context) -> async_t<> {
+  auto async_handle_payload(std::string payload, transition_context_t *context)
+      -> async_t<> {
     // TODO: low: rename the inconsistent naming in protocol
     auto response = options_.protocol.read(std::move(payload));
     if (!response) {
@@ -150,7 +157,7 @@ private:
               return async_handle_server_data_response(std::move(res), context);
             },
         },
-      std::move( *response));
+        std::move(*response));
   }
 
   template <transition_context_c transition_context_t>
@@ -165,8 +172,8 @@ private:
   }
 
   template <transition_context_c transition_context_t>
-  auto async_handle_ack_response(AckResponse res,
-                                 transition_context_t *context) -> async_t<> {
+  auto async_handle_ack_response(AckResponse res, transition_context_t *context)
+      -> async_t<> {
     ack_cache::result_t result;
     // TODO: use a const string for error name
     if (res.getSuccess() ||
@@ -214,6 +221,7 @@ private:
       -> async_t<> {
     spdlog::trace("async_handle_group_data_response -- beg");
     if (res.getSequenceId()) {
+      spdlog::trace("async_try_update: {0}", *res.getSequenceId());
       auto &sid = context->send().sequence_id();
       if (!(co_await sid.async_try_update(*res.getSequenceId()))) {
         co_return;
@@ -264,8 +272,8 @@ private:
       }
     }
 
-    connected_context callback_context{res.moveConnectionId(),
-    res.moveUserId(), res.moveReconnectionToken()};
+    connected_context callback_context{res.moveConnectionId(), res.moveUserId(),
+                                       res.moveReconnectionToken()};
     context->safe_invoke_callback(std::move(callback_context));
   }
 

@@ -28,17 +28,17 @@ public:
     spdlog::trace("lock_.async_send beg");
     co_await lock_.async_send(io::error_code{}, true, io::use_awaitable);
     spdlog::trace("lock_.async_send end");
-    auto changed = false;
     if (updated_) {
       id = id_;
       updated_ = true;
-      changed = true;
+      co_await lock_.async_receive(io::use_awaitable);
+      co_return true;
     }
     spdlog::trace("lock_.async_receive beg");
     co_await lock_.async_receive(io::use_awaitable);
     spdlog::trace("lock_.async_receive end");
     id = 0;
-    co_return changed;
+    co_return false;
   }
 
   auto async_try_update(uint64_t id) -> async_t<bool> {
@@ -49,6 +49,7 @@ public:
       id_ = id;
       changed = true;
     }
+    spdlog::trace("update sid to {0}", id_);
     co_await lock_.async_receive(io::use_awaitable);
     co_return changed;
   }

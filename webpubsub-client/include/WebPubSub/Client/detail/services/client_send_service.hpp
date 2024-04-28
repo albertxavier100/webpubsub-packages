@@ -9,12 +9,9 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "webpubsub/client/common/asio.hpp"
-#include "webpubsub/client/detail/client/sequence_id.hpp"
-#include "webpubsub/client/detail/common/using.hpp"
-#include "webpubsub/client/detail/concepts/transition_context_c.hpp"
-#include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_loop_service.hpp"
+#include "webpubsub/client/detail/client/sequence_id.hpp"
+#include "webpubsub/client/detail/concepts/transition_context_c.hpp"
 #include "webpubsub/client/models/request_result.hpp"
 
 namespace webpubsub {
@@ -122,7 +119,7 @@ private:
         spdlog::trace("async_try_get_sequence_id end");
         if (ok) {
           co_await async_send_request(SequenceAckSignal{id}, context);
-          spdlog::trace("send sequence ack back to server...");
+          spdlog::trace("send sequence ack: {0} back to server...", id);
         }
         spdlog::trace("sequence ack in loop...");
       } catch (const io::system_error &err) {

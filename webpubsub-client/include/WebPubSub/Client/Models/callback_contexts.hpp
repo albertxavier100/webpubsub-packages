@@ -23,14 +23,14 @@ struct group_data_context {
   std::string group;
   std::optional<uint64_t> sequence_id;
   std::optional<std::string> from_user_id;
-  DataType data_type;
+  std::optional<DataType> data_type;
   // TODO: [HIGH] data
 };
 
 // TODO: [HIGH] impl
 struct server_data_context {
   std::optional<uint64_t> sequence_id;
-  DataType data_type;
+  std::optional<DataType> data_type;
   // TODO: [HIGH] data
 };
 

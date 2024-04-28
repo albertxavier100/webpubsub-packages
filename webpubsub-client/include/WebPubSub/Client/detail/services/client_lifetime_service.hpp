@@ -32,6 +32,7 @@ template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
           typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
 
+// TODO: rename websocket service
 class client_lifetime_service {
   using strand_t = io::strand<io::io_context::executor_type>;
 
