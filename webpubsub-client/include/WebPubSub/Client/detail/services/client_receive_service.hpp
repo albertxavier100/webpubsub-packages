@@ -9,12 +9,12 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "uri.hh"
 #include "webpubsub/client/detail/client/ack_cache.hpp"
 #include "webpubsub/client/detail/common/utils.hpp"
 #include "webpubsub/client/detail/concepts/client_lifetime_service_c.hpp"
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"
+#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_states.hpp"
 #include "webpubsub/client/models/client_options.hpp"
@@ -176,14 +176,15 @@ private:
       -> async_t<> {
     ack_cache::result_t result;
     // TODO: use a const string for error name
-    if (res.getSuccess() ||
-        res.getError() && res.getError().value().getName() == "Duplicate") {
-      result = ack_cache::result::completed;
+    bool is_duplicate =
+        res.getError() && res.getError().value().getName() == "Duplicate";
+    if (res.getSuccess() || is_duplicate) {
+      result.emplace(request_result{res.getAckId(), is_duplicate});
     } else {
-      result = invalid_operation(
-          "Received non-success acknowledge from the service");
+      // TODO: use designed exception
+      result.emplace(invalid_operation(
+          "Received non-success acknowledge from the service"));
     }
-    // TODO: [HIGH] use wps result instead
     context->ack_cache().finish(res.getAckId(), std::move(result));
     co_return;
   }

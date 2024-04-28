@@ -12,6 +12,7 @@
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
+#include "webpubsub/client/models/request_result.hpp"
 #include <variant>
 
 namespace webpubsub {
@@ -21,10 +22,9 @@ class ack_cache {
 public:
   enum class result {
     cancelled,
-    completed,
   };
 
-  using result_t = std::variant<invalid_operation, result>;
+  using result_t = std::variant<invalid_operation, result, request_result>;
   using ack_channel_t =
       io::experimental::channel<void(io::error_code, result_t)>;
 
@@ -33,7 +33,7 @@ public:
   auto add_or_get(strand_t &strand, uint64_t id) -> void {
     cache_.try_emplace(id, ack_channel_t{strand, 1});
   }
-  auto finish(uint64_t id, result_t &&result) -> void {
+  auto finish(uint64_t id, result_t result) -> void {
     if (cache_.contains(id)) {
       spdlog::trace("finish ack {0}.", id);
       cache_.at(id).try_send(io::error_code{}, result);
@@ -45,7 +45,7 @@ public:
     return cache_.at(id).async_receive(io::use_awaitable);
   }
 
-  auto finish_all(result_t &&result) {
+  auto finish_all(result_t result) {
     for (auto &kv : cache_) {
       kv.second.try_send(io::error_code{}, result);
     }

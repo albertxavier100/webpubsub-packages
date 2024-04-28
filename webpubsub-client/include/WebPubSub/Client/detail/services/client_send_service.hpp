@@ -9,9 +9,9 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/detail/client/sequence_id.hpp"
 #include "webpubsub/client/detail/concepts/transition_context_c.hpp"
+#include "webpubsub/client/detail/services/client_loop_service.hpp"
 #include "webpubsub/client/models/request_result.hpp"
 
 namespace webpubsub {
@@ -25,7 +25,7 @@ public:
       : loop_svc_("SEQUENCE LOOP", strand, log), sequence_id_(strand),
         options_(options) {}
 
-template <transition_context_c transition_context_t>
+  template <transition_context_c transition_context_t>
   auto spawn_sequence_ack_loop_coro(transition_context_t *context) {
     loop_svc_.spawn_loop_coro(async_start_sequence_ack_loop(context));
   }
@@ -41,10 +41,9 @@ template <transition_context_c transition_context_t>
     loop_svc_.reset();
   }
 
-  // TODO: [HIGH] add result
   template <typename request_t, transition_context_c transition_context_t>
-  auto async_send_request(request_t request,
-                          transition_context_t *context) -> async_t<> {
+  auto async_send_request(request_t request, transition_context_t *context)
+      -> async_t<> {
     const auto &protocol = options_.protocol;
     try {
       auto frame = protocol.write(request);
@@ -55,9 +54,36 @@ template <transition_context_c transition_context_t>
   }
 
   template <typename request_t, transition_context_c transition_context_t>
-  auto
-  async_retry_send(request_t request, transition_context_t *context,
-                   bool fire_and_forget = false) -> async_t<const request_result> {
+  auto async_send_with_ack(request_t request, transition_context_t *context)
+      -> async_t<const request_result> {
+    auto &cache = context->ack_cache();
+    auto id = *request.getAckId();
+    cache.add_or_get(context->strand(), id);
+    try {
+      co_await async_send_request(std::move(request), context);
+      auto result = co_await cache.async_wait(id);
+      co_return std::move(result);
+    } catch (const std::exception &ex) {
+      spdlog::trace("send message failed in {0} times");
+      cache.finish(id, ack_cache::result::cancelled);
+    }
+  }
+
+  template <typename request_t, transition_context_c transition_context_t>
+  auto async_send_without_ack(request_t request, transition_context_t *context)
+      -> async_t<const request_result> {
+    try {
+      co_await async_send_request(std::move(request), context);
+      co_return request_result{};
+    } catch (const std::exception &ex) {
+      spdlog::trace("Failed to send message.");
+    }
+  }
+
+  template <typename request_t, transition_context_c transition_context_t>
+  auto async_retry_send(request_t request, transition_context_t *context,
+                        bool fire_and_forget = false)
+      -> async_t<const request_result> {
     auto retry_options = options_.message_retry_options;
     if (!request.hasAckId()) {
       auto ack_id = context->next_ack_id();
@@ -67,32 +93,29 @@ template <transition_context_c transition_context_t>
         retry_options.max_delay, retry_options.max_retry,
         retry_options.retry_mode, 0, retry_options.delay};
     for (;;) {
-      try {
-        if (fire_and_forget) {
-          co_await async_send_request(std::move(request), context);
-        } else {
-          auto &cache = context->ack_cache();
-          auto id = *request.getAckId();
-          cache.add_or_get(context->strand(), id);
-          co_await async_send_request(std::move(request), context);
-          co_await cache.async_wait(id);
-        }
-
-        // TODO: [HIGH] impl
-        co_return request_result{};
-      } catch (const std::exception &ex) {
-        spdlog::trace("send message failed in {0} times",
-                      retry_context.attempts);
+      auto cs = co_await io::this_coro::cancellation_state;
+      if (cs.cancelled() != io::cancellation_type::none) {
+        spdlog::trace("send... break");
+        break;
       }
-
+      std::exception_ptr eptr;
+      try {
+        auto result = co_await (fire_and_forget
+                                ? async_send_without_ack(request, context)
+                                : async_send_with_ack(request, context));
+        co_return std::move(result);
+      } catch (...) {
+        eptr = std::current_exception();
+      }
       update_delay(retry_context);
       if (!retry_context.delay) {
-        break;
+        if (eptr) {
+          std::rethrow_exception(eptr);
+        }
       }
       co_await async_delay_v2(context->strand(), *retry_context.delay);
     }
     spdlog::trace("send message retry failed");
-    // TODO: [HIGH] impl
     co_return request_result{};
   }
 

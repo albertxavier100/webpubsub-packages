@@ -29,7 +29,7 @@ TEST(detail, ack_cache) {
   ack_cache cache;
   auto &ref = cache;
   ref.add_or_get(strand, 1);
-  std::variant<invalid_operation, ack_cache::result> res;
+  ack_cache::result_t res;
   ref.finish_all(ack_cache::result::cancelled);
   auto wait = [&ref, &res]() -> async_t<> { res = co_await ref.async_wait(1); };
   io::co_spawn(io_context, wait(), io::detached);
