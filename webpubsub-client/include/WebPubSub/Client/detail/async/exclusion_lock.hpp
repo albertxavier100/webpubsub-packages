@@ -1,11 +1,4 @@
 #pragma once
-
-#include "asio/as_tuple.hpp"
-#include "asio/awaitable.hpp"
-#include "asio/experimental/awaitable_operators.hpp"
-#include "asio/experimental/channel.hpp"
-#include "asio/io_context.hpp"
-#include "asio/use_awaitable.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
 #include <memory>
 
@@ -25,7 +18,10 @@ public:
     channel_.try_receive([](auto ec, auto a) {});
   }
 
-  auto reset() { channel_.reset(); }
+  auto reset() { 
+    channel_.cancel();
+    channel_.reset();
+  }
 
 private:
   io::experimental::channel<void(io::error_code, bool)> channel_;

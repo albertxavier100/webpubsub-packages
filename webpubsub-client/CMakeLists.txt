@@ -22,7 +22,8 @@ include_directories(
         ../deps/uri/include/fix8
         ../deps/eventpp/include
         ../deps/uri-library
-        ../deps/boost/include
+        D:/XLDownloads/test-beast/boost
+        # ../deps/boost/include
 )
 
 find_package(GTest CONFIG REQUIRED)

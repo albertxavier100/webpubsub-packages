@@ -102,6 +102,7 @@ public:
       -> async_t<const request_result> {
     auto &groups = transition_context_.lifetime().groups();
     auto const &group_name = request.getGroup();
+    spdlog::trace("cache group: {0}", group_name);
     groups.try_emplace(group_name, detail::group_context{});
     auto &group_context = groups[group_name];
     auto result = co_await send_.async_retry_send(request, &transition_context_,

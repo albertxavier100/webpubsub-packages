@@ -134,8 +134,7 @@ public:
   }
   auto client_access_uri() -> const std::string & { return client_access_uri_; }
 
-private:
-  // TODO: low: move to each on_leave_state
+    // TODO: low: move to each on_leave_state
   template <transition_context_c transition_context_t>
   auto reset_connection(transition_context_t *context) {
     context->send().reset();
@@ -146,6 +145,7 @@ private:
     reconnection_token_ = std::nullopt;
   }
 
+private:
   const log &log_;
   strand_t &strand_;
   websocket_factory_t &websocket_factory_;

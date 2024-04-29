@@ -28,6 +28,8 @@ static_assert(false, "The minimum version of standalone Asio is 1.8.0");
 
 #else
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/as_tuple.hpp>
+#include <boost/asio/experimental/awaitable_operators.hpp>
 #include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
@@ -36,12 +38,12 @@ static_assert(false, "The minimum version of standalone Asio is 1.8.0");
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/asio/use_awaitable.hpp>
+#include <boost/asio/buffers_iterator.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/beast/websocket.hpp>
-#include <boost/asio/buffers_iterator.hpp>
 #include <boost/beast/ssl.hpp>
 
 #endif

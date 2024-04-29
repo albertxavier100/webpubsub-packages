@@ -243,6 +243,7 @@ private:
       for (auto &pair : context->lifetime().groups()) {
         auto &name = pair.first;
         auto &group = pair.second;
+        spdlog::trace("rejoin group: {0}", name);
         if (group.is_joined()) {
           auto request = JoinGroupRequest(name);
           std::optional<std::exception> ex;

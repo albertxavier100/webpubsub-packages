@@ -10,10 +10,10 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/config/core.hpp"
 
 namespace webpubsub {
 namespace detail {
-
 template <typename t = void> using async_t = io::awaitable<t>;
 using strand_t = io::strand<io::io_context::executor_type>;
 using lock_t = io::experimental::channel<void(io::error_code, bool)>;

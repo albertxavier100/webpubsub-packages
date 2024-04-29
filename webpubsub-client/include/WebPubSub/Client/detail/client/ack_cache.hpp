@@ -53,6 +53,7 @@ public:
 
   auto reset() {
     for (auto &kv : cache_) {
+      kv.second.cancel();
       kv.second.reset();
     }
     cache_.clear();
