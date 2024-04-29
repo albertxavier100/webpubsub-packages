@@ -15,12 +15,12 @@ template <transition_context_c transition_context_t>
 auto async_on_event(transition_context_t *context, stopping &stopping,
                     to_stopped_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: stopping -> stopped");
+  co_await context->lifetime().async_close();
   co_await context->receive().async_cancel_message_loop_coro();
   spdlog::trace("stopped message loop");
   co_await context->send().async_cancel_sequence_id_loop_coro();
   exclusion_lock lock{context->strand()};
   spdlog::trace("stopped sid loop");
-  co_await context->lifetime().async_close();
   co_await context->data_handle().async_cancel_data_loops_coro();
   context->lifetime().reset_connection(context);
   co_return stopped{};

@@ -70,9 +70,9 @@ public:
   }
 
   auto async_cancel() -> async_t<> {
+    co_await lifetime_.async_close();
     co_await send_.async_cancel_sequence_id_loop_coro();
     co_await receive_.async_cancel_message_loop_coro();
-    co_await lifetime_.async_close();
     co_await data_handle_.async_cancel_data_loops_coro();
   }
 
