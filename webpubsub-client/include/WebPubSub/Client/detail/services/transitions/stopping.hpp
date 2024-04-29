@@ -21,6 +21,7 @@ auto async_on_event(transition_context_t *context, stopping &stopping,
   exclusion_lock lock{context->strand()};
   spdlog::trace("stopped sid loop");
   co_await context->lifetime().async_close();
+  co_await context->data_handle().async_cancel_data_loops_coro();
   context->lifetime().reset_connection(context);
   co_return stopped{};
 }

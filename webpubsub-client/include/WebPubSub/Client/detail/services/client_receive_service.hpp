@@ -27,9 +27,7 @@ public:
   client_receive_service(strand_t &strand,
                          const client_options<protocol_t> &options,
                          const log &log)
-      : loop_svc_("RECEIVE LOOP", strand, log), options_(options),
-        server_data_channel_(strand, options.max_buffer_size),
-        group_data_channel_(strand, options.max_buffer_size) {}
+      : loop_svc_("RECEIVE LOOP", strand, log), options_(options) {}
 
   eventpp::CallbackList<void(const failed_connection_context)>
       on_receive_failed;
@@ -43,36 +41,6 @@ public:
     spdlog::trace("async_cancel_message_loop_coro begin");
     co_await loop_svc_.async_cancel_loop_coro();
     spdlog::trace("async_cancel_message_loop_coro end");
-  }
-
-  template <transition_context_c transition_context_t>
-  auto async_start_group_data_response_handler(transition_context_t *context)
-      -> async_t<> {
-    for (;;) {
-      try {
-        auto res =
-            co_await group_data_channel_.async_receive(io::use_awaitable);
-        context->safe_invoke_callback(group_data_context{res});
-      } catch (const std::exception &ex) {
-        spdlog::trace("failed to receive group data from channel. {0}",
-                      ex.what());
-      }
-    }
-  }
-
-  template <transition_context_c transition_context_t>
-  auto async_start_server_data_response_handler(transition_context_t *context)
-      -> async_t<> {
-    for (;;) {
-      try {
-        auto res =
-            co_await server_data_channel_.async_receive(io::use_awaitable);
-        context->safe_invoke_callback(server_data_context{res});
-      } catch (const std::exception &ex) {
-        spdlog::trace("failed to receive group data from channel. {0}",
-                      ex.what());
-      }
-    }
   }
 
   auto reset() -> void { loop_svc_.reset(); }
@@ -199,8 +167,7 @@ private:
         co_return;
       }
     }
-    co_await server_data_channel_.async_send(io::error_code{}, std::move(res),
-                                             io::use_awaitable);
+    co_await context->data_handle().async_queue_server_data(std::move(res));
   }
 
   template <transition_context_c transition_context_t>
@@ -215,8 +182,7 @@ private:
         co_return;
       }
     }
-    co_await group_data_channel_.async_send(io::error_code{}, std::move(res),
-                                            io::use_awaitable);
+    co_await context->data_handle().async_queue_group_data(std::move(res));
   }
 
   template <transition_context_c transition_context_t>
@@ -304,10 +270,6 @@ private:
 
   const client_options<protocol_t> &options_;
   client_loop_service loop_svc_;
-  io::experimental::channel<void(io::error_code, ServerMessageResponse)>
-      server_data_channel_;
-  io::experimental::channel<void(io::error_code, GroupMessageResponseV2)>
-      group_data_channel_;
 };
 } // namespace detail
 } // namespace webpubsub

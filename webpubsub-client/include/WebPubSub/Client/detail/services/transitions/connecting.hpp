@@ -16,6 +16,7 @@ auto async_on_event(transition_context_t *context, connecting &connecting,
                     to_connected_state &event) -> async_t<state_t> {
   spdlog::trace(":::Transition::: connecting -> connected ");
   try {
+    context->data_handle().spawn_data_loops_coro(context);
     co_await context->lifetime().async_connect(context);
     co_return connected{};
   } catch (const std::exception &ex) {

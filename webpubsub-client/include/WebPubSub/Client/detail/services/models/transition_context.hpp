@@ -55,15 +55,16 @@ stateDiagram-v2
 
 // TODO: add concept for receive_t
 template <client_lifetime_service_c lifetime_t, typename receive_t,
-          typename send_t>
+          typename send_t, typename data_handle_t>
 class transition_context {
 public:
   transition_context(strand_t &strand, lifetime_t &lifetime, receive_t &receive,
-                     send_t &send, const log &log)
+                     send_t &send, data_handle_t& data_handle, const log &log)
       : strand_(strand), state_(stopped{}), lifetime_(lifetime),
-        receive_(receive), send_(send), log_(log), ack_id_(0), ack_cache_() {
+        receive_(receive), send_(send), data_handle_(data_handle), log_(log), ack_id_(0),
+        ack_cache_() {
     static_assert(transition_context_c<
-                  transition_context<lifetime_t, receive_t, send_t>>);
+                  transition_context<lifetime_t, receive_t, send_t, receive_t>>);
   }
 
   eventpp::CallbackList<void(const connected_context)> on_connected;
@@ -122,6 +123,8 @@ public:
 
   auto send() -> send_t & { return send_; }
 
+  auto data_handle() -> data_handle_t & { return data_handle_; }
+
   auto ack_cache() -> ack_cache & { return ack_cache_; }
 
   auto next_ack_id() -> uint64_t { return ack_id_++; }
@@ -154,11 +157,11 @@ public:
   }
 
 private:
-  // TODO: try to make const
+  const log &log_;
   lifetime_t &lifetime_;
   receive_t &receive_;
   send_t &send_;
-  const log &log_;
+  data_handle_t &data_handle_;
   state_t state_;
   strand_t &strand_;
   uint64_t ack_id_;

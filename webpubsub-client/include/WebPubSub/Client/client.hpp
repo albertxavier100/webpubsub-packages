@@ -15,6 +15,7 @@
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
 #include "webpubsub/client/detail/services/client_send_service.hpp"
+#include "webpubsub/client/detail/services/client_data_handle_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/transition_context.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
@@ -35,7 +36,8 @@ public:
       : log_(logger_name), options_(options),
         lifetime_(strand, credential, websocket_factory, options, log_),
         receive_(strand, options, log_), send_(strand, options, log_),
-        transition_context_(strand, lifetime_, receive_, send_, log_),
+        data_handle_(strand, options, log_),
+        transition_context_(strand, lifetime_, receive_, send_, data_handle_, log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
         on_group_data(transition_context_.on_group_data),
@@ -43,14 +45,6 @@ public:
         on_rejoin_group_failed(transition_context_.on_rejoin_group_failed),
         on_stopped(transition_context_.on_stopped) {
     setup_reconnect_callback(strand);
-    io::co_spawn(
-        strand,
-        receive_.async_start_group_data_response_handler(&transition_context_),
-        io::detached);
-    io::co_spawn(
-        strand,
-        receive_.async_start_server_data_response_handler(&transition_context_),
-        io::detached);
   }
 
   eventpp::CallbackList<void(const connected_context)> &on_connected;
@@ -79,6 +73,7 @@ public:
     co_await send_.async_cancel_sequence_id_loop_coro();
     co_await receive_.async_cancel_message_loop_coro();
     co_await lifetime_.async_close();
+    co_await data_handle_.async_cancel_data_loops_coro();
   }
 
   template <typename data_t>
@@ -183,11 +178,13 @@ private:
       lifetime_;
   detail::client_receive_service<protocol_t> receive_;
   detail::client_send_service<protocol_t> send_;
+  detail::client_data_handle_service<protocol_t> data_handle_;
 
   detail::transition_context<detail::client_lifetime_service<
                                  protocol_t, websocket_factory_t, websocket_t>,
                              detail::client_receive_service<protocol_t>,
-                             detail::client_send_service<protocol_t>>
+                             detail::client_send_service<protocol_t>,
+                             detail::client_data_handle_service<protocol_t>>
       transition_context_;
   const detail::log log_;
   const client_options<protocol_t> &options_;
