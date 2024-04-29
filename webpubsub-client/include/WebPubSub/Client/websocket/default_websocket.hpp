@@ -2,7 +2,6 @@
 #include "spdlog/spdlog.h"
 #include "uri.hh"
 #include "webpubsub/client/common/asio.hpp"
-#include "webpubsub/client/common/websocket/websocket_close_status.hpp"
 #include "webpubsub/client/config/core.hpp"
 #include <webpubsub/client/concepts/websocket_c.hpp>
 
@@ -88,11 +87,12 @@ public:
         io::buffer(std::string(std::move(write_frame))), io::use_awaitable);
   }
 
-  auto async_read(std::string &read_frame, websocket_close_status &status)
+  auto async_read(std::string &read_frame, close_code_t &close_code)
       -> io::awaitable<void> {
     io::beast::flat_buffer buffer;
     co_await websocket_->async_read(buffer, io::use_awaitable);
     auto data = buffer.data();
+    close_code = websocket_->reason().code;
     read_frame.assign(io::buffers_begin(data), io::buffers_end(data));
   }
 

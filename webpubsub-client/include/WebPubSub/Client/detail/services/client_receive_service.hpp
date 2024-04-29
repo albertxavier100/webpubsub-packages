@@ -84,7 +84,7 @@ private:
     using namespace std::chrono_literals;
     spdlog::trace("client_receive_service.async_start_message_loop begin");
     bool ok = true;
-    websocket_close_status status;
+    close_code_t close_code;
     try {
       for (;;) {
         auto cs = co_await io::this_coro::cancellation_state;
@@ -93,7 +93,7 @@ private:
           break;
         }
         std::string payload;
-        co_await context->lifetime().async_read_message(payload, status);
+        co_await context->lifetime().async_read_message(payload, close_code);
         spdlog::trace("received payload: {0}", payload);
         co_await async_handle_payload(std::move(payload), context);
         spdlog::trace("receiving...");
@@ -111,8 +111,7 @@ private:
       spdlog::trace("handle ack cache finished");
       auto reconnect_url = build_reconnection_url(context);
 
-      // TODO: consider more close status
-      auto should_recover = reconnect_url && status != websocket_close_status::policy_violation;
+      auto should_recover = reconnect_url && close_code != 1008;
       on_receive_failed({should_recover, reconnect_url});
       spdlog::trace("fire on_receive_failed");
     }

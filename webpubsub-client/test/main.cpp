@@ -9,7 +9,7 @@
 int main(int argc, char **argv) {
   // Initialize Google Test
   ::testing::InitGoogleTest(&argc, argv);
-  ::testing::GTEST_FLAG(filter) = "*with_beast*";
+  ::testing::GTEST_FLAG(filter) = "*auto_reconnect*";
 
   // Run tests
   return RUN_ALL_TESTS();

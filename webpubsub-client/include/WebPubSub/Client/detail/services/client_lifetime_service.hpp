@@ -93,10 +93,10 @@ public:
   }
 
   auto async_read_message(std::string &frame,
-                          webpubsub::websocket_close_status &status)
+                          close_code_t &code)
       -> async_t<> {
     spdlog::trace("lifetime.async_read_message");
-    co_await websocket_->async_read(frame, status);
+    co_await websocket_->async_read(frame, code);
   }
 
   auto async_write_message(std::string frame) -> async_t<> {

@@ -1,9 +1,8 @@
 #pragma once
-#include <iostream>
-#include <optional>
-#include <webpubsub/client/common/websocket/websocket_close_status.hpp>
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/common/using.hpp"
+#include <iostream>
+#include <optional>
 
 namespace webpubsub {
 
@@ -11,10 +10,12 @@ namespace webpubsub {
 template <typename T>
 concept websocket_c =
     requires(T t, std::string write_frame, std::string &read_frame,
-             websocket_close_status &status) {
+             uint16_t &close_code) {
       { t.async_connect() } -> std::same_as<io::awaitable<void>>;
-  { t.async_close() } -> std::same_as<io::awaitable<void>>;
+      { t.async_close() } -> std::same_as<io::awaitable<void>>;
       { t.async_write(write_frame) } -> std::same_as<io::awaitable<void>>;
-      { t.async_read(read_frame, status) } -> std::same_as<io::awaitable<void>>;
+      {
+        t.async_read(read_frame, close_code)
+      } -> std::same_as<io::awaitable<void>>;
     };
 } // namespace webpubsub

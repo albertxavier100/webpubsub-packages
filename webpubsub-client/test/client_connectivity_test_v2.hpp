@@ -32,22 +32,20 @@ public:
     co_return;
   };
   virtual auto
-  async_read(std::string &payload,
-             webpubsub::websocket_close_status &status) -> async_t<> {
+  async_read(std::string &payload, uint16_t &code) -> async_t<> {
     using namespace std::chrono_literals;
 
     co_await webpubsub::detail::async_delay_v2(strand, 1s);
     if (!is_connected_) {
-      co_await async_read_connected_message(payload, status);
+      co_await async_read_connected_message(payload, code);
       is_connected_ = true;
     }
   };
 
 private:
-  auto async_read_connected_message(std::string &payload,
-                                    webpubsub::websocket_close_status &status)
+  auto async_read_connected_message(std::string &payload, uint16_t &code)
       -> async_t<> {
-    status = webpubsub::websocket_close_status::empty;
+    code = 0;
     using namespace std::chrono_literals;
     auto json = R"(
 {
@@ -71,8 +69,7 @@ bool thrown_exception = false;
 class test_websocket_reconnect : public test_websocket_1 {
 public:
   auto
-  async_read(std::string &payload,
-             webpubsub::websocket_close_status &status) -> async_t<> override {
+  async_read(std::string &payload, uint16_t &code) -> async_t<> override {
     using namespace std::chrono_literals;
     spdlog::trace("already thrown_exception = {0}", thrown_exception);
     if (!thrown_exception) {

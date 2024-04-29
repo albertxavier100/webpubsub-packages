@@ -19,8 +19,8 @@ TEST(test, default_websocket) {
                                          "json.reliable.webpubsub.azure.v1");
         co_await ws.async_connect();
         std::string read;
-        webpubsub::websocket_close_status status;
-        co_await ws.async_read(read, status);
+        close_code_t code;
+        co_await ws.async_read(read, code);
         std::cout << "read = " << read << "\n";
         for (auto i = 0; i < 10; i++) {
           co_await ws.async_write("hahaha");
