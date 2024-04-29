@@ -66,6 +66,9 @@ private:
          spdlog::trace("async_start_group_data_response_handler... break");
          break;
        }
+       if (!group_data_channel_.is_open()) {
+         co_return;
+       }
        try {
          auto res =
              co_await group_data_channel_.async_receive(io::use_awaitable);
@@ -86,12 +89,15 @@ private:
          spdlog::trace("async_start_server_data_response_handler... break");
          break;
        }
+       if (!server_data_channel_.is_open()) {
+         co_return;
+       }
        try {
          auto res =
              co_await server_data_channel_.async_receive(io::use_awaitable);
          context->safe_invoke_callback(server_data_context{res});
        } catch (const std::exception &ex) {
-         spdlog::trace("failed to receive group data from channel. {0}",
+         spdlog::trace("failed to receive server data from channel. {0}",
                        ex.what());
        }
      }

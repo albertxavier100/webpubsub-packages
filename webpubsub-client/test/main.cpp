@@ -9,10 +9,11 @@
 int main(int argc, char **argv) {
   // Initialize Google Test
   ::testing::InitGoogleTest(&argc, argv);
-  ::testing::GTEST_FLAG(filter) = "*with_beast*";
   ::testing::GTEST_FLAG(filter) = "*start_stop_basic*";
   ::testing::GTEST_FLAG(filter) = "*auto_reconnect*";
-
+  ::testing::GTEST_FLAG(filter) = "*default_websocket*";
+  ::testing::GTEST_FLAG(filter) = "*with_beast*";
+  
   // Run tests
   return RUN_ALL_TESTS();
 }
