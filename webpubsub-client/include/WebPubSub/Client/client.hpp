@@ -25,11 +25,11 @@ namespace webpubsub {
 template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
           typename websocket_t>
   requires websocket_factory_c<websocket_factory_t, websocket_t>
-class client {
+class client_core {
   template <typename t = void> using async_t = io::awaitable<t>;
 
 public:
-  client(io::strand<io::io_context::executor_type> &strand,
+  client_core(io::strand<io::io_context::executor_type> &strand,
          const client_credential &credential,
          const client_options<protocol_t> &options,
          websocket_factory_t &websocket_factory, const std::string &logger_name)

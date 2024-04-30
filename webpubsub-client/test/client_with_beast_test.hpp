@@ -16,7 +16,7 @@ TEST(client, with_beast) {
   using options_t = webpubsub::client_options<protocol_t>;
   using factory_t = webpubsub::default_websocket_factory;
   using client_t =
-      webpubsub::client<protocol_t, factory_t, webpubsub::default_websocket>;
+      webpubsub::client_core<protocol_t, factory_t, webpubsub::default_websocket>;
   using credential_t = webpubsub::client_credential;
   using namespace std::chrono_literals;
   using strand_t =
@@ -35,7 +35,7 @@ TEST(client, with_beast) {
   factory_t factory;
   protocol_t p;
   options_t opts{p};
-  const char *env_key = "WPS_CONN_STR";
+  const char *env_key = "WPS_CLIENT_ACCESS_URI";
   char *env_value = std::getenv(env_key);
   credential_t cre{env_value};
   client_t client(strand, cre, opts, factory, "console");
@@ -59,7 +59,8 @@ TEST(client, with_beast) {
     try {
       auto exe = co_await io::this_coro::executor;
       co_await client.async_start();
-      auto const join_res = co_await client.async_join_group(JoinGroupRequest{group});
+      auto const join_res =
+          co_await client.async_join_group(JoinGroupRequest{group});
       co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_send_to_group(
           SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
