@@ -9,19 +9,7 @@
 
 namespace test {
 namespace client_with_beast {
-TEST(client, with_beast) {
-  namespace io = webpubsub::io;
-  using namespace io::experimental::awaitable_operators;
-  using protocol_t = webpubsub::reliable_json_v1_protocol;
-  using options_t = webpubsub::client_options<protocol_t>;
-  using factory_t = webpubsub::default_websocket_factory;
-  using client_t =
-      webpubsub::client_core<protocol_t, factory_t, webpubsub::default_websocket>;
-  using credential_t = webpubsub::client_credential;
-  using namespace std::chrono_literals;
-  using strand_t =
-      webpubsub::io::strand<webpubsub::io::io_context::executor_type>;
-
+  auto prepare_console_logger() {
   auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   auto console_logger =
       std::make_shared<spdlog::logger>("console", console_sink);
@@ -29,16 +17,17 @@ TEST(client, with_beast) {
     spdlog::register_logger(console_logger);
     spdlog::set_level(spdlog::level::trace);
   }
-  webpubsub::io::io_context io_context;
-  strand_t strand{io_context.get_executor()};
+}
 
-  factory_t factory;
-  protocol_t p;
-  options_t opts{p};
+TEST(client, with_beast) {
+  namespace io = webpubsub::io;
+  
+  prepare_console_logger();
+  webpubsub::io::io_context io_context;
+  auto strand = io::make_strand(io_context.get_executor());
   const char *env_key = "WPS_CLIENT_ACCESS_URI";
-  char *env_value = std::getenv(env_key);
-  credential_t cre{env_value};
-  client_t client(strand, cre, opts, factory, "console");
+  char *client_access_uri = std::getenv(env_key);
+  client_core<> client(strand, client_access_uri);
   client.on_connected.append([](webpubsub::connected_context context) {
     spdlog::trace("connection {0} connected.", context.connection_id);
   });
@@ -61,13 +50,10 @@ TEST(client, with_beast) {
       co_await client.async_start();
       auto const join_res =
           co_await client.async_join_group(JoinGroupRequest{group});
-      co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_send_to_group(
           SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
-      co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_send_to_group(
           SendToGroupRequest{group, data, std::nullopt, no_echo, dataType});
-      co_await io::steady_timer{exe, 1s}.async_wait(io::use_awaitable);
       co_await client.async_stop();
       spdlog::trace("test finish");
     } catch (const std::exception &ex) {

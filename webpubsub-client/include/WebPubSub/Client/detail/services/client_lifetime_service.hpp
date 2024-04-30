@@ -38,12 +38,13 @@ class client_lifetime_service {
 
 public:
   client_lifetime_service(strand_t &strand, const client_credential credential,
-                          websocket_factory_t websocket_factory,
+                          const websocket_factory_t websocket_factory,
                           const client_options<protocol_t> &options,
                           const log &log)
-      : log_(log), strand_(strand), options_(options), credential_(std::move(credential)),
-        websocket_factory_(std::move(websocket_factory)), websocket_(nullptr), groups_(),
-        lock_(strand) {
+      : log_(log), strand_(strand), options_(options),
+        credential_(std::move(credential)),
+        websocket_factory_(std::move(websocket_factory)), websocket_(nullptr),
+        groups_(), lock_(strand) {
     if (!options.auto_reconnect) {
       return;
     }
@@ -92,9 +93,7 @@ public:
     co_return;
   }
 
-  auto async_read_message(std::string &frame,
-                          close_code_t &code)
-      -> async_t<> {
+  auto async_read_message(std::string &frame, close_code_t &code) -> async_t<> {
     spdlog::trace("lifetime.async_read_message");
     co_await websocket_->async_read(frame, code);
   }
@@ -134,7 +133,7 @@ public:
   }
   auto client_access_uri() -> const std::string & { return client_access_uri_; }
 
-    // TODO: low: move to each on_leave_state
+  // TODO: low: move to each on_leave_state
   template <transition_context_c transition_context_t>
   auto reset_connection(transition_context_t *context) {
     context->send().reset();
@@ -147,11 +146,11 @@ public:
 
 private:
   const log &log_;
+  const client_credential credential_;
+  const client_options<protocol_t> &options_;
   strand_t &strand_;
   websocket_factory_t websocket_factory_;
-  const client_credential credential_;
   std::unique_ptr<websocket_t> websocket_;
-  const client_options<protocol_t> &options_;
   // TODO: store in connected state
   std::string connection_id_;
   std::optional<std::string> reconnection_token_;

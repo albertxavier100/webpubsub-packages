@@ -17,7 +17,8 @@ namespace webpubsub {
 //public:
 //  client(io::strand<io::io_context::executor_type> &strand,
 //         std::string client_access_uri)
-//      : client_core(strand, ) {}
+//      : client_core(strand, client_credential{std::move(client_access_uri)},
+//                    client_options{}) {}
 //
 //private:
 //};

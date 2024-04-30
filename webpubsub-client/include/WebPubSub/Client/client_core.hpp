@@ -4,6 +4,7 @@
 
 #include "WebPubSub/Protocols/Requests/SendEventRequest.hpp"
 #include "eventpp/callbacklist.h"
+#include "webpubsub/client/websocket/default_websocket_factory.hpp"
 #include "webpubsub/client/concepts/websocket_factory_c.hpp"
 #include "webpubsub/client/credentials/client_credential.hpp"
 #include "webpubsub/client/detail/async/exclusion_lock.hpp"
@@ -12,32 +13,63 @@
 #include "webpubsub/client/detail/client/retry_context.hpp"
 #include "webpubsub/client/detail/logging/log.hpp"
 #include "webpubsub/client/detail/services/client_channel_service.hpp"
+#include "webpubsub/client/detail/services/client_data_handle_service.hpp"
 #include "webpubsub/client/detail/services/client_lifetime_service.hpp"
 #include "webpubsub/client/detail/services/client_receive_service.hpp"
 #include "webpubsub/client/detail/services/client_send_service.hpp"
-#include "webpubsub/client/detail/services/client_data_handle_service.hpp"
 #include "webpubsub/client/detail/services/models/client_lifetime_events.hpp"
 #include "webpubsub/client/detail/services/models/transition_context.hpp"
 #include "webpubsub/client/exceptions/exception.hpp"
 #include "webpubsub/client/models/client_options.hpp"
+#include "webpubsub/protocols/webpubsub_protocol_t.hpp"
 
 namespace webpubsub {
-template <webpubsub_protocol_t protocol_t, typename websocket_factory_t,
-          typename websocket_t>
-  requires websocket_factory_c<websocket_factory_t, websocket_t>
+template <typename protocol_t = reliable_json_v1_protocol,
+          typename websocket_factory_t = default_websocket_factory,
+          typename websocket_t = default_websocket>
+  requires websocket_factory_c<websocket_factory_t, websocket_t> &&
+           webpubsub_protocol_t<protocol_t>
 class client_core {
   template <typename t = void> using async_t = io::awaitable<t>;
 
 public:
-  client_core(io::strand<io::io_context::executor_type> &strand,
-         const client_credential credential,
-         const client_options<protocol_t> options,
-         websocket_factory_t websocket_factory, const std::string logger_name)
+  client_core(
+      io::strand<io::io_context::executor_type> &strand,
+      const std::string client_access_uri,
+      websocket_factory_t websocket_factory = default_websocket_factory{},
+      const client_options<protocol_t> options = client_options<protocol_t>{},
+      const std::string logger_name = "console")
       : log_(std::move(logger_name)), options_(std::move(options)),
-        lifetime_(strand, std::move(credential), std::move(websocket_factory), options_, log_),
+        lifetime_(strand, std::move(client_credential{std::move(client_access_uri)}),
+                  std::move(websocket_factory),
+                  options_, log_),
         receive_(strand, options_, log_), send_(strand, options_, log_),
         data_handle_(strand, options_, log_),
-        transition_context_(strand, lifetime_, receive_, send_, data_handle_, log_),
+        transition_context_(strand, lifetime_, receive_, send_, data_handle_,
+                            log_),
+        on_connected(transition_context_.on_connected),
+        on_disconnected(transition_context_.on_disconnected),
+        on_group_data(transition_context_.on_group_data),
+        on_server_data(transition_context_.on_server_data),
+        on_rejoin_group_failed(transition_context_.on_rejoin_group_failed),
+        on_stopped(transition_context_.on_stopped) {
+    setup_reconnect_callback(strand);
+  }
+
+  client_core(
+      io::strand<io::io_context::executor_type> &strand,
+      const client_credential credential,
+      websocket_factory_t websocket_factory = default_websocket_factory{},
+      const client_options<protocol_t> options = client_options<protocol_t>{},
+      const std::string logger_name = "console")
+      : log_(std::move(logger_name)), options_(std::move(options)),
+        lifetime_(strand, std::move(credential),
+                  std::move(websocket_factory),
+                  options_, log_),
+        receive_(strand, options_, log_), send_(strand, options_, log_),
+        data_handle_(strand, options_, log_),
+        transition_context_(strand, lifetime_, receive_, send_, data_handle_,
+                            log_),
         on_connected(transition_context_.on_connected),
         on_disconnected(transition_context_.on_disconnected),
         on_group_data(transition_context_.on_group_data),
@@ -151,8 +183,8 @@ private:
             "on_receive_failed.reconnecting... beg, current state = {0}",
             ctx.get_state().index());
         if (!failed_ctx.should_recover) {
-            co_await ctx.async_raise_event(to_disconnected{});
-         }
+          co_await ctx.async_raise_event(to_disconnected{});
+        }
         spdlog::trace("on_receive_failed.reconnecting... to reconnecting");
         co_await ctx.async_raise_event(to_reconnecting{});
         spdlog::trace("on_receive_failed.reconnecting... to "
@@ -174,6 +206,8 @@ private:
     receive_.on_receive_failed.append(callback);
   }
 
+  const detail::log log_;
+  const client_options<protocol_t> options_;
   detail::client_lifetime_service<protocol_t, websocket_factory_t, websocket_t>
       lifetime_;
   detail::client_receive_service<protocol_t> receive_;
@@ -186,7 +220,5 @@ private:
                              detail::client_send_service<protocol_t>,
                              detail::client_data_handle_service<protocol_t>>
       transition_context_;
-  const detail::log log_;
-  const client_options<protocol_t> options_;
 };
 } // namespace webpubsub

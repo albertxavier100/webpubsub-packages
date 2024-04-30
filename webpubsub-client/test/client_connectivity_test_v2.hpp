@@ -111,7 +111,7 @@ TEST(connectivity, start_stop_basic) {
   protocol_t p;
   options_t opts{p};
   credential_t cre{"abcd"};
-  client_t client(strand, cre, opts, factory, "console");
+  client_t client(strand, cre, factory, opts, "console");
 
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
@@ -151,7 +151,7 @@ TEST(connectivity, start_stop_with_cancel) {
   protocol_t p;
   options_t opts{p};
   credential_t cre{"abcd"};
-  client_t client(strand, cre, opts, factory, "console");
+  client_t client(strand, cre, factory, opts, "console");
 
   spdlog::trace("start test");
   auto async_test = [&]() -> async_t<> {
@@ -208,7 +208,7 @@ TEST(connectivity, auto_reconnect) {
                                   .delay = std::chrono::milliseconds(1000),
                                   .retry_mode = webpubsub::retry_mode::fixed}};
   credential_t cre{"abcd"};
-  client_t client(strand, cre, opts, factory, "console");
+  client_t client(strand, cre, factory, opts, "console");
 
   spdlog::trace("start test");
 

@@ -9,6 +9,14 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
+#include "webpubsub/client/models/client_options.hpp"
+#include "webpubsub/client/detail/concepts/transition_context_c.hpp"
+#include "webpubsub/client/detail/services/client_loop_service.hpp"
+#include "webpubsub/client/common/asio.hpp"
+#include "webpubsub/client/detail/common/using.hpp"
+#include "webpubsub/client/detail/logging/log.hpp"
+#include "spdlog/spdlog.h"
+
 namespace webpubsub {
 namespace detail {
 template <webpubsub_protocol_t protocol_t> class client_data_handle_service {
@@ -23,8 +31,8 @@ public:
       : group_data_loop_svc_("GROUP DATA LOOP", strand, log),
         server_data_loop_svc_("SERVER DATA LOOP", strand, log),
         options_(options),
-        server_data_channel_(strand, options.max_buffer_size),
-        group_data_channel_(strand, options.max_buffer_size) {}
+        server_data_channel_(strand, options_.max_buffer_size),
+        group_data_channel_(strand, options_.max_buffer_size) {}
 
   template <transition_context_c transition_context_t>
   auto spawn_data_loops_coro(transition_context_t *context) {

@@ -9,7 +9,6 @@
 #pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "client_lifetime_service.hpp"
 #include "spdlog/spdlog.h"
 #include "webpubsub/client/common/asio.hpp"
 #include "webpubsub/client/detail/client/retry_policy.hpp"

@@ -5,8 +5,9 @@
 #include "webpubsub/client/models/retry_options.hpp"
 
 namespace webpubsub {
-template <webpubsub_protocol_t protocol_t> struct client_options {
-  protocol_t protocol;
+template <webpubsub_protocol_t protocol_t = reliable_json_v1_protocol>
+struct client_options {
+  protocol_t protocol = reliable_json_v1_protocol{};
   bool enable_multi_thread = false;
   bool auto_reconnect = true;
   bool auto_rejoin_groups = true;
