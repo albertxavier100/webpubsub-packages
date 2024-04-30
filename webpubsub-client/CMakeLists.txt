@@ -15,15 +15,13 @@ set(SOURCES
 )
 
 include_directories(
-        # ../deps/asio/asio/include
         ../deps/json/include
         ../deps/cppcodec
         ../deps/spdlog/include
         ../deps/uri/include/fix8
         ../deps/eventpp/include
         ../deps/uri-library
-        D:/XLDownloads/test-beast/boost
-        # ../deps/boost/include
+        D:/XLDownloads/test-beast/boost # set to your boost header
 )
 
 find_package(GTest CONFIG REQUIRED)
