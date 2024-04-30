@@ -27,7 +27,7 @@ TEST(client, with_beast) {
   auto strand = io::make_strand(io_context.get_executor());
   const char *env_key = "WPS_CLIENT_ACCESS_URI";
   char *client_access_uri = std::getenv(env_key);
-  client_core<> client(strand, client_access_uri);
+  client<> client(strand, client_access_uri);
   client.on_connected.append([](webpubsub::connected_context context) {
     spdlog::trace("connection {0} connected.", context.connection_id);
   });
