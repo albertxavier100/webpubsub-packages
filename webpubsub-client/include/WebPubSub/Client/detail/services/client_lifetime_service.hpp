@@ -37,12 +37,12 @@ class client_lifetime_service {
   using strand_t = io::strand<io::io_context::executor_type>;
 
 public:
-  client_lifetime_service(strand_t &strand, const client_credential &credential,
-                          websocket_factory_t &websocket_factory,
+  client_lifetime_service(strand_t &strand, const client_credential credential,
+                          websocket_factory_t websocket_factory,
                           const client_options<protocol_t> &options,
                           const log &log)
-      : log_(log), strand_(strand), options_(options), credential_(credential),
-        websocket_factory_(websocket_factory), websocket_(nullptr), groups_(),
+      : log_(log), strand_(strand), options_(options), credential_(std::move(credential)),
+        websocket_factory_(std::move(websocket_factory)), websocket_(nullptr), groups_(),
         lock_(strand) {
     if (!options.auto_reconnect) {
       return;
@@ -148,8 +148,8 @@ public:
 private:
   const log &log_;
   strand_t &strand_;
-  websocket_factory_t &websocket_factory_;
-  const client_credential &credential_;
+  websocket_factory_t websocket_factory_;
+  const client_credential credential_;
   std::unique_ptr<websocket_t> websocket_;
   const client_options<protocol_t> &options_;
   // TODO: store in connected state

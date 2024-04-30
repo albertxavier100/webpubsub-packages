@@ -87,7 +87,7 @@ public:
         io::buffer(std::string(std::move(write_frame))), io::use_awaitable);
   }
 
-  auto async_read(std::string &read_frame, close_code_t &close_code)
+  auto async_read(std::string &read_frame, uint16_t &close_code)
       -> io::awaitable<void> {
     io::beast::flat_buffer buffer;
     co_await websocket_->async_read(buffer, io::use_awaitable);
